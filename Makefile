@@ -17,6 +17,8 @@ DEBUG_DEFINES   = -DDEBUG=1 -DUSE_ASSERT=1
 PROD_DEFINES    = -DDEBUG=0 -DUSE_ASSERT=1
 SRC             = main.cpp $(shell  find ./src -type f \( -iname "*.cpp" \) -print)
 CORE            = $(shell find ./lib/core/src -type f \( -iname "*.cpp" -and -not -path "*/test/*" -and -not -iname "$(OSSFPTI)*" \) -print)
+# LIBS            = `pkg-config --libs x11` `pkg-config --libs glfw3` `pkg-config --libs opengl` -lm
+LIBS            = `pkg-config --libs x11` -lm -lGL -DGL_GLEXT_PROTOTYPES
 OUT_DIR         = build
 
 .PHONY: help
@@ -29,12 +31,12 @@ help:
 .PHONY: build
 build: clean ## Build the project in the build folder. Creates ./build folder if it does not exist.
 	mkdir -p $(OUT_DIR)
-	$(CC) $(CFLAGS) $(DEBUG_DEFINES) -o $(OUT_DIR)/$(BIN_NAME) $(SRC) $(CORE)
+	$(CC) $(CFLAGS) $(DEBUG_DEFINES) -o $(OUT_DIR)/$(BIN_NAME) $(SRC) $(CORE) $(LIBS)
 
 .PHONY: build_prod
 build_prod: clean ## Same as build, but optimizes aggresivly and generates no debug information.
 	mkdir -p $(OUT_DIR)
-	$(CC) $(PROD_CFLAGS) $(PROD_DEFINES) $(PROD_ENV) -o $(OUT_DIR)/$(BIN_NAME) $(SRC) $(CORE)
+	$(CC) $(PROD_CFLAGS) $(PROD_DEFINES) $(PROD_ENV) -o $(OUT_DIR)/$(BIN_NAME) $(SRC) $(CORE) $(LIBS)
 
 .PHONY: clean
 clean: ## Deletes the build folder.
