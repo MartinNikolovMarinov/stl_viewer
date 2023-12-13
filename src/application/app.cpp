@@ -17,8 +17,7 @@ stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst) {
     }
     logInfo("Logger initialized successfully.");
 
-    PlatformState pltState;
-    if (!initPlatform(pltState,
+    if (!initPlatform(inst.platformState,
                       inst.createInfo.title,
                       inst.createInfo.startPosX, inst.createInfo.startPosY,
                       inst.createInfo.startWidth, inst.createInfo.startHeight)) {
@@ -33,9 +32,16 @@ stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst) {
 stlv::AppErrCode runApp(AppInstance& inst) {
     logInfo("Running application.");
 
-    inst.isRunning = false; // FIXME: Don't want infinite loop for now.
+    inst.isRunning = true;
+    inst.isSuspended = false;
 
     while (inst.isRunning) {
+        if (!pollOsEvents(inst.platformState)) {
+            inst.isRunning = false;
+        }
+
+        if (!inst.isSuspended) {
+        }
     }
 
     return AppErrCode::SUCCESS;

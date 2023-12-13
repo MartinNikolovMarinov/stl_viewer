@@ -3,6 +3,7 @@
 #include <fwd_decl.h>
 #include <stlv_utils.h>
 #include <application/logger.h>
+#include <platform/platform.h>
 
 namespace stlv {
 
@@ -28,6 +29,8 @@ struct AppCreateInfo {
 struct AppInstance {
     AppCreateInfo createInfo;
     bool isRunning;
+    bool isSuspended;
+    PlatformState platformState;
 };
 
 stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst);

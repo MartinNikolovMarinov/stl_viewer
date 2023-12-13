@@ -29,7 +29,20 @@ bool initPlatform(PlatformState& state, const char* appName, i32 x, i32 y, i32 w
         return false;
     }
 
+    glfwSetKeyCallback(glfwState->glfwWindow, [](GLFWwindow* window, i32 key, i32, i32 action, i32) {
+        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+    });
+
     return true;
+}
+
+bool pollOsEvents(PlatformState& state) {
+    GlfwPlatformState* glfwState = reinterpret_cast<GlfwPlatformState*>(state.internal);
+    glfwWaitEventsTimeout(0.7); // TODO: This timeout might be too short.
+    bool shouldQuit = !glfwWindowShouldClose(glfwState->glfwWindow);
+    return shouldQuit;
 }
 
 } // namespace stlv
