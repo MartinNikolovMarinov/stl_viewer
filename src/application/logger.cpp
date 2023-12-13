@@ -15,12 +15,12 @@ LogLevel minimumLogLevel = LogLevel::INFO;
 
 } // namespace
 
-bool initLogging(LogLevel minLogLevel) {
+bool initLoggingSystem(LogLevel minLogLevel) {
     minimumLogLevel = minLogLevel;
     return true;
 }
 
-void shutdownLogging() {}
+void destroyLoggingSystem() {}
 
 void log(LogLevel level, const char* format, ...) {
     if (level < minimumLogLevel) {

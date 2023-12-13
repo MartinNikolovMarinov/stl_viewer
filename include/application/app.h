@@ -31,9 +31,20 @@ struct AppInstance {
     bool isRunning;
     bool isSuspended;
     PlatformState platformState;
+
+    bool stop() {
+        isRunning = false;
+        return true;
+    }
+
+    bool suspend() {
+        isSuspended = true;
+        return true;
+    }
 };
 
 stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst);
+void destroyApp(AppInstance& inst);
 
 stlv::AppErrCode runApp(AppInstance& inst);
 

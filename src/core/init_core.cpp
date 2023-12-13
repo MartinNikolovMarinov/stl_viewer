@@ -73,7 +73,7 @@ void memDestroy() {
     da::clear();
 }
 
-void* memAlloc(addr_size size) noexcept {
+void* memAlloc(addr_size size, AllocationType) noexcept {
     return da::alloc(size);
 }
 

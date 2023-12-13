@@ -28,11 +28,19 @@ namespace stlv {
 
 // The memory subsystem is required everywhere, so it's definition is here.
 
+enum struct AllocationType : u8 {
+    UNKNOWN = 0,
+
+    EVENT,
+
+    SENTINEL
+};
+
 bool memInit();
 
 void memDestroy();
 
-void* memAlloc(addr_size size) noexcept;
+void* memAlloc(addr_size size, AllocationType allocType = AllocationType::UNKNOWN) noexcept;
 
 void* memCalloc(addr_size count, addr_size size) noexcept;
 

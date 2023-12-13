@@ -14,8 +14,8 @@ enum struct LogLevel : u8 {
     SENTINEL
 };
 
-bool initLogging(LogLevel minLogLevel);
-void shutdownLogging();
+bool initLoggingSystem(LogLevel minLogLevel);
+void destroyLoggingSystem();
 
 void log(LogLevel level, const char* fmt, ...);
 
