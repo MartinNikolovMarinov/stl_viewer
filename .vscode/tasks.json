@@ -4,11 +4,21 @@
             "type": "cppbuild",
             "label": "Build with Makefile",
             "command": "/usr/bin/make",
+            "presentation": {
+                "echo": false,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
             "args": [
-                "build"
+                "-j",
+                "-C",
+                "${workspaceFolder}/build",
             ],
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}/build"
             },
             "group": {
                 "kind": "build",

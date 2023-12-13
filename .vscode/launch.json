@@ -5,13 +5,11 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Main GCC",
+            "name": "Debug Test with GCC",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/main",
-            "args": [
-                "testing example is thiss" // example args
-            ],
+            "program": "${workspaceFolder}/build/stl_viewer",
+            "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
@@ -22,10 +20,14 @@
                     "description": "Enable pretty-printing for gdb",
                     "text": "-enable-pretty-printing",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Skip std",
+                    "text": "-interpreter-exec console \"skip -rfu ^std::\"" // Skip everything in std
                 }
             ],
             "preLaunchTask": "Build with Makefile",
             "miDebuggerPath": "/usr/bin/gdb"
-        }
+        },
     ]
 }
