@@ -6,4 +6,4 @@ namespace stlv {
 
 using namespace coretypes;
 
-};
+} // namespace stlv

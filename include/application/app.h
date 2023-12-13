@@ -14,8 +14,8 @@ enum struct AppErrCode : i32 {
 };
 STLV_DEFINE_FLAG_TYPE(AppErrCode);
 
-bool isOk(AppErrCode err)  { return err == AppErrCode::SUCCESS; }
-bool isErr(AppErrCode err) { return err != AppErrCode::SUCCESS; }
+bool isOk(AppErrCode err);
+bool isErr(AppErrCode err);
 
 struct AppCreateInfo {
     i32 startPosX;
@@ -30,21 +30,8 @@ struct AppInstance {
     bool isRunning;
 };
 
-stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst) {
-    inst = AppInstance{};
-    inst.createInfo = core::move(createInfo);
-    inst.isRunning = true;
+stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst);
 
-    // Initialize subsystems
-    if (!initLogging()) {
-        return AppErrCode::SUBMODULE_INIT_FAILURE;
-    }
-
-    return AppErrCode::SUCCESS;
-}
-
-stlv::AppErrCode runApp(AppInstance& inst) {
-    return AppErrCode::SUCCESS;
-}
+stlv::AppErrCode runApp(AppInstance& inst);
 
 } // namespace stlv

@@ -9,7 +9,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Generates compile_commands.json
 # Cmake subdirectories:
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/core)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/fmt)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/glfw)
 
 # Source Files.
@@ -22,10 +21,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 
 # Core Library:
 target_link_libraries(${PROJECT_NAME} PRIVATE core)
-
-# Fmt Library:
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/lib/glfw/include/GLFW)
 
 # GLFW Library:
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw)

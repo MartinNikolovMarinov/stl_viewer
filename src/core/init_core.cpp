@@ -42,10 +42,55 @@ void initCore() {
         char trace[stackTraceBufferSize] = {};
         addr_size traceLen = 0;
         core::stacktrace(trace, stackTraceBufferSize, traceLen, 200, stackFramesToSkip);
-        fmt::print(fg(fmt::color::red) | fmt::emphasis::bold,
-                   "[ASSERTION] [EXPR]: {}\n[FILE]: {}:{}\n[MSG]: {}\n",
-                    failedExpr, file, line, errMsg);
-        fmt::print(fmt::emphasis::bold, "[TRACE]:\n{}\n", trace);
+
+        fprintf(stderr,
+                ANSI_BOLD(ANSI_RED("[ASSERTION] [EXPR]:")) ANSI_BOLD(" %s\n")
+                ANSI_BOLD(ANSI_RED("[FILE]:"))             ANSI_BOLD(" %s:%d\n")
+                ANSI_BOLD(ANSI_RED("[MSG]:"))              ANSI_BOLD(" %s\n"),
+
+                failedExpr, file, line, errMsg
+        );
+
+        fprintf(stderr, ANSI_BOLD("[TRACE]:\n%s\n"), trace);
+
         throw std::runtime_error("Assertion failed!");
     });
+
+    // Initialize the memory subsystem:
+    stlv::memInit();
 }
+
+namespace stlv {
+
+using da = CORE_DEFAULT_ALLOCATOR();
+
+bool memInit() {
+    da::init(nullptr);
+    return true;
+}
+
+void memDestroy() {
+    da::clear();
+}
+
+void* memAlloc(addr_size size) noexcept {
+    return da::alloc(size);
+}
+
+void* memCalloc(addr_size count, addr_size size) noexcept {
+    return da::calloc(count, size);
+}
+
+void memFree(void* ptr) noexcept {
+    da::free(ptr);
+}
+
+addr_size memUsed() noexcept {
+    return da::usedMem();
+}
+
+addr_size memTotalAllocated() noexcept {
+    return da::totalAllocatedMem();
+}
+
+} // namespace stlv

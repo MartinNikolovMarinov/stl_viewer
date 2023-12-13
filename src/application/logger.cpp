@@ -6,21 +6,28 @@
 
 namespace stlv {
 
-bool initLogging() {
-    return true;
-}
-
-void shutdownLogging() {}
-
 namespace {
 
 constexpr addr_size BUFFER_SIZE = core::KILOBYTE * 32;
 thread_local static char loggingBuffer[BUFFER_SIZE];
 
+LogLevel minimumLogLevel = LogLevel::INFO;
+
 } // namespace
 
+bool initLogging(LogLevel minLogLevel) {
+    minimumLogLevel = minLogLevel;
+    return true;
+}
+
+void shutdownLogging() {}
 
 void log(LogLevel level, const char* format, ...) {
+    if (level < minimumLogLevel) {
+        // silence
+        return;
+    }
+
     loggingBuffer[0] = '\0';
 
     va_list args;
@@ -30,23 +37,23 @@ void log(LogLevel level, const char* format, ...) {
 
     // Print Level
     switch (level) {
-        case LogLevel::INFO:
-            printf("%s%s[INFO]%s", ANSI_BRIGHT_BLUE_START(), ANSI_BOLD_START(), ANSI_RESET());
-            break;
         case LogLevel::DEBUG:
             printf(ANSI_BOLD("[DEBUG]"));
             break;
+        case LogLevel::INFO:
+            printf(ANSI_BOLD(ANSI_BRIGHT_BLUE("[INFO]")));
+            break;
         case LogLevel::WARNING:
-            printf("%s%s[WARNING]%s", ANSI_BRIGHT_YELLOW_START(), ANSI_BOLD_START(), ANSI_RESET());
+            printf(ANSI_BOLD(ANSI_BRIGHT_YELLOW("[WARNING]")));
             break;
         case LogLevel::ERROR:
-            printf("%s%s[ERROR]%s", ANSI_RED_START(), ANSI_BOLD_START(), ANSI_RESET());
+            printf(ANSI_BOLD(ANSI_RED("[ERROR]")));
             break;
         case LogLevel::FATAL:
-            printf("%s%s%s[FATAL]%s", ANSI_BRIGHT_WHITE_START(), ANSI_BACKGROUND_RED_START(), ANSI_BOLD_START(), ANSI_RESET());
+            printf(ANSI_BOLD(ANSI_BACKGROUND_RED(ANSI_BRIGHT_WHITE("[FATAL]"))));
             break;
         default:
-            fmt::print("[UNKNOWN] {}\n", loggingBuffer);
+            printf("[UNKNOWN]");
             break;
     }
 

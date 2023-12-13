@@ -3,6 +3,8 @@
 using namespace stlv;
 
 i32 main() {
+    initCore();
+
     stlv::AppCreateInfo createInfo;
     createInfo.startPosX = 0;
     createInfo.startPosY = 0;
@@ -12,12 +14,12 @@ i32 main() {
 
     AppInstance inst;
     if (isErr(createApp(core::move(createInfo), inst))) {
-        fmt::print(stderr, "Failed to create app instance.\n");
+        fprintf(stderr, "Failed to create app instance.\n");
         return -1;
     }
 
     if (isErr(runApp(inst))) {
-        fmt::print(stderr, "Application run failed.\n");
+        fprintf(stderr, "Application run failed.\n");
         return -2;
     }
 

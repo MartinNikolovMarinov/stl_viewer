@@ -12,14 +12,6 @@
 
 using namespace coretypes;
 
-#include <fmt/core.h>
-#include <fmt/color.h>
-
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-
-#include <vulkan/vulkan.h>
-
 void initCore();
 
 using Sb = core::StrBuilder<>;
@@ -31,3 +23,23 @@ template<> addr_size core::hash(const u32& key);
 template<> bool core::eq(const core::StrView& a, const core::StrView& b);
 template<> bool core::eq(const i32& a, const i32& b);
 template<> bool core::eq(const u32& a, const u32& b);
+
+namespace stlv {
+
+// The memory subsystem is required everywhere, so it's definition is here.
+
+bool memInit();
+
+void memDestroy();
+
+void* memAlloc(addr_size size) noexcept;
+
+void* memCalloc(addr_size count, addr_size size) noexcept;
+
+void memFree(void* ptr) noexcept;
+
+addr_size memUsed() noexcept;
+
+addr_size memTotalAllocated() noexcept;
+
+} // namespace stlv
