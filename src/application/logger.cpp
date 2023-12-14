@@ -52,6 +52,9 @@ void log(LogLevel level, const char* format, ...) {
         case LogLevel::FATAL:
             printf(ANSI_BOLD(ANSI_BACKGROUND_RED(ANSI_BRIGHT_WHITE("[FATAL]"))));
             break;
+        case LogLevel::INPUT_TRACE:
+            printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[INPUT_TRACE]")));
+            break;
         default:
             printf("[UNKNOWN]");
             break;

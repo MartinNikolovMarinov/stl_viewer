@@ -24,3 +24,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE core)
 
 # GLFW Library:
 target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
+
+# TODO: Add Release and Debug compiler optiontions.

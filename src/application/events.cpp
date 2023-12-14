@@ -58,7 +58,7 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
 
     if (entry.handler) {
         // TODO: Might never be necessary.
-        // If this is ever a problem, just extend the EventEntry members with a fixed size arrays.
+        // If this is ever a problem, just extend the EventEntry members with fixed size arrays.
         logWarn("Event system supports only one handler per event code!");
         return false;
     }
@@ -116,7 +116,7 @@ bool eventFire(EventCode code, Event event) {
         return false;
     }
 
-    bool ret = entry.handler(code, event, entry.context);
+    bool ret = entry.handler(event, entry.context);
     return ret;
 }
 

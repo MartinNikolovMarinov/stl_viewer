@@ -7,12 +7,16 @@ namespace stlv {
 enum struct EventCode : u16 {
     NONE = 0,
     APP_QUIT,
-    APP_CODE_KEY_DOWN,
-    APP_CODE_KEY_UP,
-    APP_CODE_MOUSE_DOWN,
-    APP_CODE_MOUSE_UP,
-    APP_CODE_MOUSE_MOVE,
-    APP_RESIZE,
+    APP_KEY_DOWN,
+    APP_KEY_UP,
+    APP_MOUSE_DOWN,
+    APP_MOUSE_UP,
+    APP_MOUSE_SCROLL,
+    APP_MOUSE_MOVE,
+    APP_WINDOW_RESIZE,
+    APP_WINDOW_MOVE,
+    APP_WINDOW_FOCUS,
+    APP_WINDOW_HIDDEN,
 
     SENTINEL
 };
@@ -39,7 +43,7 @@ struct Event {
 };
 
 // Should return true if handled.
-typedef bool (*OnEventHandler)(EventCode code, Event event, void* context);
+typedef bool (*OnEventHandler)(Event event, void* context);
 
 bool initEventSystem();
 void destroyEventSystem();
