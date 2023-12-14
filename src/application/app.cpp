@@ -165,7 +165,7 @@ stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst) {
 
     // Initialize submodules
 
-    if (!initLoggingSystem(LogLevel::INPUT_TRACE)) {
+    if (!initLoggingSystem(LogLevel::L_INPUT_TRACE)) {
         // Can't even log this.
         return AppErrCode::SUBMODULE_INIT_FAILURE;
     }

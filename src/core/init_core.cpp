@@ -1,5 +1,7 @@
 #include <core/init_core.h>
 
+#include <stdexcept>
+
 // Hashing global functions:
 
 template<>

@@ -11,7 +11,7 @@ namespace {
 constexpr addr_size BUFFER_SIZE = core::KILOBYTE * 32;
 thread_local static char loggingBuffer[BUFFER_SIZE];
 
-LogLevel minimumLogLevel = LogLevel::INFO;
+LogLevel minimumLogLevel = LogLevel::L_INFO;
 
 } // namespace
 
@@ -37,22 +37,22 @@ void log(LogLevel level, const char* format, ...) {
 
     // Print Level
     switch (level) {
-        case LogLevel::DEBUG:
+        case LogLevel::L_DEBUG:
             printf(ANSI_BOLD("[DEBUG]"));
             break;
-        case LogLevel::INFO:
+        case LogLevel::L_INFO:
             printf(ANSI_BOLD(ANSI_BRIGHT_BLUE("[INFO]")));
             break;
-        case LogLevel::WARNING:
+        case LogLevel::L_WARNING:
             printf(ANSI_BOLD(ANSI_BRIGHT_YELLOW("[WARNING]")));
             break;
-        case LogLevel::ERROR:
+        case LogLevel::L_ERROR:
             printf(ANSI_BOLD(ANSI_RED("[ERROR]")));
             break;
-        case LogLevel::FATAL:
+        case LogLevel::L_FATAL:
             printf(ANSI_BOLD(ANSI_BACKGROUND_RED(ANSI_BRIGHT_WHITE("[FATAL]"))));
             break;
-        case LogLevel::INPUT_TRACE:
+        case LogLevel::L_INPUT_TRACE:
             printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[INPUT_TRACE]")));
             break;
         default:
