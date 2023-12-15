@@ -17,6 +17,7 @@ i32 main() {
         fprintf(stderr, "Failed to create app instance.\n");
         return -1;
     }
+    defer { destroyApp(inst); };
 
     if (isErr(runApp(inst))) {
         fprintf(stderr, "Application run failed.\n");

@@ -8,7 +8,7 @@
             "name": "Debug Test with GCC",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/stl_viewer",
+            "program": "${workspaceFolder}/build/stlv_app",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
