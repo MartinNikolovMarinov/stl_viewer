@@ -12,7 +12,7 @@
 
 using namespace coretypes;
 
-void initCore();
+bool initCore(i32 argc, char** argv);
 
 using Sb = core::StrBuilder<>;
 

@@ -4,7 +4,17 @@ extern void createApp();
 extern void updateApp();
 extern void shutdownApp();
 
-i32 main(i32, char**, char**) {
+namespace stlv {
+
+bool initSubsystems(i32 argc, char** argv);
+
+} // namespace stlv
+
+i32 main(i32 argc, char** argv) {
+    if (!stlv::initSubsystems(argc, argv)) {
+        return -1;
+    }
+
     createApp();
 
     while(true) {

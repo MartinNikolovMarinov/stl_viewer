@@ -1,6 +1,7 @@
 #include <init_core.h>
 
 #include <stdexcept>
+#include <stdio.h>
 
 // Hashing global functions:
 
@@ -37,7 +38,7 @@ bool core::eq(const u32& a, const u32& b) {
     return a == b;
 }
 
-void initCore() {
+bool initCore(i32, char**) {
     core::setGlobalAssertHandler([](const char* failedExpr, const char* file, i32 line, const char* errMsg) {
         constexpr u32 stackFramesToSkip = 3;
         constexpr addr_size stackTraceBufferSize = 4096;
@@ -59,7 +60,12 @@ void initCore() {
     });
 
     // Initialize the memory subsystem:
-    stlv::memInit();
+    if (stlv::memInit() == false) {
+        fprintf(stderr, ANSI_BOLD(ANSI_RED("[ERROR]:")) ANSI_BOLD(" Failed to initialize the memory subsystem!\n"));
+        return false;
+    }
+
+    return true;
 }
 
 namespace stlv {

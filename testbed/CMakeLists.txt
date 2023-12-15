@@ -29,6 +29,10 @@ target_compile_definitions(${executable_name} PRIVATE
     "STLV_HOT_RELOADING=$<BOOL:${STLV_HOT_RELOADING}>"
 )
 
+# Set compiler options for the engine:
+
+stlv_target_set_default_flags(${executable_name})
+
 # Link Libraries
 
 if(STLV_HOT_RELOADING)

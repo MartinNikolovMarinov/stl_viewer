@@ -22,4 +22,6 @@ if(STLV_HOT_RELOADING)
     set_property(TARGET ${executable_name} PROPERTY POSITION_INDEPENDENT_CODE ON)
 endif()
 
+stlv_target_set_default_flags(${executable_name})
+
 target_link_libraries(${executable_name} PRIVATE stlv_engine)

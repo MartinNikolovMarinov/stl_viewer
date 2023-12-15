@@ -1,4 +1,3 @@
-#include <fwd_decl.h>
 #include <application/logger.h>
 
 #include <stdio.h>
@@ -20,9 +19,9 @@ bool initLoggingSystem(LogLevel minLogLevel) {
     return true;
 }
 
-void destroyLoggingSystem() {}
+void shutdownLoggingSystem() {}
 
-void log(LogLevel level, const char* format, ...) {
+void log(LogTag tag, LogLevel level, const char* format, ...) {
     if (level < minimumLogLevel) {
         // silence
         return;
@@ -55,8 +54,21 @@ void log(LogLevel level, const char* format, ...) {
         case LogLevel::L_INPUT_TRACE:
             printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[INPUT_TRACE]")));
             break;
+
+        case LogLevel::SENTINEL: [[fallthrough]];
         default:
             printf("[UNKNOWN]");
+            break;
+    }
+
+    // Print Tag
+    switch (tag) {
+        case LogTag::T_APP:
+            printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[APP]")));
+            break;
+
+        case LogTag::T_ENGINE: [[fallthrough]];
+        case LogTag::SENTINEL:
             break;
     }
 

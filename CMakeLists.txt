@@ -25,6 +25,8 @@ endif()
 # Options:
 
 option(STLV_HOT_RELOADING "Hot reload app code executable." OFF)
+option(STLV_BACKEND_VULKAN "Use Vulkan as backend." OFF)
+option(STLV_BACKEND_OPENGL "Use OpenGL as backend." OFF)
 
 # Includes:
 
@@ -34,6 +36,39 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
 
 include(CompilerOptions)
 include(DetectOS)
+
+# Default compiler options macro:
+
+macro (stlv_target_set_default_flags target)
+
+    if(OS STREQUAL "linux")
+        set(common_flags "-std=c++20")
+        set(debug_flags "")
+        set(release_flags "")
+    elseif(OS STREQUAL "darwin")
+        set(common_flags "-std=c++20")
+        set(debug_flags "")
+        set(release_flags "")
+    elseif(OS STREQUAL "windows")
+        set(common_flags "/std:c++20")
+        set(debug_flags "")
+        set(release_flags "")
+    endif()
+
+    stlv_target_append_common_flags(
+        ${executable_name}
+        common_flags "${common_flags}"
+        debug_flags "${debug_flags}"
+        release_flags "${release_flags}"
+    )
+
+    if(STLV_DEBUG)
+        target_compile_options(${executable_name} PRIVATE ${common_flags} ${debug_flags})
+    else()
+        target_compile_options(${executable_name} PRIVATE ${common_flags} ${release_flags})
+    endif()
+
+endmacro()
 
 # Subdirectories:
 
