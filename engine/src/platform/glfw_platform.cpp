@@ -202,4 +202,8 @@ bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds) {
     return shouldQuit;
 }
 
+f64 pltGetMonotinicTime() {
+    return glfwGetTime();
+}
+
 } // namespace stlv

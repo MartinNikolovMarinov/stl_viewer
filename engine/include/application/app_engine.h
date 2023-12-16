@@ -1,12 +1,16 @@
 #pragma once
 
 #include <fwd_internal.h>
+
+#include <application/clock.h>
 #include <platform/platform.h>
 
 namespace stlv {
 
 struct ApplicationState {
     bool isInitialized;
+    Clock runningTime;
+    u64 frameCount;
 
     PlatformState pltState;
 

@@ -20,5 +20,13 @@ void shutdownPlt(PlatformState& pstate);
 
 bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds = -1);
 
+/**
+ * @brief Get the time since the application was launched.
+ *        Uses the monotonic high resolution clock available on the platform.
+ *
+ * @return f64 The current time in seconds.
+*/
+f64 pltGetMonotinicTime();
+
 } // namespace stlv
 

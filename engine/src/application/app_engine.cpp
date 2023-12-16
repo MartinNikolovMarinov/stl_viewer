@@ -1,6 +1,7 @@
 #include <application/app_engine.h>
 #include <application/logger.h>
 #include <application/events.h>
+#include <application/clock.h>
 
 namespace stlv {
 
@@ -228,13 +229,16 @@ bool preMainLoop() {
     }
     logInfo("Platform started.");
 
+    logInfo("Starting timers.");
+    clockClear(appState.runningTime);
+    clockStart(appState.runningTime, pltGetMonotinicTime());
+
     logInfo("Pre-main loop complete.");
     appState.isInitialized = true;
     return true;
 }
 
 bool updateAppState(i32& retCode) {
-
     if (g_isRunning.load() == false) {
         retCode = 0;
         return false; // quit
@@ -250,6 +254,25 @@ bool updateAppState(i32& retCode) {
     }
 
     ApplicationState& appState = g_appState;
+
+    Clock frameTimer;
+    clockClear(frameTimer);
+    clockStart(frameTimer, pltGetMonotinicTime());
+    defer {
+        clockUpdate(frameTimer, pltGetMonotinicTime());
+        clockUpdate(appState.runningTime, pltGetMonotinicTime());
+        appState.frameCount++;
+
+        f64 frameTime = frameTimer.delta;
+        f64 runningTime = appState.runningTime.delta;
+        u64 frameCount = appState.frameCount;
+        f64 fps = 1 / frameTime;
+
+        logInfo("Frame time: %f", frameTime);
+        logInfo("Running time: %f", runningTime);
+        logInfo("Frame count: %llu", frameCount);
+        logInfo("FPS: %f", fps);
+    };
 
     if (!pltPollEvents(appState.pltState, pollTimeout)) {
         g_isRunning.store(false);

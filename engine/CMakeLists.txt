@@ -18,6 +18,7 @@ set(src_files
    src/application/app_engine.cpp
    src/application/logger.cpp
    src/application/events.cpp
+   src/application/clock.cpp
 )
 
 if (STLV_USE_GLFW)
