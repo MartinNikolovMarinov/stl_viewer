@@ -12,8 +12,8 @@
 
 #include <sys/inotify.h>
 
-using CreateAppFn = bool (*)(stlv::ApplicationState& appState);
-using UpdateAppFn = bool (*)(stlv::ApplicationState& appState);
+using CreateAppFn = bool (*)(stlv::ApplicationState* appState);
+using UpdateAppFn = bool (*)(stlv::ApplicationState* appState);
 using ShutdownAppFn = void (*)();
 
 constexpr const char* libapphotPath = STLV_BINARY_PATH "libstlv_app_hot.so";
@@ -91,7 +91,7 @@ void createWatcher() {
     }
 }
 
-bool createApp(stlv::ApplicationState& appState) {
+bool createApp(stlv::ApplicationState* appState) {
     loadDynLibraries();
     createWatcher();
 
@@ -99,7 +99,7 @@ bool createApp(stlv::ApplicationState& appState) {
     return res;
 }
 
-bool updateApp(stlv::ApplicationState& appState) {
+bool updateApp(stlv::ApplicationState* appState) {
     addr_off len = read(inotifyFd, inotiftEventBuffer, sizeof(inotiftEventBuffer));
     if (len != -1) {
         bool shouldReload = false;
@@ -161,12 +161,12 @@ void shutdownApp() {
 
 #else
 
-bool createApp(stlv::ApplicationState& appState) {
+bool createApp(stlv::ApplicationState* appState) {
     bool ret = create(appState);
     return ret;
 }
 
-bool updateApp(stlv::ApplicationState& appState) {
+bool updateApp(stlv::ApplicationState* appState) {
     bool ret = update(appState);
     return ret;
 }

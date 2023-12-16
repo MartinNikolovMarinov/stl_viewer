@@ -17,6 +17,7 @@ set(src_files
 
    src/application/app_engine.cpp
    src/application/logger.cpp
+   src/application/events.cpp
 )
 
 if (STLV_USE_GLFW)

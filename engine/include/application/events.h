@@ -1,6 +1,6 @@
 #pragma once
 
-#include <fwd_decl.h>
+#include <fwd_internal.h>
 
 namespace stlv {
 
@@ -51,7 +51,7 @@ void destroyEventSystem();
 /**
  * @brief Registers an event handler for the given event code.
  *
- * @remark [THREAD_SAFE]
+ * @remark [NOT_THREAD_SAFE]
  *
  * @param code The event code.
  * @param ctx The event context.
@@ -64,7 +64,7 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler);
 /**
  * @brief Unregisters an event handler for the given event code.
  *
- * @remark [THREAD_SAFE]
+ * @remark [NOT_THREAD_SAFE]
  *
  * @param code The event code.
  * @param ctx The event context.

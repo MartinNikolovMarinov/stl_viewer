@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fwd_internal.h>
+
 namespace stlv {
 
 #define STLV_DEFINE_FLAG_TYPE(T)                                                    \

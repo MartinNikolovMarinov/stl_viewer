@@ -1,5 +1,5 @@
-#include <application/events.h>
 #include <application/logger.h>
+#include <application/events.h>
 
 namespace stlv {
 
@@ -16,14 +16,14 @@ struct EventSystemState {
 
 EventSystemState state;
 bool isInitialized = false;
-core::Mutex eventMutex;
+core::Mutex eventFireMutex;
 
 } // namespace
 
 bool initEventSystem() {
     if (isInitialized) return false;
 
-    auto res = core::mutexInit(eventMutex);
+    auto res = core::mutexInit(eventFireMutex);
     if (res.hasErr()) {
         return false;
     }
@@ -46,9 +46,6 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
         return false;
     }
 
-    core::mutexLock(eventMutex);
-    defer { core::mutexUnlock(eventMutex); };
-
     EventEntry& entry = state.entries[addr_size(code)];
 
     if (entry.handler == handler && entry.context == context) {
@@ -66,6 +63,7 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = handler;
     entry.context = context;
 
+    logInfo("Registered event handler for code: %d", i32(code));
     return true;
 }
 
@@ -78,9 +76,6 @@ bool eventUnregister(EventCode code, void* context, OnEventHandler handler) {
         logWarn("Invalid event code: %d", i32(code));
         return false;
     }
-
-    core::mutexLock(eventMutex);
-    defer { core::mutexUnlock(eventMutex); };
 
     EventEntry& entry = state.entries[addr_size(code)];
 
@@ -121,8 +116,8 @@ bool eventFire(EventCode code, Event event) {
 }
 
 bool eventFireSlow(EventCode code, Event event) {
-    core::mutexLock(eventMutex);
-    defer { core::mutexUnlock(eventMutex); };
+    core::mutexLock(eventFireMutex);
+    defer { core::mutexUnlock(eventFireMutex); };
     return eventFire(code, event);
 }
 

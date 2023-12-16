@@ -4,7 +4,7 @@ namespace stlv {
 
 struct ApplicationState;
 
-ApplicationState& getAppState();
+ApplicationState* getAppState();
 bool initAppEngine(i32 argc, char** argv);
 void shutdownAppEngine();
 bool preMainLoop();
@@ -14,8 +14,8 @@ bool updateAppState(i32& retCode);
 
 // IMPORTANT:
 // The following entry point functions must be defined by the application executable that links to the app engine:
-extern bool createApp(stlv::ApplicationState& appState);
-extern bool updateApp(stlv::ApplicationState& appState);
+extern bool createApp(stlv::ApplicationState* appState);
+extern bool updateApp(stlv::ApplicationState* appState);
 extern void shutdownApp();
 
 i32 main(i32 argc, char** argv) {
