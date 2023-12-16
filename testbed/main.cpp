@@ -3,8 +3,6 @@
 
 #if defined(STLV_HOT_RELOADING) && STLV_HOT_RELOADING == 1
 
-#include <application/logger.h> // This is an exeption. No other code from the engine should be used here.
-
 #include <dlfcn.h>
 #include <errno.h>
 #include <limits.h>
@@ -14,20 +12,20 @@
 
 #include <sys/inotify.h>
 
-using InitFn = void (*)();
-using ShutdownFn = void (*)();
-using UpdateFn = void (*)();
+using CreateAppFn = bool (*)(stlv::ApplicationState& appState);
+using UpdateAppFn = bool (*)(stlv::ApplicationState& appState);
+using ShutdownAppFn = void (*)();
 
 constexpr const char* libapphotPath = STLV_BINARY_PATH "libstlv_app_hot.so";
 void* libapphot = nullptr;
-UpdateFn updatefn = nullptr;
-InitFn initfn = nullptr;
-ShutdownFn shutdownfn = nullptr;
+CreateAppFn createfn = nullptr;
+UpdateAppFn updatefn = nullptr;
+ShutdownAppFn shutdownfn = nullptr;
 i32 inotifyFd = -1;
 char inotiftEventBuffer[4096] __attribute__ ((aligned(__alignof__(struct inotify_event))));
 
 void closeDynLibraries() {
-    if (updatefn) {
+    if (libapphot) {
         if (dlclose(libapphot) != 0) {
             logErr("Failed to close libapphot; reason: %s", dlerror());
             return;
@@ -46,24 +44,24 @@ void loadDynLibraries() {
         return;
     }
 
-    updatefn = reinterpret_cast<UpdateFn>(dlsym(libapphot, "update"));
-    if (!updatefn) {
+    createfn = reinterpret_cast<CreateAppFn>(dlsym(libapphot, "create"));
+    if (!createfn) {
         closeDynLibraries();
-        logErr("Failed to load update function from libapphot; reason: %s", dlerror());
+        logErr("Failed to load create function from libapphot; reason: %s", dlerror());
         return;
     }
 
-    initfn = reinterpret_cast<InitFn>(dlsym(libapphot, "init"));
-    if (!initfn) {
-        closeDynLibraries();
-        logErr("Failed to load init function from libapphot; reason: %s", dlerror());
-        return;
-    }
-
-    shutdownfn = reinterpret_cast<ShutdownFn>(dlsym(libapphot, "shutdown"));
+    shutdownfn = reinterpret_cast<ShutdownAppFn>(dlsym(libapphot, "shutdown"));
     if (!shutdownfn) {
         closeDynLibraries();
         logErr("Failed to load shutdown function from libapphot; reason: %s", dlerror());
+        return;
+    }
+
+    updatefn = reinterpret_cast<UpdateAppFn>(dlsym(libapphot, "update"));
+    if (!updatefn) {
+        closeDynLibraries();
+        logErr("Failed to load update function from libapphot; reason: %s", dlerror());
         return;
     }
 }
@@ -93,14 +91,15 @@ void createWatcher() {
     }
 }
 
-void createApp() {
+bool createApp(stlv::ApplicationState& appState) {
     loadDynLibraries();
     createWatcher();
 
-    initfn();
+    bool res = createfn(appState);
+    return res;
 }
 
-void updateApp() {
+bool updateApp(stlv::ApplicationState& appState) {
     addr_off len = read(inotifyFd, inotiftEventBuffer, sizeof(inotiftEventBuffer));
     if (len != -1) {
         bool shouldReload = false;
@@ -146,10 +145,11 @@ void updateApp() {
     }
     else if (errno != EAGAIN) {
         logErr("Failed to read from inotify instance; reason: %s", strerror(errno));
-        return;
+        return false;
     }
 
-    updatefn();
+    bool ret = updatefn(appState);
+    return ret;
 }
 
 void shutdownApp() {
@@ -161,13 +161,19 @@ void shutdownApp() {
 
 #else
 
-void createApp() {}
-
-void updateApp() {
-    update();
+bool createApp(stlv::ApplicationState& appState) {
+    bool ret = create(appState);
+    return ret;
 }
 
-void shutdownApp() {}
+bool updateApp(stlv::ApplicationState& appState) {
+    bool ret = update(appState);
+    return ret;
+}
+
+void shutdownApp() {
+    shutdown();
+}
 
 #endif
 

@@ -82,6 +82,7 @@ void memDestroy() {
 }
 
 void* memAlloc(addr_size size, AllocationType) noexcept {
+    // TODO: Use tagged memory allocations to track allocations in a realtime metrics system.
     return da::alloc(size);
 }
 

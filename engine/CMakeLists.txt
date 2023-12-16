@@ -15,9 +15,16 @@ set(src_files
 
    src/init_core.cpp
 
-   src/application/app_manager.cpp
+   src/application/app_engine.cpp
    src/application/logger.cpp
 )
+
+if (STLV_USE_GLFW)
+    set(src_files ${src_files} src/platform/glfw_platform.cpp)
+else()
+    # At some point I might deside to use a native platform layer for some/all platforms.
+    message(FATAL_ERROR "GLFW can't be disabled yet.")
+endif()
 
 if(OS STREQUAL "linux")
     set(src_files ${src_files})

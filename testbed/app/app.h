@@ -2,6 +2,6 @@
 
 #include <stlv.h>
 
-NO_MANGLE void init();
-NO_MANGLE void update();
+NO_MANGLE bool create(stlv::ApplicationState& appState);
 NO_MANGLE void shutdown();
+NO_MANGLE bool update(stlv::ApplicationState& appState);

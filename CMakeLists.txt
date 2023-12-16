@@ -27,6 +27,7 @@ endif()
 option(STLV_HOT_RELOADING "Hot reload app code executable." OFF)
 option(STLV_BACKEND_VULKAN "Use Vulkan as backend." OFF)
 option(STLV_BACKEND_OPENGL "Use OpenGL as backend." OFF)
+option(STLV_USE_GLFW "Use GLFW as windowing library." ON)
 
 # Includes:
 

@@ -5,7 +5,7 @@
 namespace stlv {
 
 enum struct LogLevel : u8 {
-    L_INPUT_TRACE = 0,
+    L_TRACE = 0,
     L_DEBUG,
     L_INFO,
     L_WARNING,
@@ -27,14 +27,14 @@ void shutdownLoggingSystem();
 
 STLV_EXPORT void log(LogTag tag, LogLevel level, const char* fmt, ...);
 
-#define logInputTrace(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INPUT_TRACE, fmt, ##__VA_ARGS__)
+#define logTrace(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE, fmt, ##__VA_ARGS__)
 #define logDebug(fmt, ...)      log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
 #define logInfo(fmt, ...)       log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
 #define logWarn(fmt, ...)       log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
 #define logErr(fmt, ...)        log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
 #define logFatal(fmt, ...)      log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
 
-#define logInputTraceTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_INPUT_TRACE, fmt, ##__VA_ARGS__)
+#define logTraceTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_TRACE, fmt, ##__VA_ARGS__)
 #define logDebugTagged(tag, fmt, ...)      log(tag, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
 #define logInfoTagged(tag, fmt, ...)       log(tag, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
 #define logWarnTagged(tag, fmt, ...)       log(tag, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)

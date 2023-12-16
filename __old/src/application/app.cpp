@@ -20,56 +20,56 @@ auto onAppQuit = [](Event, void* context) {
 auto onKeyDown = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received key down event. Key: %d, Scancode: %d", ev.data._i32[0], ev.data._i32[1]);
+    logTrace("Received key down event. Key: %d, Scancode: %d", ev.data._i32[0], ev.data._i32[1]);
     return true;
 };
 
 auto onKeyUp = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received key up event. Key: %d, Scancode: %d", ev.data._i32[0], ev.data._i32[1]);
+    logTrace("Received key up event. Key: %d, Scancode: %d", ev.data._i32[0], ev.data._i32[1]);
     return true;
 };
 
 auto onMouseDown = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received mouse down event. Button: %d, Action: %d", ev.data._i32[0], ev.data._i32[1]);
+    logTrace("Received mouse down event. Button: %d, Action: %d", ev.data._i32[0], ev.data._i32[1]);
     return true;
 };
 
 auto onMouseUp = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received mouse up event. Button: %d, Action: %d", ev.data._i32[0], ev.data._i32[1]);
+    logTrace("Received mouse up event. Button: %d, Action: %d", ev.data._i32[0], ev.data._i32[1]);
     return true;
 };
 
 auto onMouseScroll = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received mouse scroll event. X: %f, Y: %f", ev.data._f64[0], ev.data._f64[1]);
+    logTrace("Received mouse scroll event. X: %f, Y: %f", ev.data._f64[0], ev.data._f64[1]);
     return true;
 };
 
 auto onMouseMove = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received mouse move event. X: %f, Y: %f", ev.data._f64[0], ev.data._f64[1]);
+    logTrace("Received mouse move event. X: %f, Y: %f", ev.data._f64[0], ev.data._f64[1]);
     return true;
 };
 
 auto onWindowResize = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received resize event. Width: %d, Height: %d", ev.data._i32[0], ev.data._i32[1]);
+    logTrace("Received resize event. Width: %d, Height: %d", ev.data._i32[0], ev.data._i32[1]);
     return true;
 };
 
 auto onWindowMove = [](Event ev, void* context) {
     AppInstance& inst = *reinterpret_cast<AppInstance*>(context);
     if (!inst.isRunning) return false;
-    logInputTrace("Received move event. X: %d, Y: %d", ev.data._i32[0], ev.data._i32[1]);
+    logTrace("Received move event. X: %d, Y: %d", ev.data._i32[0], ev.data._i32[1]);
     return true;
 };
 
@@ -78,10 +78,10 @@ auto onWindowFocus = [](Event ev, void* context) {
     if (!inst.isRunning) return false;
 
     if (ev.data._i32[0] == 0) {
-        logInputTrace("Received focus lost event.");
+        logTrace("Received focus lost event.");
     }
     else {
-        logInputTrace("Received focus gained event.");
+        logTrace("Received focus gained event.");
     }
 
     return true;
@@ -92,11 +92,11 @@ auto onWindowHidden = [](Event ev, void* context) {
     if (!inst.isRunning) return false;
 
     if (ev.data._i32[0] == 0) {
-        logInputTrace("Received window hidden event.");
+        logTrace("Received window hidden event.");
         inst.isSuspended = true;
     }
     else {
-        logInputTrace("Received window visible event.");
+        logTrace("Received window visible event.");
         inst.isSuspended = false;
     }
 
@@ -165,7 +165,7 @@ stlv::AppErrCode createApp(AppCreateInfo&& createInfo, AppInstance& inst) {
 
     // Initialize submodules
 
-    if (!initLoggingSystem(LogLevel::L_INPUT_TRACE)) {
+    if (!initLoggingSystem(LogLevel::L_TRACE)) {
         // Can't even log this.
         return AppErrCode::SUBMODULE_INIT_FAILURE;
     }

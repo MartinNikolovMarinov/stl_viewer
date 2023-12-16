@@ -51,7 +51,7 @@ void log(LogTag tag, LogLevel level, const char* format, ...) {
         case LogLevel::L_FATAL:
             printf(ANSI_BOLD(ANSI_BACKGROUND_RED(ANSI_BRIGHT_WHITE("[FATAL]"))));
             break;
-        case LogLevel::L_INPUT_TRACE:
+        case LogLevel::L_TRACE:
             printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[INPUT_TRACE]")));
             break;
 
