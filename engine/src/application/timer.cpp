@@ -1,19 +1,19 @@
-#include <application/clock.h>
+#include <application/timer.h>
 
 namespace stlv {
 
-void clockStart(Clock& clock, f64 time) {
+void clockStart(Timer& clock, f64 time) {
     clock.start = time;
     clock.delta = 0.0;
 }
 
-void clockUpdate(Clock& clock, f64 time) {
+void clockUpdate(Timer& clock, f64 time) {
     if (clock.start > 0.0) {
         clock.delta = time - clock.start;
     }
 }
 
-void clockClear(Clock& clock) {
+void clockClear(Timer& clock) {
     clock.start = -1;
     clock.delta = 0.0;
 }

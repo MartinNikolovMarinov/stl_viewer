@@ -1,7 +1,6 @@
 #include <application/app_engine.h>
 #include <application/logger.h>
 #include <application/events.h>
-#include <application/clock.h>
 
 namespace stlv {
 
@@ -22,6 +21,11 @@ ApplicationState* getAppState() {
     }
 
     return &g_appState;
+}
+
+AppCreateInfo* getAppCreateInfo(ApplicationState* appState) {
+    if (!appState) return nullptr;
+    return &appState->createInfo;
 }
 
 namespace {
@@ -173,7 +177,7 @@ bool registerGlobalEventHandlers() {
 
 bool initAppEngine(i32 argc, char** argv) {
     ApplicationState& appState = g_appState; // app state is not initialized yet so use of getAppState is not possible.
-    appState = {};
+    appState = {}; // Clear the entire app state.
 
     if (!initCore(argc, argv)) {
         // no logger available
@@ -212,15 +216,32 @@ bool initAppEngine(i32 argc, char** argv) {
     return true;
 }
 
+bool AppCreateInfo::isValid() {
+    constexpr i32 MIN_WINDOW_WIDTH = 100;
+    constexpr i32 MIN_WINDOW_HEIGHT = 100;
+
+    if (this->startWindowHeight <= MIN_WINDOW_HEIGHT || this->startWindowWidth <= MIN_WINDOW_WIDTH) return false;
+    if (!this->windowTitle) return false;
+
+    return true;
+}
+
 bool preMainLoop() {
     logInfo("Starting pre-main loop.");
 
     ApplicationState& appState = g_appState;
+    AppCreateInfo& createInfo = appState.createInfo;
+
+    if (!createInfo.isValid()) {
+        logFatal("Invalid create info.");
+        return false;
+    }
+    logInfo("Create info is valid.");
 
     PlatformStartInfo pstartInfo = {};
-    pstartInfo.windowHeight = appState.startWindowHeight;
-    pstartInfo.windowWidth = appState.startWindowWidth;
-    pstartInfo.windowTitle = appState.windowTitle;
+    pstartInfo.windowHeight = createInfo.startWindowHeight;
+    pstartInfo.windowWidth = createInfo.startWindowWidth;
+    pstartInfo.windowTitle = createInfo.windowTitle;
 
     logInfo("Starting platform.");
     if (!startPlt(pstartInfo, appState.pltState)) {
@@ -255,7 +276,7 @@ bool updateAppState(i32& retCode) {
 
     ApplicationState& appState = g_appState;
 
-    Clock frameTimer;
+    Timer frameTimer;
     clockClear(frameTimer);
     clockStart(frameTimer, pltGetMonotinicTime());
     defer {

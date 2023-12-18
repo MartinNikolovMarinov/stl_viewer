@@ -12,7 +12,7 @@
 
 #include <sys/inotify.h>
 
-using CreateAppFn = bool (*)(stlv::ApplicationState* appState);
+using CreateAppFn = bool (*)(stlv::AppCreateInfo* createInfo);
 using UpdateAppFn = bool (*)(stlv::ApplicationState* appState);
 using ShutdownAppFn = void (*)();
 
@@ -91,11 +91,11 @@ void createWatcher() {
     }
 }
 
-bool createApp(stlv::ApplicationState* appState) {
+bool createApp(stlv::AppCreateInfo* createInfo) {
     loadDynLibraries();
     createWatcher();
 
-    bool res = createfn(appState);
+    bool res = createfn(createInfo);
     return res;
 }
 
@@ -161,8 +161,8 @@ void shutdownApp() {
 
 #else
 
-bool createApp(stlv::ApplicationState* appState) {
-    bool ret = create(appState);
+bool createApp(stlv::AppCreateInfo* createInfo) {
+    bool ret = create(createInfo);
     return ret;
 }
 

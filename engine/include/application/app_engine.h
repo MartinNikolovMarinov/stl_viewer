@@ -2,21 +2,25 @@
 
 #include <fwd_internal.h>
 
-#include <application/clock.h>
+#include <application/timer.h>
 #include <platform/platform.h>
 
 namespace stlv {
 
-struct ApplicationState {
-    bool isInitialized;
-    Clock runningTime;
-    u64 frameCount;
-
-    PlatformState pltState;
-
+struct AppCreateInfo {
     i32 startWindowWidth;
     i32 startWindowHeight;
     const char* windowTitle;
+
+    bool isValid();
+};
+
+struct ApplicationState {
+    AppCreateInfo createInfo; // Initialized in the app creation step.
+    bool isInitialized; // Set by the app engine once the main loop starts.
+    PlatformState pltState;
+    Timer runningTime; // The time since the application started.
+    u64 frameCount; // The number of frames rendered.
 };
 
 /**
@@ -29,6 +33,7 @@ struct ApplicationState {
  * @return ApplicationState&
 */
 STLV_EXPORT ApplicationState* getAppState();
+STLV_EXPORT AppCreateInfo* getAppCreateInfo(ApplicationState* appState);
 
 STLV_EXPORT bool initAppEngine(i32 argc, char** argv);
 STLV_EXPORT void shutdownAppEngine();

@@ -1,9 +1,9 @@
 #include "app.h"
 
-NO_MANGLE bool create(stlv::ApplicationState* appState) {
-    appState->startWindowHeight = 600;
-    appState->startWindowWidth = 800;
-    appState->windowTitle = "Stereolithography (STL) Viewer";
+NO_MANGLE bool create(stlv::AppCreateInfo* createInfo) {
+    createInfo->startWindowHeight = 600;
+    createInfo->startWindowWidth = 800;
+    createInfo->windowTitle = "Stereolithography (STL) Viewer";
 
     logInfoTagged(stlv::LogTag::T_APP, "Application created successfully.");
     return true;
