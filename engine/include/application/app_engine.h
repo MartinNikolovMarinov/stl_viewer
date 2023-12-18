@@ -32,6 +32,8 @@ struct ApplicationState {
     CurrentFrameMetrics metrics;
     Keyboard keyboard;
     Mouse mouse;
+    i32 windowWidth;
+    i32 windowHeight;
 };
 
 /**

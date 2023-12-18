@@ -92,7 +92,8 @@ auto onMouseEnter = [](Event ev, void*) {
 auto onWindowResize = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received resize event. Width: %d, Height: %d", ev.data._i32[0], ev.data._i32[1]);
+    s->windowHeight = ev.data._i32[0];
+    s->windowWidth = ev.data._i32[1];
     return true;
 };
 
@@ -254,6 +255,9 @@ bool preMainLoop() {
     pstartInfo.windowHeight = createInfo.startWindowHeight;
     pstartInfo.windowWidth = createInfo.startWindowWidth;
     pstartInfo.windowTitle = createInfo.windowTitle;
+
+    appState.windowWidth = pstartInfo.windowWidth;
+    appState.windowHeight = pstartInfo.windowHeight;
 
     logInfo("Starting platform.");
     if (!startPlt(pstartInfo, appState.pltState)) {
