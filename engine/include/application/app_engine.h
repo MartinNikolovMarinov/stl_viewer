@@ -13,6 +13,9 @@ struct AppCreateInfo {
     i32 startWindowHeight;
     const char* windowTitle;
 
+    bool capFrameRate;
+    u32 targetFramesPerSecond;
+
     bool isValid();
 };
 

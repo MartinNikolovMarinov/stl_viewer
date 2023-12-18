@@ -5,6 +5,9 @@ NO_MANGLE bool create(stlv::AppCreateInfo* createInfo) {
     createInfo->startWindowWidth = 800;
     createInfo->windowTitle = "Stereolithography (STL) Viewer";
 
+    createInfo->capFrameRate = true;
+    createInfo->targetFramesPerSecond = 61;
+
     logInfoTagged(stlv::LogTag::T_APP, "Application created successfully.");
     return true;
 }
@@ -110,19 +113,14 @@ void printMouseState(const stlv::Mouse& mouse) {
 }
 
 NO_MANGLE bool update(stlv::ApplicationState* appState) {
-    // stlv::Keyboard& keyboard = appState->keyboard;
-    // printKeyboardState(keyboard);
+    stlv::Keyboard& keyboard = appState->keyboard;
+    printKeyboardState(keyboard);
 
-    // stlv::CurrentFrameMetrics& metrics = appState->metrics;
-    // printMetrics(metrics);
+    stlv::CurrentFrameMetrics& metrics = appState->metrics;
+    printMetrics(metrics);
 
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);
-
-    logTraceTagged(stlv::LogTag::T_APP,
-                  "width: %d, height: %d",
-                  appState->windowWidth,
-                  appState->windowHeight);
 
     return true;
 }

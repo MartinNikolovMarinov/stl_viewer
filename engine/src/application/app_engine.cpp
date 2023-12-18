@@ -232,9 +232,13 @@ bool initAppEngine(i32 argc, char** argv) {
 bool AppCreateInfo::isValid() {
     constexpr i32 MIN_WINDOW_WIDTH = 100;
     constexpr i32 MIN_WINDOW_HEIGHT = 100;
-
     if (this->startWindowHeight <= MIN_WINDOW_HEIGHT || this->startWindowWidth <= MIN_WINDOW_WIDTH) return false;
     if (!this->windowTitle) return false;
+
+    constexpr u32 MIN_FPS = 5;
+    if (this->capFrameRate) {
+        if (this->targetFramesPerSecond <= MIN_FPS) return false;
+    }
 
     return true;
 }
@@ -279,6 +283,9 @@ bool preMainLoop() {
 }
 
 bool updateAppState(i32& retCode) {
+
+    // Act on isRunning and isSuspended flags
+
     if (g_isRunning.load() == false) {
         retCode = 0;
         return false; // quit
@@ -292,11 +299,27 @@ bool updateAppState(i32& retCode) {
 
     ApplicationState& appState = g_appState;
 
+    // Start tracking frame time
+
     Timer frameTimer;
     clockClear(frameTimer);
     clockStart(frameTimer, pltGetMonotinicTime());
     defer {
+
+        // Update metrics at the end of the frame
+
         auto& metrics = appState.metrics;
+
+        clockUpdate(frameTimer, pltGetMonotinicTime());
+
+        // Cap frame rate
+        if (appState.createInfo.capFrameRate) {
+            f64 targetFrameTime = 1.0 / f64(appState.createInfo.targetFramesPerSecond);
+            if (frameTimer.delta < targetFrameTime) {
+                f64 remainingMs = targetFrameTime - frameTimer.delta;
+                core::threadingSleep(u64(remainingMs * 1000.0));
+            }
+        }
 
         clockUpdate(frameTimer, pltGetMonotinicTime());
         clockUpdate(metrics.runningTime, pltGetMonotinicTime());
@@ -305,6 +328,8 @@ bool updateAppState(i32& retCode) {
         appState.metrics.frameCount = appState.metrics.frameCount + 1;
         appState.metrics.fps = 1.0 / appState.metrics.frameTime;
     };
+
+    // Poll the platform for events
 
     if (!pltPollEvents(appState.pltState, pollTimeout)) {
         g_isRunning.store(false);
