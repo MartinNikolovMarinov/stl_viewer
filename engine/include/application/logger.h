@@ -17,6 +17,7 @@ enum struct LogLevel : u8 {
 
 enum struct LogTag : u8 {
     T_ENGINE = 0,
+    T_RENDERER,
     T_APP,
 
     SENTINEL

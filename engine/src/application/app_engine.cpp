@@ -1,6 +1,7 @@
 #include <application/app_engine.h>
 #include <application/logger.h>
 #include <application/events.h>
+#include <renderer/renderer_frontend.h>
 
 namespace stlv {
 
@@ -223,6 +224,12 @@ bool initAppEngine(i32 argc, char** argv) {
     }
     logInfo("Global event handlers registered.");
 
+    if (!initRenderer(appState.pltState)) {
+        logFatal("Failed to initialize renderer.");
+        return false;
+    }
+    logInfo("Renderer initialized.");
+
     logInfo("Application engine initialized.");
     g_isRunning.store(true);
     g_isSuspended.store(false);
@@ -337,11 +344,21 @@ bool updateAppState(i32& retCode) {
         return false; // quit
     }
 
+    // Render the frame
+
+    RenderPacket renderPacket = {};
+    renderPacket.deltaTime = frameTimer.delta;
+    rendererDrawFrame(renderPacket);
+
     return true;
 }
 
 void shutdownAppEngine() {
     logInfo("Shutting down application engine.");
+
+    shutdownEventSystem();
+    shutdownRenderer();
+    shutdownPlt(g_appState.pltState);
 
     shutdownLoggingSystem(); // keep this last, assume no logger availabe after this
 }

@@ -34,7 +34,7 @@ bool initEventSystem() {
     return true;
 }
 
-void destroyEventSystem() {}
+void shutdownEventSystem() {}
 
 bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
     if (!isInitialized) {

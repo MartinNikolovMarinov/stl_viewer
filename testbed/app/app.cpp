@@ -112,12 +112,12 @@ void printMouseState(const stlv::Mouse& mouse) {
     logTraceTagged(stlv::LogTag::T_APP, "%s", buff);
 }
 
-NO_MANGLE bool update(stlv::ApplicationState* appState) {
-    stlv::Keyboard& keyboard = appState->keyboard;
-    printKeyboardState(keyboard);
+NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
+    // stlv::Keyboard& keyboard = appState->keyboard;
+    // printKeyboardState(keyboard);
 
-    stlv::CurrentFrameMetrics& metrics = appState->metrics;
-    printMetrics(metrics);
+    // stlv::CurrentFrameMetrics& metrics = appState->metrics;
+    // printMetrics(metrics);
 
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);

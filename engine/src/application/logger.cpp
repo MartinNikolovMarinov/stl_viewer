@@ -66,6 +66,9 @@ void log(LogTag tag, LogLevel level, const char* format, ...) {
         case LogTag::T_APP:
             printf(ANSI_BOLD(ANSI_BRIGHT_WHITE("[APP]")));
             break;
+        case LogTag::T_RENDERER:
+            printf(ANSI_BOLD(ANSI_BRIGHT_WHITE("[RENDERER]")));
+            break;
 
         case LogTag::T_ENGINE: [[fallthrough]];
         case LogTag::SENTINEL:

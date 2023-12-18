@@ -20,6 +20,8 @@ set(src_files
    src/application/events.cpp
    src/application/timer.cpp
    src/application/input.cpp
+
+   src/renderer/renderer_frontend.cpp
 )
 
 if (STLV_USE_GLFW)
@@ -27,6 +29,12 @@ if (STLV_USE_GLFW)
 else()
     # At some point I might deside to use a native platform layer for some/all platforms.
     message(FATAL_ERROR "GLFW can't be disabled yet.")
+endif()
+
+if (STLV_BACKEND_VULKAN)
+    set(src_files ${src_files} src/renderer/backend/renderer_vulkan.cpp)
+else()
+    message(FATAL_ERROR "Only Vulkan is supported at the moment.")
 endif()
 
 if(OS STREQUAL "linux")

@@ -48,7 +48,7 @@ struct Event {
 typedef bool (*OnEventHandler)(Event event, void* context);
 
 bool initEventSystem();
-void destroyEventSystem();
+void shutdownEventSystem();
 
 /**
  * @brief Registers an event handler for the given event code.
