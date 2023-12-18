@@ -57,28 +57,35 @@ auto onKeyUp = [](Event ev, void*) {
 auto onMouseDown = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received mouse down event. Button: %d, Action: %d", ev.data._i32[0], ev.data._i32[1]);
+    mouseUpdateClick(s->mouse, ev.data._i32[0], true);
     return true;
 };
 
 auto onMouseUp = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received mouse up event. Button: %d, Action: %d", ev.data._i32[0], ev.data._i32[1]);
+    mouseUpdateClick(s->mouse, ev.data._i32[0], false);
     return true;
 };
 
 auto onMouseScroll = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received mouse scroll event. X: %f, Y: %f", ev.data._f64[0], ev.data._f64[1]);
+    mouseUpdateScroll(s->mouse, ev.data._f64[0], ev.data._f64[1]);
     return true;
 };
 
 auto onMouseMove = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received mouse move event. X: %f, Y: %f", ev.data._f64[0], ev.data._f64[1]);
+    mouseUpdatePosition(s->mouse, ev.data._f64[0], ev.data._f64[1]);
+    return true;
+};
+
+auto onMouseEnter = [](Event ev, void*) {
+    auto s = getAppState();
+    if (!s) return false;
+    s->mouse.insideWindow = ev.data._bool[0];
     return true;
 };
 
@@ -100,24 +107,24 @@ auto onWindowFocus = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
 
-    if (ev.data._i32[0] == 0) {
-        logTrace("Received focus lost event.");
+    if (ev.data._bool[0]) {
+        logTrace("Received focus gained event.");
     }
     else {
-        logTrace("Received focus gained event.");
+        logTrace("Received focus lost event.");
     }
 
     return true;
 };
 
 auto onWindowHidden = [](Event ev, void*) {
-    if (ev.data._i32[0] == 0) {
-        logTrace("Received window hidden event.");
-        g_isSuspended.store(true);
-    }
-    else {
+    if (ev.data._bool[0]) {
         logTrace("Received window visible event.");
         g_isSuspended.store(false);
+    }
+    else {
+        logTrace("Received window hidden event.");
+        g_isSuspended.store(true);
     }
 
     return true;
@@ -152,6 +159,10 @@ bool registerGlobalEventHandlers() {
     }
     if (!eventRegister(EventCode::APP_MOUSE_MOVE, nullptr, onMouseMove)) {
         logFatal("Failed to register APP_MOUSE_MOVE event handler.");
+        return false;
+    }
+    if (!eventRegister(EventCode::APP_MOUSE_ENTER, nullptr, onMouseEnter)) {
+        logFatal("Failed to register APP_MOUSE_ENTER event handler.");
         return false;
     }
     if (!eventRegister(EventCode::APP_WINDOW_RESIZE, nullptr, onWindowResize)) {
@@ -256,6 +267,7 @@ bool preMainLoop() {
     clockStart(appState.metrics.runningTime, pltGetMonotinicTime());
 
     keyboardClear(appState.keyboard);
+    mouseClear(appState.mouse);
 
     logInfo("Pre-main loop complete.");
     appState.isInitialized = true;

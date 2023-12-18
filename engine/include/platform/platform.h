@@ -31,6 +31,7 @@ bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds = -1);
 f64 pltGetMonotinicTime();
 
 bool pltGetKey(i32 pltKeyCode, KeyboardKey& key);
+bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight);
 
 } // namespace stlv
 

@@ -152,9 +152,19 @@ bool startPlt(const PlatformStartInfo& pstartInfo, PlatformState& pstate) {
         return false;
     }
 
+    glfwSetCursorEnterCallback(glfwState->glfwWindow, [](GLFWwindow*, i32 entered) {
+        Event ev;
+        ev.data._bool[0] = entered == GL_TRUE;
+        eventFire(EventCode::APP_MOUSE_ENTER, ev);
+    });
+    if (i32 errCode = glfwGetError(&errDesc); errCode != GLFW_NO_ERROR) {
+        logFatal("Failed to set cursor enter callback; GLFW error: %d, %s", errCode, errDesc);
+        return false;
+    }
+
     glfwSetWindowFocusCallback(glfwState->glfwWindow, [](GLFWwindow*, i32 focused) {
         Event ev;
-        ev.data._i32[0] = focused;
+        ev.data._bool[0] = focused == GL_TRUE;
         eventFire(EventCode::APP_WINDOW_FOCUS, ev);
     });
     if (i32 errCode = glfwGetError(&errDesc); errCode != GLFW_NO_ERROR) {
@@ -164,7 +174,7 @@ bool startPlt(const PlatformStartInfo& pstartInfo, PlatformState& pstate) {
 
     glfwSetWindowIconifyCallback(glfwState->glfwWindow, [](GLFWwindow*, i32 iconified) {
         Event ev;
-        ev.data._i32[0] = iconified == 0;
+        ev.data._bool[0] = iconified == GL_FALSE; // false means it was restored, true means it was minimized.
         eventFire(EventCode::APP_WINDOW_HIDDEN, ev);
     });
     if (i32 errCode = glfwGetError(&errDesc); errCode != GLFW_NO_ERROR) {
@@ -340,6 +350,20 @@ bool pltGetKey(i32 pltKeyCode, KeyboardKey& key) {
         default:
             key.info = KeyInfo::UNKNOWN;
             break;
+    }
+
+    return true;
+}
+
+bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight) {
+    isLeft = false;
+    isMiddle = false;
+    isRight = false;
+
+    switch (pltKeyCode) {
+        case GLFW_MOUSE_BUTTON_LEFT:   isLeft   = true; break;
+        case GLFW_MOUSE_BUTTON_MIDDLE: isMiddle = true; break;
+        case GLFW_MOUSE_BUTTON_RIGHT:  isRight  = true; break;
     }
 
     return true;

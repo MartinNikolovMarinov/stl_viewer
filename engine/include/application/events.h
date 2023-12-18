@@ -17,6 +17,7 @@ enum struct EventCode : u16 {
     APP_WINDOW_MOVE,
     APP_WINDOW_FOCUS,
     APP_WINDOW_HIDDEN,
+    APP_MOUSE_ENTER,
 
     SENTINEL
 };
@@ -37,6 +38,7 @@ struct Event {
 
         i8 _i8[16];
         u8 _u8[16];
+        bool _bool[16];
 
         char bytes[16];
     } data;

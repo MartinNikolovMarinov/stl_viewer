@@ -54,4 +54,30 @@ void keyboardUpdate(Keyboard& keyboard, i32 pltKeyCode, i32 scancode, bool isDow
 
 bool keyIsModifier(KeyInfo key);
 
+enum struct MouseKeyInfo : u8 {
+    UNKNOWN = 0,
+    LEFT,
+    MIDDLE,
+    RIGHT,
+    SENTINEL
+};
+
+struct Mouse {
+    f64 x;
+    f64 y;
+    f64 scrollX;
+    f64 scrollY;
+
+    bool leftButtonIsDown;
+    bool middleButtonIsDown;
+    bool rightButtonIsDown;
+
+    bool insideWindow;
+};
+
+void mouseClear(Mouse& mouse);
+void mouseUpdateClick(Mouse& mouse, i32 pltKeyCode, bool isDown);
+void mouseUpdatePosition(Mouse& mouse, f64 x, f64 y);
+void mouseUpdateScroll(Mouse& mouse, f64 x, f64 y);
+
 } // namespace stlv
