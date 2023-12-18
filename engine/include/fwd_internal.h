@@ -1,6 +1,7 @@
 #pragma once
 
 #include <init_core.h>
+#include <stlv_utils.h>
 
 #ifdef STLV_LIBRARY_BUILD
     #if defined(_MSC_VER)

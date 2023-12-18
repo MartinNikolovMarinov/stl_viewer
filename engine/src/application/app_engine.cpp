@@ -39,14 +39,18 @@ auto onAppQuit = [](Event, void*) {
 auto onKeyDown = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received key down event. Key: %d, Scancode: %d", ev.data._i32[0], ev.data._i32[1]);
+    i32 pltKeyCode = ev.data._i32[0];
+    i32 scancode = ev.data._i32[1];
+    keyboardUpdate(s->keyboard, pltKeyCode, scancode, true);
     return true;
 };
 
 auto onKeyUp = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    logTrace("Received key up event. Key: %d, Scancode: %d", ev.data._i32[0], ev.data._i32[1]);
+    i32 pltKeyCode = ev.data._i32[0];
+    i32 scancode = ev.data._i32[1];
+    keyboardUpdate(s->keyboard, pltKeyCode, scancode, false);
     return true;
 };
 
@@ -107,9 +111,6 @@ auto onWindowFocus = [](Event ev, void*) {
 };
 
 auto onWindowHidden = [](Event ev, void*) {
-    auto s = getAppState();
-    if (!s) return false;
-
     if (ev.data._i32[0] == 0) {
         logTrace("Received window hidden event.");
         g_isSuspended.store(true);
@@ -233,10 +234,10 @@ bool preMainLoop() {
     AppCreateInfo& createInfo = appState.createInfo;
 
     if (!createInfo.isValid()) {
-        logFatal("Invalid create info.");
+        logFatal("Invalid AppCreateInfo.");
         return false;
     }
-    logInfo("Create info is valid.");
+    logInfo("AppCreateInfo is valid.");
 
     PlatformStartInfo pstartInfo = {};
     pstartInfo.windowHeight = createInfo.startWindowHeight;
@@ -251,8 +252,10 @@ bool preMainLoop() {
     logInfo("Platform started.");
 
     logInfo("Starting timers.");
-    clockClear(appState.runningTime);
-    clockStart(appState.runningTime, pltGetMonotinicTime());
+    clockClear(appState.metrics.runningTime);
+    clockStart(appState.metrics.runningTime, pltGetMonotinicTime());
+
+    keyboardClear(appState.keyboard);
 
     logInfo("Pre-main loop complete.");
     appState.isInitialized = true;
@@ -270,9 +273,6 @@ bool updateAppState(i32& retCode) {
         logTrace("Application is suspended.");
         pollTimeout = 2.0;
     }
-    else {
-        logTrace("Render");
-    }
 
     ApplicationState& appState = g_appState;
 
@@ -280,19 +280,14 @@ bool updateAppState(i32& retCode) {
     clockClear(frameTimer);
     clockStart(frameTimer, pltGetMonotinicTime());
     defer {
+        auto& metrics = appState.metrics;
+
         clockUpdate(frameTimer, pltGetMonotinicTime());
-        clockUpdate(appState.runningTime, pltGetMonotinicTime());
-        appState.frameCount++;
+        clockUpdate(metrics.runningTime, pltGetMonotinicTime());
 
-        f64 frameTime = frameTimer.delta;
-        f64 runningTime = appState.runningTime.delta;
-        u64 frameCount = appState.frameCount;
-        f64 fps = 1 / frameTime;
-
-        logInfo("Frame time: %f", frameTime);
-        logInfo("Running time: %f", runningTime);
-        logInfo("Frame count: %llu", frameCount);
-        logInfo("FPS: %f", fps);
+        appState.metrics.frameTime = frameTimer.delta;
+        appState.metrics.frameCount = appState.metrics.frameCount + 1;
+        appState.metrics.fps = 1.0 / appState.metrics.frameTime;
     };
 
     if (!pltPollEvents(appState.pltState, pollTimeout)) {

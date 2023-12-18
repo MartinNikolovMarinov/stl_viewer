@@ -19,6 +19,7 @@ set(src_files
    src/application/logger.cpp
    src/application/events.cpp
    src/application/timer.cpp
+   src/application/input.cpp
 )
 
 if (STLV_USE_GLFW)

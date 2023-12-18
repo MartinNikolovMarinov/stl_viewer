@@ -3,6 +3,7 @@
 #include <fwd_internal.h>
 
 #include <application/timer.h>
+#include <application/input.h>
 #include <platform/platform.h>
 
 namespace stlv {
@@ -15,12 +16,21 @@ struct AppCreateInfo {
     bool isValid();
 };
 
+struct CurrentFrameMetrics {
+    Timer runningTime;
+    u64 frameCount;
+    f64 frameTime;
+    f64 fps;
+};
+
 struct ApplicationState {
     AppCreateInfo createInfo; // Initialized in the app creation step.
     bool isInitialized; // Set by the app engine once the main loop starts.
+
     PlatformState pltState;
-    Timer runningTime; // The time since the application started.
-    u64 frameCount; // The number of frames rendered.
+
+    CurrentFrameMetrics metrics;
+    Keyboard keyboard;
 };
 
 /**

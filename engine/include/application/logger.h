@@ -28,17 +28,17 @@ void shutdownLoggingSystem();
 STLV_EXPORT void log(LogTag tag, LogLevel level, const char* fmt, ...);
 
 #define logTrace(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE, fmt, ##__VA_ARGS__)
-#define logDebug(fmt, ...)      log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
-#define logInfo(fmt, ...)       log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
-#define logWarn(fmt, ...)       log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
-#define logErr(fmt, ...)        log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
-#define logFatal(fmt, ...)      log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
+#define logDebug(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
+#define logInfo(fmt, ...)  log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
+#define logWarn(fmt, ...)  log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
+#define logErr(fmt, ...)   log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
+#define logFatal(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
 
 #define logTraceTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_TRACE, fmt, ##__VA_ARGS__)
-#define logDebugTagged(tag, fmt, ...)      log(tag, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
-#define logInfoTagged(tag, fmt, ...)       log(tag, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
-#define logWarnTagged(tag, fmt, ...)       log(tag, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
-#define logErrTagged(tag, fmt, ...)        log(tag, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
-#define logFatalTagged(tag, fmt, ...)      log(tag, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
+#define logDebugTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
+#define logInfoTagged(tag, fmt, ...)  log(tag, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
+#define logWarnTagged(tag, fmt, ...)  log(tag, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
+#define logErrTagged(tag, fmt, ...)   log(tag, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
+#define logFatalTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
 
 } // namespace stlv

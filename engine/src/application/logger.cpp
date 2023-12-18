@@ -64,7 +64,7 @@ void log(LogTag tag, LogLevel level, const char* format, ...) {
     // Print Tag
     switch (tag) {
         case LogTag::T_APP:
-            printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[APP]")));
+            printf(ANSI_BOLD(ANSI_BRIGHT_WHITE("[APP]")));
             break;
 
         case LogTag::T_ENGINE: [[fallthrough]];

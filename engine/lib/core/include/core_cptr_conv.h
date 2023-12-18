@@ -148,4 +148,21 @@ constexpr void intToHex(i16 v, char* out, u64 hexLen = (sizeof(i16) << 1)) { det
 constexpr void intToHex(i32 v, char* out, u64 hexLen = (sizeof(i32) << 1)) { detail::intToHex(v, out, hexLen); }
 constexpr void intToHex(i64 v, char* out, u64 hexLen = (sizeof(i64) << 1)) { detail::intToHex(v, out, hexLen); }
 
+namespace detail {
+
+template <typename TInt>
+constexpr char* cptrCopyUnsafeInt(char* s, TInt n) {
+    if (s == nullptr) return s;
+    char buf[32] = {};
+    core::intToCptr(n, buf);
+    return cptrCopyUnsafe(s, buf);
+}
+
+} // namespace detail
+
+constexpr char* cptrCopyUnsafe(char* s, i32 v) { return detail::cptrCopyUnsafeInt(s, v); }
+constexpr char* cptrCopyUnsafe(char* s, u32 v) { return detail::cptrCopyUnsafeInt(s, v); }
+constexpr char* cptrCopyUnsafe(char* s, i64 v) { return detail::cptrCopyUnsafeInt(s, v); }
+constexpr char* cptrCopyUnsafe(char* s, u64 v) { return detail::cptrCopyUnsafeInt(s, v); }
+
 } // namespace core

@@ -4,6 +4,8 @@
 
 namespace stlv {
 
+struct KeyboardKey;
+
 struct PlatformState {
     void* internal; // platform specific data
 };
@@ -27,6 +29,8 @@ bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds = -1);
  * @return f64 The current time in seconds.
 */
 f64 pltGetMonotinicTime();
+
+bool pltGetKey(i32 pltKeyCode, KeyboardKey& key);
 
 } // namespace stlv
 
