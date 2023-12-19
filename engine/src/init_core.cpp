@@ -60,7 +60,7 @@ bool initCore(i32, char**) {
     });
 
     // Initialize the memory subsystem:
-    if (stlv::memInit() == false) {
+    if (stlv::initMemorySystem() == false) {
         fprintf(stderr, ANSI_BOLD(ANSI_RED("[ERROR]:")) ANSI_BOLD(" Failed to initialize the memory subsystem!\n"));
         return false;
     }
@@ -70,36 +70,17 @@ bool initCore(i32, char**) {
 
 namespace stlv {
 
-using da = CORE_DEFAULT_ALLOCATOR();
+namespace {
+    AllocationStats g_memoryStats[static_cast<addr_size>(AllocationType::SENTINEL)] = {};
+} // namespace
 
-bool memInit() {
-    da::init(nullptr);
-    return true;
+AllocationStats* getMemoryStats(AllocationType type) {
+    if (addr_size(type) >= addr_size(AllocationType::SENTINEL)) {
+        return nullptr;
+    }
+
+    return &g_memoryStats[addr_size(type)];
 }
 
-void memDestroy() {
-    da::clear();
-}
+} // namespace
 
-void* memAlloc(addr_size size, AllocationType) noexcept {
-    // TODO: Use tagged memory allocations to track allocations in a realtime metrics system.
-    return da::alloc(size);
-}
-
-void* memCalloc(addr_size count, addr_size size) noexcept {
-    return da::calloc(count, size);
-}
-
-void memFree(void* ptr) noexcept {
-    da::free(ptr);
-}
-
-addr_size memUsed() noexcept {
-    return da::usedMem();
-}
-
-addr_size memTotalAllocated() noexcept {
-    return da::totalAllocatedMem();
-}
-
-} // namespace stlv

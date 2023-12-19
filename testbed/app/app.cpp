@@ -112,6 +112,56 @@ void printMouseState(const stlv::Mouse& mouse) {
     logTraceTagged(stlv::LogTag::T_APP, "%s", buff);
 }
 
+#define STLV_MEMORY_METRIC_ENTRY_TO_CPTR_MACRO(buffname, aname) \
+    buffname = core::cptrCopyUnsafe(buff, "\t"#aname": "); \
+    buffname = core::cptrCopyUnsafe(buff, "{ IN_USE: "); \
+    buffname = writeStorageValue(memoryMetrics.memoryInUse_##aname, buff); \
+    buffname = core::cptrCopyUnsafe(buff, ", ALLOCATED: "); \
+    buffname = writeStorageValue(memoryMetrics.memoryAllocated_##aname, buff); \
+    buffname = core::cptrCopyUnsafe(buff, " }\n"); \
+
+void memoryMetricsToCptr(stlv::MemoryMetrics& memoryMetrics, char* buff) {
+    auto writeStorageValue = [](u64 value, char *_buff) -> char* {
+
+        if (value < 1024) {
+            _buff = cptrCopyUnsafeFloat(_buff, f64(value));
+            _buff = core::cptrCopyUnsafe(_buff, " B");
+        }
+        else if (value < 1024 * 1024) {
+            _buff = cptrCopyUnsafeFloat(_buff, f64(value) / 1024.0);
+            _buff = core::cptrCopyUnsafe(_buff, " KB");
+        }
+        else if (value < 1024 * 1024 * 1024) {
+            _buff = cptrCopyUnsafeFloat(_buff, f64(value) / 1024.0 / 1024.0);
+            _buff = core::cptrCopyUnsafe(_buff, " MB");
+        }
+        else {
+            _buff = cptrCopyUnsafeFloat(_buff, f64(value) / 1024.0 / 1024.0 / 1024.0);
+            _buff = core::cptrCopyUnsafe(_buff, " GB");
+        }
+
+        return _buff;
+    };
+
+    buff = core::cptrCopyUnsafe(buff, "Memory Metrics");
+    buff = core::cptrCopyUnsafe(buff, "\n");
+    buff = core::cptrCopyUnsafe(buff, "{");
+    buff = core::cptrCopyUnsafe(buff, "\n");
+
+    STLV_MEMORY_METRIC_ENTRY_TO_CPTR_MACRO(buff, UNTAGGED);
+    STLV_MEMORY_METRIC_ENTRY_TO_CPTR_MACRO(buff, PLATFORM);
+    STLV_MEMORY_METRIC_ENTRY_TO_CPTR_MACRO(buff, RENDERER_BACKEND);
+
+    buff = core::cptrCopyUnsafe(buff, "}");
+    *buff = '\0';
+}
+
+void printMemoryMetrics(stlv::MemoryMetrics& memoryMetrics) {
+    char buff[core::KILOBYTE];
+    memoryMetricsToCptr(memoryMetrics, buff);
+    logTraceTagged(stlv::LogTag::T_APP, "%s", buff);
+}
+
 NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
     // stlv::Keyboard& keyboard = appState->keyboard;
     // printKeyboardState(keyboard);
@@ -121,6 +171,9 @@ NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
 
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);
+
+    // stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
+    // printMemoryMetrics(memoryMetrics);
 
     return true;
 }

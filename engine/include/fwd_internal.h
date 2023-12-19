@@ -18,3 +18,10 @@
         #define STLV_EXPORT
     #endif
 #endif
+
+namespace stlv {
+
+using ExtensionNames = core::Arr<core::StrBuilder<RendererBackendAllocator>>;
+
+} // namespace stlv
+

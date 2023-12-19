@@ -21,6 +21,14 @@ bool initRendererBE(RendererBackend& backend, PlatformState&) {
     VkInstanceCreateInfo instanceInfo {};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pApplicationInfo = &appInfo;
+
+    logInfoTagged(LogTag::T_RENDERER, "Getting required Vulkan extensions...");
+    backend.requiredExtensions.append(VK_KHR_SURFACE_EXTENSION_NAME);
+    pltGetRequiredExtensionNames(backend.requiredExtensions);
+#if STLV_DEBUG
+    backend.requiredExtensions.append(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
+
     instanceInfo.enabledExtensionCount = 0;
     instanceInfo.ppEnabledExtensionNames = nullptr;
     instanceInfo.enabledLayerCount = 0;

@@ -277,9 +277,9 @@ bool preMainLoop() {
     }
     logInfo("Platform started.");
 
-    logInfo("Starting timers.");
-    clockClear(appState.metrics.runningTime);
-    clockStart(appState.metrics.runningTime, pltGetMonotinicTime());
+    logInfo("Setting up metrics.");
+    clockClear(appState.frameMetrics.runningTime);
+    clockStart(appState.frameMetrics.runningTime, pltGetMonotinicTime());
 
     keyboardClear(appState.keyboard);
     mouseClear(appState.mouse);
@@ -313,9 +313,9 @@ bool updateAppState(i32& retCode) {
     clockStart(frameTimer, pltGetMonotinicTime());
     defer {
 
-        // Update metrics at the end of the frame
+        // Update frame metrics at the end of the frame
 
-        auto& metrics = appState.metrics;
+        auto& fmetrics = appState.frameMetrics;
 
         clockUpdate(frameTimer, pltGetMonotinicTime());
 
@@ -329,11 +329,18 @@ bool updateAppState(i32& retCode) {
         }
 
         clockUpdate(frameTimer, pltGetMonotinicTime());
-        clockUpdate(metrics.runningTime, pltGetMonotinicTime());
+        clockUpdate(fmetrics.runningTime, pltGetMonotinicTime());
 
-        appState.metrics.frameTime = frameTimer.delta;
-        appState.metrics.frameCount = appState.metrics.frameCount + 1;
-        appState.metrics.fps = 1.0 / appState.metrics.frameTime;
+        fmetrics.frameTime = frameTimer.delta;
+        fmetrics.frameCount = fmetrics.frameCount + 1;
+        fmetrics.fps = 1.0 / fmetrics.frameTime;
+
+        // Update memory metrics at the end of the frame
+        auto& mmetrics = appState.memoryMetrics;
+
+        STLV_MEMORY_METRICS_SET(mmetrics, UNTAGGED);
+        STLV_MEMORY_METRICS_SET(mmetrics, PLATFORM);
+        STLV_MEMORY_METRICS_SET(mmetrics, RENDERER_BACKEND);
     };
 
     // Poll the platform for events
@@ -361,6 +368,7 @@ void shutdownAppEngine() {
     shutdownPlt(g_appState.pltState);
 
     shutdownLoggingSystem(); // keep this last, assume no logger availabe after this
+    shutdownMemorySystem();
 }
 
 } // namespace stlv

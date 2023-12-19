@@ -15,7 +15,7 @@ struct GlfwPlatformState {
 };
 
 inline void allocGlfwPltState(PlatformState& pstate) {
-    GlfwPlatformState* gflwPltState = reinterpret_cast<GlfwPlatformState*>(memAlloc(sizeof(GlfwPlatformState)));
+    GlfwPlatformState* gflwPltState = reinterpret_cast<GlfwPlatformState*>(PlatformAllocator::alloc(sizeof(GlfwPlatformState)));
     pstate.internal = reinterpret_cast<void*>(gflwPltState);
 }
 
@@ -197,7 +197,7 @@ void shutdownPlt(PlatformState& pstate) {
     GlfwPlatformState* glfwState = toGlfwPltState(pstate);
     glfwDestroyWindow(glfwState->glfwWindow);
     glfwTerminate();
-    memFree(glfwState);
+    PlatformAllocator::free(glfwState);
 }
 
 bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds) {
@@ -367,6 +367,14 @@ bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight) {
     }
 
     return true;
+}
+
+void pltGetRequiredExtensionNames(ExtensionNames& names) {
+    u32 glfwExtensionCount = 0;
+    const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+    for (u32 i = 0; i < glfwExtensionCount; ++i) {
+        names.append(glfwExtensions[i]);
+    }
 }
 
 } // namespace stlv

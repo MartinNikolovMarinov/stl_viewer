@@ -26,13 +26,29 @@ struct CurrentFrameMetrics {
     f64 fps;
 };
 
+#define STLV_MEMORY_METRICS_ENTRY(aname) \
+    u64 memoryAllocated_##aname;         \
+    u64 memoryInUse_##aname
+
+#define STLV_MEMORY_METRICS_SET(vname,aname)                                                            \
+    vname.memoryAllocated_##aname = getMemoryStats(AllocationType::aname)->memoryAllocatedTotal.load(); \
+    vname.memoryInUse_##aname = getMemoryStats(AllocationType::aname)->memoryInUse.load();              \
+
+struct MemoryMetrics {
+    STLV_MEMORY_METRICS_ENTRY(UNTAGGED);
+    STLV_MEMORY_METRICS_ENTRY(PLATFORM);
+    STLV_MEMORY_METRICS_ENTRY(RENDERER_BACKEND);
+};
+
 struct ApplicationState {
     AppCreateInfo createInfo; // Initialized in the app creation step.
     bool isInitialized; // Set by the app engine once the main loop starts.
 
     PlatformState pltState;
 
-    CurrentFrameMetrics metrics;
+    CurrentFrameMetrics frameMetrics;
+    MemoryMetrics memoryMetrics;
+
     Keyboard keyboard;
     Mouse mouse;
     i32 windowWidth;

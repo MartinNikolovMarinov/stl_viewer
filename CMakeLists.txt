@@ -40,7 +40,7 @@ include(DetectOS)
 
 # Default compiler options macro:
 
-macro (stlv_target_set_default_flags target)
+macro(stlv_target_set_default_flags target)
 
     if(OS STREQUAL "linux")
         set(common_flags "-std=c++20")
@@ -74,4 +74,10 @@ endmacro()
 # Subdirectories:
 
 add_subdirectory(engine)
+
+if(STLV_HOT_RELOADING AND NOT OS STREQUAL "linux")
+    set(STLV_HOT_RELOADING OFF)
+    message(WARNING "[ENGINE] Hot reloading is only supported on Linux.")
+endif()
+
 add_subdirectory(testbed)
