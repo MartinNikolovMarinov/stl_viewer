@@ -33,7 +33,5 @@ f64 pltGetMonotinicTime();
 bool pltGetKey(i32 pltKeyCode, KeyboardKey& key);
 bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight);
 
-void pltGetRequiredExtensionNames_vulkan(ExtensionNames& names);
-
 } // namespace stlv
 

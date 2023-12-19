@@ -2,6 +2,7 @@
 
 #include <renderer/renderer_backend.h>
 #include <renderer/backend/renderer_vulkan.h>
+#include <renderer/backend/platform_vulkan.h>
 #include <platform/platform.h>
 
 namespace stlv {
@@ -61,7 +62,7 @@ VkBool32 debugCallback (
     return VK_FALSE;
 }
 
-bool initRendererBE(RendererBackend& backend, PlatformState&) {
+bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     backend = {};
 
     VkApplicationInfo appInfo {};
@@ -160,14 +161,30 @@ bool initRendererBE(RendererBackend& backend, PlatformState&) {
     logInfoTagged(LogTag::T_RENDERER, "Vulkan debug messenger created.");
 #endif
 
+    if (!pltCreateVulkanSurface_vulkan(pltState, backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create window surface.");
+        return false;
+    }
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan surface created.");
+
+    if (!createVulkanDevice(backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan device.");
+        return false;
+    }
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan device created.");
+
     return true;
 }
 
 void shutdownRendererBE(RendererBackend& backend) {
+
+    destroyVulkanDevice(backend);
+
 #if STLV_DEBUG
     call_vkDestroyDebugUtilsMessengerEXT(backend.instance, backend.debugMessenger, backend.allocator);
 #endif
 
+    vkDestroySurfaceKHR(backend.instance, backend.surface, backend.allocator);
     vkDestroyInstance(backend.instance, backend.allocator);
 }
 

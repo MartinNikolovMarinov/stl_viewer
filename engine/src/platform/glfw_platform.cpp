@@ -3,7 +3,15 @@
 #include <application/logger.h>
 #include <application/input.h>
 
-#define GLFW_INCLUDE_VULKAN
+#if STLV_BACKEND_VULKAN
+
+    #include <renderer/backend/platform_vulkan.h>
+    #include <renderer/renderer_backend.h>
+
+    #define GLFW_INCLUDE_VULKAN
+
+#endif
+
 #include <GLFW/glfw3.h>
 
 namespace stlv {
@@ -369,16 +377,32 @@ bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight) {
     return true;
 }
 
-void pltGetRequiredExtensionNames_vulkan([[maybe_unused]] ExtensionNames& names) {
 #if STLV_BACKEND_VULKAN
+
+void pltGetRequiredExtensionNames_vulkan([[maybe_unused]] ExtensionNames& names) {
 
     u32 glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
     for (u32 i = 0; i < glfwExtensionCount; ++i) {
         names.append(glfwExtensions[i]);
     }
+}
+
+bool pltCreateVulkanSurface_vulkan(PlatformState& pstate, RendererBackend& backend) {
+    GlfwPlatformState* glfwState = toGlfwPltState(pstate);
+
+    VkInstance instance = backend.instance;
+    VkAllocationCallbacks* allocator = backend.allocator;
+    VkSurfaceKHR* surface = &backend.surface;
+
+    VkResult result = glfwCreateWindowSurface(instance, glfwState->glfwWindow, allocator, surface);
+    if (result != VK_SUCCESS) {
+        return false;
+    }
+
+    return true;
+}
 
 #endif
-}
 
 } // namespace stlv

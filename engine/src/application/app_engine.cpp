@@ -224,12 +224,6 @@ bool initAppEngine(i32 argc, char** argv) {
     }
     logInfo("Global event handlers registered.");
 
-    if (!initRenderer(appState.pltState)) {
-        logFatal("Failed to initialize renderer.");
-        return false;
-    }
-    logInfo("Renderer initialized.");
-
     logInfo("Application engine initialized.");
     g_isRunning.store(true);
     g_isSuspended.store(false);
@@ -276,6 +270,12 @@ bool preMainLoop() {
         return false;
     }
     logInfo("Platform started.");
+
+    if (!initRenderer(appState.pltState)) {
+        logFatal("Failed to initialize renderer.");
+        return false;
+    }
+    logInfo("Renderer initialized.");
 
     logInfo("Setting up metrics.");
     clockClear(appState.frameMetrics.runningTime);

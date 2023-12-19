@@ -15,16 +15,27 @@ namespace stlv {
 
 using RequiredValidationLayers = core::Arr<const char*, RendererBackendAllocator>;
 
+struct VulkanDevice {
+    VkPhysicalDevice physicalDevice;
+    VkDevice logicalDevice;
+};
+
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
     ExtensionNames requiredExtensions;
     RequiredValidationLayers requiredValidationLayers;
+    VkSurfaceKHR surface;
 
 #if STLV_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif
+
+    VulkanDevice device;
 };
+
+bool createVulkanDevice(RendererBackend& backend);
+void destroyVulkanDevice(RendererBackend& backend);
 
 #if STLV_DEBUG
 VkResult call_vkCreateDebugUtilsMessengerEXT(VkInstance instance,

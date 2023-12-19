@@ -32,7 +32,10 @@ else()
 endif()
 
 if (STLV_BACKEND_VULKAN)
-    set(src_files ${src_files} src/renderer/backend/renderer_vulkan.cpp)
+    set(src_files ${src_files}
+        src/renderer/backend/renderer_vulkan.cpp
+        src/renderer/backend/device_vulkan.cpp
+    )
 else()
     message(FATAL_ERROR "Only Vulkan is supported at the moment.")
 endif()
