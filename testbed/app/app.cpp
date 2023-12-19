@@ -163,8 +163,8 @@ void printMemoryMetrics(stlv::MemoryMetrics& memoryMetrics) {
 }
 
 NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
-    stlv::Keyboard& keyboard = appState->keyboard;
-    printKeyboardState(keyboard);
+    // stlv::Keyboard& keyboard = appState->keyboard;
+    // printKeyboardState(keyboard);
 
     // stlv::CurrentFrameMetrics& metrics = appState->frameMetrics;
     // printMetrics(metrics);
@@ -172,8 +172,8 @@ NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);
 
-    stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
-    printMemoryMetrics(memoryMetrics);
+    // stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
+    // printMemoryMetrics(memoryMetrics);
 
     return true;
 }

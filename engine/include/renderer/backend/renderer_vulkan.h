@@ -35,6 +35,10 @@ struct VulkanDevice {
     u32 transferQueueFamilyIdx;
     u32 presetQueueFamilyIdx;
 
+    VkQueue graphicsQueue;
+    VkQueue transferQueue;
+    VkQueue presetQueue;
+
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
     VkPhysicalDeviceMemoryProperties memoryProperties;

@@ -9,12 +9,14 @@ namespace {
 
 struct VulkanPhysicalDeviceRequirements {
     bool hasDescreteGPU;
+    bool hasAnisotropy;
 
     bool hasGraphicsQueue;
     bool hasComputeQueue;
     bool hasTransferQueue;
     bool hasPresentQueue;
-    ExtensionNames extensionNames;
+    const char** deviceExtensions;
+    addr_size deviceExtensionsLen;
 };
 
 struct DeviceScore {
@@ -31,8 +33,8 @@ DeviceScore giveCompatibilityScoreForDevice(VkPhysicalDevice pdevice,
                                             VkSurfaceKHR surface,
                                             const VulkanPhysicalDeviceRequirements& requirements,
                                             const VkPhysicalDeviceProperties& properties,
-                                            const VkPhysicalDeviceFeatures,
-                                            const VkPhysicalDeviceMemoryProperties) {
+                                            const VkPhysicalDeviceFeatures& features,
+                                            const VkPhysicalDeviceMemoryProperties&) {
     DeviceScore ret = ZERO_SCORE;
 
     if (requirements.hasDescreteGPU) {
@@ -42,6 +44,17 @@ DeviceScore giveCompatibilityScoreForDevice(VkPhysicalDevice pdevice,
         }
         else {
             logInfoTagged(LogTag::T_RENDERER, "\tDevice does NOT have a discrete GPU.");
+            return ZERO_SCORE;
+        }
+    }
+
+    if (requirements.hasAnisotropy) {
+        if (features.samplerAnisotropy == VK_TRUE) {
+            logInfoTagged(LogTag::T_RENDERER, "\tDevice supports anisotropy.");
+            ret.score++;
+        }
+        else {
+            logInfoTagged(LogTag::T_RENDERER, "\tDevice does NOT support anisotropy.");
             return ZERO_SCORE;
         }
     }
@@ -195,18 +208,18 @@ bool isSwapchainSupported(VkPhysicalDevice pdevice,
         "Failed to get surface present modes."
     );
 
-    for (addr_size i = 0; i < requirements.extensionNames.len(); ++i) {
+    for (addr_size i = 0; i < requirements.deviceExtensionsLen; ++i) {
         bool found = false;
-        const char* currEx = requirements.extensionNames[i];
-        addr_size currExLen = core::cptrLen(currEx);
+        const char* currExt = requirements.deviceExtensions[i];
+        addr_size currExtLen = core::cptrLen(currExt);
         for (addr_size j = 0; j < availableExtentionsCount; ++j) {
-            if (core::cptrEq(currEx, availableExtensions[j].extensionName, currExLen)) {
+            if (core::cptrEq(currExt, availableExtensions[j].extensionName, currExtLen)) {
                 found = true;
                 break;
             }
         }
         if (!found) {
-            logErrTagged(LogTag::T_RENDERER, "\tRequired extension %s not found.", requirements.extensionNames[i]);
+            logErrTagged(LogTag::T_RENDERER, "\tRequired extension %s not found.", currExt);
             return false;
         }
     }
@@ -214,7 +227,7 @@ bool isSwapchainSupported(VkPhysicalDevice pdevice,
     return true;
 }
 
-bool selectPhysicalDevice(RendererBackend& backend) {
+bool selectPhysicalDevice(RendererBackend& backend, const char** deviceExtensions, addr_size deviceExtensionsLen) {
     u32 physicalDeviceCount = 0;
     VK_EXPECT(
         vkEnumeratePhysicalDevices(backend.instance, &physicalDeviceCount, nullptr),
@@ -240,7 +253,9 @@ bool selectPhysicalDevice(RendererBackend& backend) {
     requirements.hasComputeQueue = true;
     requirements.hasTransferQueue = true;
     requirements.hasPresentQueue = true;
-    requirements.extensionNames.append(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    requirements.deviceExtensions = deviceExtensions;
+    requirements.deviceExtensionsLen = deviceExtensionsLen;
+
 
     for (u32 i = 0; i < physicalDeviceCount; ++i) {
         auto& pdevice = physicalDevices[i];
@@ -325,7 +340,12 @@ bool selectPhysicalDevice(RendererBackend& backend) {
 } // namespace
 
 bool createVulkanDevice(RendererBackend& backend) {
-    if (!selectPhysicalDevice(backend)) {
+    const char* deviceExtensions[] = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
+    constexpr addr_size deviceExtensionsLen = sizeof(deviceExtensions) / sizeof(deviceExtensions[0]);
+
+    if (!selectPhysicalDevice(backend, deviceExtensions, deviceExtensionsLen)) {
         logErrTagged(LogTag::T_RENDERER, "Failed to select physical device.");
         return false;
     }
@@ -340,7 +360,7 @@ bool createVulkanDevice(RendererBackend& backend) {
 
     u32 idx = 0;
     u32 queueFamilyIndices[queueFamiliesCount];
-    queueFamilyIndices[idx] = backend.device.graphicsQueueFamilyIdx;
+    queueFamilyIndices[idx++] = backend.device.graphicsQueueFamilyIdx;
     if (!presentSharesGraphicsQueue) {
         queueFamilyIndices[idx++] = backend.device.presetQueueFamilyIdx;
     }
@@ -363,11 +383,49 @@ bool createVulkanDevice(RendererBackend& backend) {
         curr.pQueuePriorities = &queuePriority;
     }
 
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+    deviceFeatures.samplerAnisotropy = VK_TRUE;
+
+    VkDeviceCreateInfo deviceCreateInfo = {};
+    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.queueCreateInfoCount = queueFamiliesCount;
+    deviceCreateInfo.pQueueCreateInfos = queueCreateInfos;
+    deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+    deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions;
+    deviceCreateInfo.enabledExtensionCount = deviceExtensionsLen;
+
+    VK_EXPECT(
+        vkCreateDevice(backend.device.physicalDevice, &deviceCreateInfo, nullptr, &backend.device.logicalDevice),
+        "Failed to create logical device."
+    );
+    logInfoTagged(LogTag::T_RENDERER, "Logical device created.");
+
+    logInfoTagged(LogTag::T_RENDERER, "Obtain graphics queue.");
+    vkGetDeviceQueue(backend.device.logicalDevice,
+                     backend.device.graphicsQueueFamilyIdx,
+                     0,
+                     &backend.device.graphicsQueue);
+
+    logInfoTagged(LogTag::T_RENDERER, "Obtain transfer queue.");
+    vkGetDeviceQueue(backend.device.logicalDevice,
+                     backend.device.transferQueueFamilyIdx,
+                     0,
+                     &backend.device.transferQueue);
+
+    logInfoTagged(LogTag::T_RENDERER, "Obtain present queue.");
+    vkGetDeviceQueue(backend.device.logicalDevice,
+                     backend.device.presetQueueFamilyIdx,
+                     0,
+                     &backend.device.presetQueue);
+
+
     return true;
 }
 
-void destroyVulkanDevice(RendererBackend&) {
-    // VulkanDevice& device = backend.device;
+void destroyVulkanDevice(RendererBackend& backend) {
+    VulkanDevice& device = backend.device;
+
+    vkDestroyDevice(device.logicalDevice, nullptr);
 }
 
 bool querySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info) {

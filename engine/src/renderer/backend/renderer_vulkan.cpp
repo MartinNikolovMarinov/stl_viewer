@@ -183,14 +183,20 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
 }
 
 void shutdownRendererBE(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
 
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
     destroyVulkanDevice(backend);
 
 #if STLV_DEBUG
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan debug messenger.");
     call_vkDestroyDebugUtilsMessengerEXT(backend.instance, backend.debugMessenger, backend.allocator);
 #endif
 
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan surface.");
     vkDestroySurfaceKHR(backend.instance, backend.surface, backend.allocator);
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan instance.");
     vkDestroyInstance(backend.instance, backend.allocator);
 }
 

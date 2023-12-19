@@ -15,6 +15,7 @@ bool initRenderer(PlatformState& pltState) {
 }
 
 void shutdownRenderer() {
+    logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer frontend.");
     shutdownRendererBE(backend);
 }
 
