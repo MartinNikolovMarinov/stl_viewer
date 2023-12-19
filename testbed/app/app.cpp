@@ -27,7 +27,7 @@ void keyboardStateToCptr(const stlv::Keyboard& keyboard, char* out) {
         auto& key = keyboard.keys[i];
         if (key.isDown) {
             out = core::cptrCopyUnsafe(out, "\t");
-            out = core::cptrCopyUnsafe(out, key.scancode);
+            out = core::cptrAppendInt(out, key.scancode);
             out = core::cptrCopyUnsafe(out, ", ");
         }
     }
@@ -163,10 +163,10 @@ void printMemoryMetrics(stlv::MemoryMetrics& memoryMetrics) {
 }
 
 NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
-    // stlv::Keyboard& keyboard = appState->keyboard;
-    // printKeyboardState(keyboard);
+    stlv::Keyboard& keyboard = appState->keyboard;
+    printKeyboardState(keyboard);
 
-    // stlv::CurrentFrameMetrics& metrics = appState->metrics;
+    // stlv::CurrentFrameMetrics& metrics = appState->frameMetrics;
     // printMetrics(metrics);
 
     // stlv::Mouse& mouse = appState->mouse;

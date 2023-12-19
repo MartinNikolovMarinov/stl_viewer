@@ -325,14 +325,44 @@ bool selectPhysicalDevice(RendererBackend& backend) {
 } // namespace
 
 bool createVulkanDevice(RendererBackend& backend) {
-    // VulkanDevice& device = backend.device;
     if (!selectPhysicalDevice(backend)) {
         logErrTagged(LogTag::T_RENDERER, "Failed to select physical device.");
         return false;
     }
     logInfoTagged(LogTag::T_RENDERER, "Physical device selected.");
 
-    logInfoTagged(LogTag::T_RENDERER, "Vulkan device created.");
+    bool presentSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.presetQueueFamilyIdx;
+    bool transferSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.transferQueueFamilyIdx;
+
+    u32 queueFamiliesCount = 1;
+    if (!presentSharesGraphicsQueue) queueFamiliesCount++;
+    if (!transferSharesGraphicsQueue) queueFamiliesCount++;
+
+    u32 idx = 0;
+    u32 queueFamilyIndices[queueFamiliesCount];
+    queueFamilyIndices[idx] = backend.device.graphicsQueueFamilyIdx;
+    if (!presentSharesGraphicsQueue) {
+        queueFamilyIndices[idx++] = backend.device.presetQueueFamilyIdx;
+    }
+    if (!transferSharesGraphicsQueue) {
+        queueFamilyIndices[idx++] = backend.device.transferQueueFamilyIdx;
+    }
+
+    VkDeviceQueueCreateInfo queueCreateInfos[queueFamiliesCount] = {};
+    for (u32 i = 0; i < queueFamiliesCount; ++i) {
+        VkDeviceQueueCreateInfo& curr = queueCreateInfos[i];
+        curr.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        curr.queueFamilyIndex = queueFamilyIndices[i];
+        curr.queueCount = 1;
+        if (queueFamilyIndices[i] == backend.device.graphicsQueueFamilyIdx) {
+            curr.queueCount = 2;
+        }
+        curr.flags = 0;
+        curr.pNext = nullptr;
+        f32 queuePriority = 1.0f;
+        curr.pQueuePriorities = &queuePriority;
+    }
+
     return true;
 }
 
