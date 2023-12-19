@@ -77,42 +77,48 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pApplicationInfo = &appInfo;
 
-    backend.requiredExtensions.append(VK_KHR_SURFACE_EXTENSION_NAME);
-    pltGetRequiredExtensionNames_vulkan(backend.requiredExtensions);
+    ExtensionNames requiredExtensions;
+    defer { RendererBackendAllocator::decreaseUsedMem(requiredExtensions.byteCap()); };
+
+    requiredExtensions.append(VK_KHR_SURFACE_EXTENSION_NAME);
+    pltGetRequiredExtensionNames_vulkan(requiredExtensions);
 #if STLV_DEBUG
-    backend.requiredExtensions.append(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    requiredExtensions.append(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
     logInfoTagged(LogTag::T_RENDERER, "Required Vulkan extensions:");
-    for (addr_size i = 0; i < backend.requiredExtensions.len(); ++i) {
-        logInfoTagged(LogTag::T_RENDERER, "\t%s", backend.requiredExtensions[i]);
+    for (addr_size i = 0; i < requiredExtensions.len(); ++i) {
+        logInfoTagged(LogTag::T_RENDERER, "\t%s", requiredExtensions[i]);
     }
 
-    instanceInfo.enabledExtensionCount = u32(backend.requiredExtensions.len());
-    instanceInfo.ppEnabledExtensionNames = backend.requiredExtensions.data();
+    instanceInfo.enabledExtensionCount = u32(requiredExtensions.len());
+    instanceInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
 #if STLV_DEBUG
     logInfoTagged(LogTag::T_RENDERER, "Vulkan validation layers ENABLED.");
 
-    backend.requiredValidationLayers.append("VK_LAYER_KHRONOS_validation");
+    const char* requiredValidationLayers[] = {
+        "VK_LAYER_KHRONOS_validation"
+    };
+    constexpr addr_size requiredValidationLayersLen = sizeof(requiredValidationLayers) / sizeof(const char*);
 
-    u32 availableLayerCount = 0;
+    u32 availableLayersCount = 0;
     VK_EXPECT(
-        vkEnumerateInstanceLayerProperties(&availableLayerCount, nullptr),
+        vkEnumerateInstanceLayerProperties(&availableLayersCount, nullptr),
         "Failed to enumerate Vulkan instance layers."
     );
-    Arr<VkLayerProperties> availableLayers (availableLayerCount);
+    VkLayerProperties availableLayers[availableLayersCount];
     VK_EXPECT(
-        vkEnumerateInstanceLayerProperties(&availableLayerCount, availableLayers.data()),
+        vkEnumerateInstanceLayerProperties(&availableLayersCount, availableLayers),
         "Failed to enumerate Vulkan instance layers."
     );
 
     logInfoTagged(LogTag::T_RENDERER, "Verifying all required layers are available:");
-    for (addr_size i = 0; i < backend.requiredValidationLayers.len(); ++i) {
-        const char* curr = backend.requiredValidationLayers[i];
+    for (addr_size i = 0; i < requiredValidationLayersLen; ++i) {
+        const char* curr = requiredValidationLayers[i];
         addr_size len = core::cptrLen(curr);
         bool found = false;
-        for (addr_size j = 0; j < availableLayers.len(); ++j) {
+        for (addr_size j = 0; j < availableLayersCount; ++j) {
             if (core::cptrEq(curr, availableLayers[j].layerName, len)) {
                 found = true;
                 break;
@@ -125,8 +131,8 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
         logInfoTagged(LogTag::T_RENDERER, "\t%s FOUND", curr);
     }
 
-    instanceInfo.enabledLayerCount = u32(backend.requiredValidationLayers.len());
-    instanceInfo.ppEnabledLayerNames = backend.requiredValidationLayers.data();
+    instanceInfo.enabledLayerCount = u32(requiredValidationLayersLen);
+    instanceInfo.ppEnabledLayerNames = requiredValidationLayers;
 #else
     logInfoTagged(LogTag::T_RENDERER, "Vulkan validation layers DISABLED.");
 #endif

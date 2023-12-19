@@ -21,9 +21,6 @@
 
 namespace stlv {
 
-using Sb = core::StrBuilder<UntaggedAllocator>;
-template <typename T> using Arr = core::Arr<T, UntaggedAllocator>;
-
 using ExtensionNames = core::Arr<const char*, RendererBackendAllocator>;
 
 } // namespace stlv

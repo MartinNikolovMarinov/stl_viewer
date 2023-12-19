@@ -114,6 +114,10 @@ struct STLV_Allocator {
         return getMemoryStats(TType)->memoryInUse.load();
     }
 
+    static void decreaseUsedMem(addr_size size) noexcept {
+        getMemoryStats(TType)->memoryInUse.fetch_sub(size);
+    }
+
     static addr_size totalAllocatedMem() noexcept {
         return getMemoryStats(TType)->memoryAllocatedTotal.load();
     }

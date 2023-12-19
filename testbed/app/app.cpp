@@ -62,7 +62,7 @@ void printMetrics(stlv::CurrentFrameMetrics& metrics) {
 }
 
 char* cptrCopyUnsafeFloat(char* out, f64 value) {
-    int ret = snprintf(out, 64, "%f", value);
+    int ret = snprintf(out, 64, "%.2f", value);
     Assert(ret > 0, "Failed to convert float to string.");
     out += ret;
     return out;
@@ -172,8 +172,8 @@ NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);
 
-    // stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
-    // printMemoryMetrics(memoryMetrics);
+    stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
+    printMemoryMetrics(memoryMetrics);
 
     return true;
 }

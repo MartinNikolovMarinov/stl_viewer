@@ -13,18 +13,36 @@ namespace stlv {
         return false;                            \
     }
 
-using RequiredValidationLayers = core::Arr<const char*, RendererBackendAllocator>;
+using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
+using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
+
+struct VulkanSwapchainSupportInfo {
+    VkSurfaceCapabilitiesKHR capabilities;
+    VkSurfaceFormatKHRList formats;
+    VkPresentModeKHRList presentModes;
+};
+
+bool querySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info);
 
 struct VulkanDevice {
     VkPhysicalDevice physicalDevice;
     VkDevice logicalDevice;
+
+    VulkanSwapchainSupportInfo swapchainSupportInfo;
+
+    u32 graphicsQueueFamilyIdx;
+    u32 computeQueueFamilyIdx;
+    u32 transferQueueFamilyIdx;
+    u32 presetQueueFamilyIdx;
+
+    VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceFeatures features;
+    VkPhysicalDeviceMemoryProperties memoryProperties;
 };
 
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
-    ExtensionNames requiredExtensions;
-    RequiredValidationLayers requiredValidationLayers;
     VkSurfaceKHR surface;
 
 #if STLV_DEBUG
