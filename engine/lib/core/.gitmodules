@@ -1,6 +1,0 @@
-[submodule "examples/lib/fmt"]
-	path = examples/lib/fmt
-	url = https://github.com/fmtlib/fmt.git
-[submodule "examples/lib/glm"]
-	path = examples/lib/glm
-	url = https://github.com/g-truc/glm.git

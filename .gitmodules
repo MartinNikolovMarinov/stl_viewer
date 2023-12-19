@@ -1,6 +1,6 @@
-[submodule "lib/core"]
-	path = lib/core
+[submodule "engine/lib/core"]
+	path = engine/lib/core
 	url = https://github.com/MartinNikolovMarinov/core.git
-[submodule "lib/glfw"]
-	path = lib/glfw
+[submodule "engine/lib/glfw"]
+	path = engine/lib/glfw
 	url = https://github.com/glfw/glfw.git
