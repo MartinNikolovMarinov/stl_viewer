@@ -14,8 +14,6 @@ using namespace coretypes;
 
 bool initCore(i32 argc, char** argv);
 
-using Sb = core::StrBuilder<>;
-
 template<> addr_size core::hash(const core::StrView& key);
 template<> addr_size core::hash(const i32& key);
 template<> addr_size core::hash(const u32& key);
@@ -133,6 +131,7 @@ struct STLV_Allocator {
 
 } // namespace detail
 
+using UntaggedAllocator = detail::STLV_Allocator<AllocationType::UNTAGGED>;
 using PlatformAllocator = detail::STLV_Allocator<AllocationType::PLATFORM>;
 using RendererBackendAllocator = detail::STLV_Allocator<AllocationType::RENDERER_BACKEND>;
 

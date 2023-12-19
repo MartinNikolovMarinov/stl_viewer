@@ -369,12 +369,16 @@ bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight) {
     return true;
 }
 
-void pltGetRequiredExtensionNames(ExtensionNames& names) {
+void pltGetRequiredExtensionNames_vulkan([[maybe_unused]] ExtensionNames& names) {
+#if STLV_BACKEND_VULKAN
+
     u32 glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
     for (u32 i = 0; i < glfwExtensionCount; ++i) {
         names.append(glfwExtensions[i]);
     }
+
+#endif
 }
 
 } // namespace stlv

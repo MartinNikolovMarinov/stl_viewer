@@ -73,7 +73,7 @@ void closeWatcher() {
 }
 
 void createWatcher() {
-    logInfo("Creating hot reloading watcher");
+    logInfo("Creating hot reloading watcher.");
 
     closeWatcher();
 
