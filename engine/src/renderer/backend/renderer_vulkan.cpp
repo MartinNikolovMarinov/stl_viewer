@@ -7,6 +7,8 @@
 
 namespace stlv {
 
+namespace {
+
 VkBool32 debugCallback (
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageTypes,
@@ -62,6 +64,89 @@ VkBool32 debugCallback (
     return VK_FALSE;
 }
 
+bool verifyExtensionsAreSupported(const ExtensionNames& extNames) {
+    u32 allSupportedExtCount = 0;
+    VK_EXPECT(
+        vkEnumerateInstanceExtensionProperties(nullptr, &allSupportedExtCount, nullptr),
+        "Failed to enumerate Vulkan instance extensions."
+    );
+    VkExtensionProperties allSupportedExt[allSupportedExtCount];
+    VK_EXPECT(
+        vkEnumerateInstanceExtensionProperties(nullptr, &allSupportedExtCount, allSupportedExt),
+        "Failed to enumerate Vulkan instance extensions."
+    );
+
+    for (addr_size i = 0; i < extNames.len(); ++i) {
+        const char* curr = extNames[i];
+        addr_size len = core::cptrLen(curr);
+        bool found = false;
+        for (addr_size j = 0; j < allSupportedExtCount; ++j) {
+            if (core::cptrEq(curr, allSupportedExt[j].extensionName, len)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            logErrTagged(LogTag::T_RENDERER, "Required Vulkan instance extension '%s' not available.", curr);
+            return false;
+        }
+        logInfoTagged(LogTag::T_RENDERER, "\t%s SUPPORTED", curr);
+    }
+
+    return true;
+}
+
+bool verifyLayersAreSupported(const char** layers, addr_size layersCount) {
+    u32 availableLayersCount = 0;
+    VK_EXPECT(
+        vkEnumerateInstanceLayerProperties(&availableLayersCount, nullptr),
+        "Failed to enumerate Vulkan instance layers."
+    );
+    VkLayerProperties availableLayers[availableLayersCount];
+    VK_EXPECT(
+        vkEnumerateInstanceLayerProperties(&availableLayersCount, availableLayers),
+        "Failed to enumerate Vulkan instance layers."
+    );
+
+    for (addr_size i = 0; i < layersCount; ++i) {
+        const char* curr = layers[i];
+        addr_size len = core::cptrLen(curr);
+        bool found = false;
+        for (addr_size j = 0; j < availableLayersCount; ++j) {
+            if (core::cptrEq(curr, availableLayers[j].layerName, len)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            logErrTagged(LogTag::T_RENDERER, "Required Vulkan validation layer '%s' not available.", curr);
+            return false;
+        }
+        logInfoTagged(LogTag::T_RENDERER, "\t%s SUPPORTED", curr);
+    }
+
+    return true;
+}
+
+VkDebugUtilsMessengerCreateInfoEXT createDebugMessengerInfo() {
+    u32 logSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+                      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+                    // VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
+                    // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+    VkDebugUtilsMessengerCreateInfoEXT info = {};
+    info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+    info.messageSeverity = logSeverity;
+    info.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                     VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    info.pfnUserCallback = &debugCallback;
+    info.pUserData = nullptr;
+    return info;
+}
+
+} // namespace
+
+
 bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     backend = {};
 
@@ -78,7 +163,6 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     instanceInfo.pApplicationInfo = &appInfo;
 
     ExtensionNames requiredExtensions;
-    defer { RendererBackendAllocator::decreaseUsedMem(requiredExtensions.byteCap()); };
 
     requiredExtensions.append(VK_KHR_SURFACE_EXTENSION_NAME);
     pltGetRequiredExtensionNames_vulkan(requiredExtensions);
@@ -86,9 +170,10 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     requiredExtensions.append(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
-    logInfoTagged(LogTag::T_RENDERER, "Required Vulkan extensions:");
-    for (addr_size i = 0; i < requiredExtensions.len(); ++i) {
-        logInfoTagged(LogTag::T_RENDERER, "\t%s", requiredExtensions[i]);
+    logInfoTagged(LogTag::T_RENDERER, "Verifying all required instance extensions are available:");
+    if (!verifyExtensionsAreSupported(requiredExtensions)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to verify Vulkan instance extensions.");
+        return false;
     }
 
     instanceInfo.enabledExtensionCount = u32(requiredExtensions.len());
@@ -102,37 +187,43 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     };
     constexpr addr_size requiredValidationLayersLen = sizeof(requiredValidationLayers) / sizeof(const char*);
 
-    u32 availableLayersCount = 0;
-    VK_EXPECT(
-        vkEnumerateInstanceLayerProperties(&availableLayersCount, nullptr),
-        "Failed to enumerate Vulkan instance layers."
-    );
-    VkLayerProperties availableLayers[availableLayersCount];
-    VK_EXPECT(
-        vkEnumerateInstanceLayerProperties(&availableLayersCount, availableLayers),
-        "Failed to enumerate Vulkan instance layers."
-    );
-
     logInfoTagged(LogTag::T_RENDERER, "Verifying all required layers are available:");
-    for (addr_size i = 0; i < requiredValidationLayersLen; ++i) {
-        const char* curr = requiredValidationLayers[i];
-        addr_size len = core::cptrLen(curr);
-        bool found = false;
-        for (addr_size j = 0; j < availableLayersCount; ++j) {
-            if (core::cptrEq(curr, availableLayers[j].layerName, len)) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            logErrTagged(LogTag::T_RENDERER, "Required Vulkan validation layer '%s' not available.", curr);
-            return false;
-        }
-        logInfoTagged(LogTag::T_RENDERER, "\t%s FOUND", curr);
+    if (!verifyLayersAreSupported(requiredValidationLayers, requiredValidationLayersLen)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to verify Vulkan validation layers.");
+        return false;
     }
 
     instanceInfo.enabledLayerCount = u32(requiredValidationLayersLen);
     instanceInfo.ppEnabledLayerNames = requiredValidationLayers;
+
+    VkValidationFeatureEnableEXT enabledFeatures[] = {
+        // VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
+        // VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
+        VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
+        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT,
+        VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
+    };
+    constexpr addr_size enabledFeaturesLen = sizeof(enabledFeatures) / sizeof(VkValidationFeatureEnableEXT);
+
+    // VkValidationFeatureDisableEXT disabledFeatures[] = {
+    //     // VK_VALIDATION_FEATURE_DISABLE_SHADER_VALIDATION_CACHE_EXT
+    //     // VK_VALIDATION_FEATURE_DISABLE_ALL_EXT
+    // };
+    // constexpr addr_size disabledFeaturesLen = sizeof(disabledFeatures) / sizeof(VkValidationFeatureDisableEXT);
+
+    VkValidationFeaturesEXT validationFeatures = {};
+    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    validationFeatures.disabledValidationFeatureCount = 0; // u32(disabledFeaturesLen);
+    validationFeatures.enabledValidationFeatureCount = u32(enabledFeaturesLen);
+    validationFeatures.pDisabledValidationFeatures = nullptr; // disabledFeatures;
+    validationFeatures.pEnabledValidationFeatures = enabledFeatures;
+
+    // VkDebugUtilsMessengerCreateInfoEXT is required to enable the validation layers during instance creation:
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = createDebugMessengerInfo();
+
+    // Add the pNext chain to the instance create info:
+    instanceInfo.pNext = &validationFeatures;
+    validationFeatures.pNext = &debugMessengerInfo;
 #else
     logInfoTagged(LogTag::T_RENDERER, "Vulkan validation layers DISABLED.");
 #endif
@@ -144,18 +235,6 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Instance created.");
 
 #if STLV_DEBUG
-    u32 logSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
-                      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-                    // VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                    // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-    VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo {};
-    debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    debugMessengerInfo.messageSeverity = logSeverity;
-    debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                     VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                     VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    debugMessengerInfo.pfnUserCallback = &debugCallback;
-    debugMessengerInfo.pUserData = nullptr;
     VK_EXPECT(
         call_vkCreateDebugUtilsMessengerEXT(backend.instance,
                                             &debugMessengerInfo,

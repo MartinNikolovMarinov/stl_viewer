@@ -202,9 +202,9 @@ bool isSwapchainSupported(VkPhysicalDevice pdevice,
         "Failed to get surface present modes."
     );
 
-    VkExtensionProperties availableExtensions[availableExtentionsCount];
+    VkExtensionProperties availableDeviceExtensions[availableExtentionsCount];
     VK_EXPECT(
-        vkEnumerateDeviceExtensionProperties(pdevice, nullptr, &availableExtentionsCount, availableExtensions),
+        vkEnumerateDeviceExtensionProperties(pdevice, nullptr, &availableExtentionsCount, availableDeviceExtensions),
         "Failed to get surface present modes."
     );
 
@@ -213,7 +213,7 @@ bool isSwapchainSupported(VkPhysicalDevice pdevice,
         const char* currExt = requirements.deviceExtensions[i];
         addr_size currExtLen = core::cptrLen(currExt);
         for (addr_size j = 0; j < availableExtentionsCount; ++j) {
-            if (core::cptrEq(currExt, availableExtensions[j].extensionName, currExtLen)) {
+            if (core::cptrEq(currExt, availableDeviceExtensions[j].extensionName, currExtLen)) {
                 found = true;
                 break;
             }
@@ -374,9 +374,9 @@ bool createVulkanDevice(RendererBackend& backend) {
         curr.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         curr.queueFamilyIndex = queueFamilyIndices[i];
         curr.queueCount = 1;
-        if (queueFamilyIndices[i] == backend.device.graphicsQueueFamilyIdx) {
-            curr.queueCount = 2;
-        }
+        // if (queueFamilyIndices[i] == backend.device.graphicsQueueFamilyIdx) {
+        //     curr.queueCount = 2;
+        // }
         curr.flags = 0;
         curr.pNext = nullptr;
         f32 queuePriority = 1.0f;

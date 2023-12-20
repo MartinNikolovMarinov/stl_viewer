@@ -21,7 +21,8 @@
 
 namespace stlv {
 
-using ExtensionNames = core::Arr<const char*, RendererBackendAllocator>;
+constexpr addr_size VULKAN_MAX_INSTANCE_EXTENSIONS = 8;
+using ExtensionNames = core::SArr<const char*, VULKAN_MAX_INSTANCE_EXTENSIONS>;
 
 } // namespace stlv
 
