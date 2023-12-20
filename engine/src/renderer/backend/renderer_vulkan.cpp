@@ -252,11 +252,14 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     }
     logInfoTagged(LogTag::T_RENDERER, "Vulkan surface created.");
 
-    if (!createVulkanDevice(backend)) {
+    if (!vulkanDeviceCreate(backend)) {
         logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan device.");
         return false;
     }
     logInfoTagged(LogTag::T_RENDERER, "Vulkan device created.");
+
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan creating swapchain...");
+    vulkanSwapchainCreate(backend, backend.framebufferWidth, backend.framebufferHeight, backend.swapchain);
 
     return true;
 }
@@ -264,8 +267,11 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
 void shutdownRendererBE(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
 
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
+    vulkanSwapchainDestroy(backend, backend.swapchain);
+
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
-    destroyVulkanDevice(backend);
+    vulcanDeviceDestroy(backend);
 
 #if STLV_DEBUG
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan debug messenger.");
@@ -322,5 +328,19 @@ void call_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 }
 
 #endif
+
+i32 RendererBackend::findMemoryTypeIndex(u32 memoryTypeBits, VkMemoryPropertyFlags memoryFlags) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, &memProperties);
+
+    for (u32 i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((memoryTypeBits & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & memoryFlags) == memoryFlags) {
+            return i32(i);
+        }
+    }
+
+    return -1;
+}
 
 } // namespace stlv

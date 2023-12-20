@@ -271,7 +271,7 @@ bool selectPhysicalDevice(RendererBackend& backend, const char** deviceExtension
         logInfoTagged(LogTag::T_RENDERER, "Checking compatibility for device: %s", properties.deviceName);
 
         VulkanSwapchainSupportInfo swapChainInfo;
-        if (!querySwapchainSupport(pdevice, backend.surface, swapChainInfo)) {
+        if (!vulkanDeviceQuerySwapchainSupport(pdevice, backend.surface, swapChainInfo)) {
             logErrTagged(LogTag::T_RENDERER, "\tFailed to query the device for swapchain support.");
             continue;
         }
@@ -289,7 +289,7 @@ bool selectPhysicalDevice(RendererBackend& backend, const char** deviceExtension
             backend.device.graphicsQueueFamilyIdx = u32(scores[i].graphicsFamilyIdx);
             backend.device.computeQueueFamilyIdx  = u32(scores[i].computeFamilyIdx);
             backend.device.transferQueueFamilyIdx = u32(scores[i].transferFamilyIdx);
-            backend.device.presetQueueFamilyIdx   = u32(scores[i].presentFamilyIdx);
+            backend.device.presentQueueFamilyIdx   = u32(scores[i].presentFamilyIdx);
 
             backend.device.physicalDevice = pdevice;
             backend.device.properties = core::move(properties);
@@ -339,7 +339,7 @@ bool selectPhysicalDevice(RendererBackend& backend, const char** deviceExtension
 
 } // namespace
 
-bool createVulkanDevice(RendererBackend& backend) {
+bool vulkanDeviceCreate(RendererBackend& backend) {
     const char* deviceExtensions[] = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
@@ -351,7 +351,7 @@ bool createVulkanDevice(RendererBackend& backend) {
     }
     logInfoTagged(LogTag::T_RENDERER, "Physical device selected.");
 
-    bool presentSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.presetQueueFamilyIdx;
+    bool presentSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.presentQueueFamilyIdx;
     bool transferSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.transferQueueFamilyIdx;
 
     u32 queueFamiliesCount = 1;
@@ -362,7 +362,7 @@ bool createVulkanDevice(RendererBackend& backend) {
     u32 queueFamilyIndices[queueFamiliesCount];
     queueFamilyIndices[idx++] = backend.device.graphicsQueueFamilyIdx;
     if (!presentSharesGraphicsQueue) {
-        queueFamilyIndices[idx++] = backend.device.presetQueueFamilyIdx;
+        queueFamilyIndices[idx++] = backend.device.presentQueueFamilyIdx;
     }
     if (!transferSharesGraphicsQueue) {
         queueFamilyIndices[idx++] = backend.device.transferQueueFamilyIdx;
@@ -414,21 +414,21 @@ bool createVulkanDevice(RendererBackend& backend) {
 
     logInfoTagged(LogTag::T_RENDERER, "Obtain present queue.");
     vkGetDeviceQueue(backend.device.logicalDevice,
-                     backend.device.presetQueueFamilyIdx,
+                     backend.device.presentQueueFamilyIdx,
                      0,
-                     &backend.device.presetQueue);
+                     &backend.device.presentQueue);
 
 
     return true;
 }
 
-void destroyVulkanDevice(RendererBackend& backend) {
+void vulcanDeviceDestroy(RendererBackend& backend) {
     VulkanDevice& device = backend.device;
 
     vkDestroyDevice(device.logicalDevice, nullptr);
 }
 
-bool querySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info) {
+bool vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info) {
     VK_EXPECT(
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice, surface, &info.capabilities),
         "Failed to get surface capabilities."
@@ -465,6 +465,31 @@ bool querySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, Vulka
     }
 
     return true;
+}
+
+bool vulkanDeviceDetectDepthFormat(VulkanDevice& device) {
+    // Format candidates in order of preference.
+    VkFormat candidates[] = {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT
+    };
+    constexpr addr_size formatCandidatesLen = sizeof(candidates) / sizeof(candidates[0]);
+
+    constexpr VkFormatFeatureFlagBits flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    for (addr_size i = 0; i < formatCandidatesLen; ++i) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(device.physicalDevice, candidates[i], &props);
+
+        if ((props.linearTilingFeatures & flags) == flags ||
+            (props.optimalTilingFeatures & flags) == flags
+        ) {
+            device.depthFormat = candidates[i];
+            return true;
+        }
+    }
+
+    return false;
 }
 
 } // namespace stlv
