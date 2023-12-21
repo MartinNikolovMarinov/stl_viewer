@@ -14,6 +14,8 @@ using namespace coretypes;
 
 bool initCore(i32 argc, char** argv);
 
+// Hashing functions for some core types:
+
 template<> addr_size core::hash(const core::StrView& key);
 template<> addr_size core::hash(const i32& key);
 template<> addr_size core::hash(const u32& key);
@@ -24,7 +26,7 @@ template<> bool core::eq(const u32& a, const u32& b);
 
 namespace stlv {
 
-// The memory subsystem is required everywhere, so it's definition is here.
+// IMPORTANT: The memory subsystem is required everywhere, so it's definition is here.
 
 enum struct AllocationType : u8 {
     UNTAGGED = 0,

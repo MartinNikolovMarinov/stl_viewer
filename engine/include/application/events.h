@@ -22,6 +22,28 @@ enum struct EventCode : u16 {
     SENTINEL
 };
 
+constexpr const char* eventCodeToCptr(EventCode code) {
+    switch (code) {
+        case EventCode::NONE:              return "NONE";
+        case EventCode::APP_QUIT:          return "APP_QUIT";
+        case EventCode::APP_KEY_DOWN:      return "APP_KEY_DOWN";
+        case EventCode::APP_KEY_UP:        return "APP_KEY_UP";
+        case EventCode::APP_MOUSE_DOWN:    return "APP_MOUSE_DOWN";
+        case EventCode::APP_MOUSE_UP:      return "APP_MOUSE_UP";
+        case EventCode::APP_MOUSE_SCROLL:  return "APP_MOUSE_SCROLL";
+        case EventCode::APP_MOUSE_MOVE:    return "APP_MOUSE_MOVE";
+        case EventCode::APP_WINDOW_RESIZE: return "APP_WINDOW_RESIZE";
+        case EventCode::APP_WINDOW_MOVE:   return "APP_WINDOW_MOVE";
+        case EventCode::APP_WINDOW_FOCUS:  return "APP_WINDOW_FOCUS";
+        case EventCode::APP_WINDOW_HIDDEN: return "APP_WINDOW_HIDDEN";
+        case EventCode::APP_MOUSE_ENTER:   return "APP_MOUSE_ENTER";
+
+        case EventCode::SENTINEL: return "UNKNOWN";
+    }
+
+    return "UNKNOWN";
+}
+
 struct Event {
     union {
         i64 _i64[2];

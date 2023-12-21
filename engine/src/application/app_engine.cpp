@@ -135,56 +135,58 @@ auto onWindowHidden = [](Event ev, void*) {
 bool registerGlobalEventHandlers() {
     // These will, probably, never be unregistered.
 
+    bool ret = true;
+
     if (!eventRegister(EventCode::APP_QUIT, nullptr, onAppQuit)) {
-        logFatal("Failed to register APP_QUIT event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_QUIT));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_KEY_DOWN, nullptr, onKeyDown)) {
-        logFatal("Failed to register APP_CODE_KEY_DOWN event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_KEY_DOWN));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_KEY_UP, nullptr, onKeyUp)) {
-        logFatal("Failed to register APP_CODE_KEY_UP event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_KEY_UP));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_MOUSE_DOWN, nullptr, onMouseDown)) {
-        logFatal("Failed to register APP_MOUSE_DOWN event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_MOUSE_DOWN));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_MOUSE_UP, nullptr, onMouseUp)) {
-        logFatal("Failed to register APP_MOUSE_UP event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_MOUSE_UP));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_MOUSE_SCROLL, nullptr, onMouseScroll)) {
-        logFatal("Failed to register APP_MOUSE_SCROLL event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_MOUSE_SCROLL));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_MOUSE_MOVE, nullptr, onMouseMove)) {
-        logFatal("Failed to register APP_MOUSE_MOVE event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_MOUSE_MOVE));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_MOUSE_ENTER, nullptr, onMouseEnter)) {
-        logFatal("Failed to register APP_MOUSE_ENTER event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_MOUSE_ENTER));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_WINDOW_RESIZE, nullptr, onWindowResize)) {
-        logFatal("Failed to register APP_RESIZE event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_WINDOW_RESIZE));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_WINDOW_MOVE, nullptr, onWindowMove)) {
-        logFatal("Failed to register APP_MOVE event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_WINDOW_MOVE));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_WINDOW_FOCUS, nullptr, onWindowFocus)) {
-        logFatal("Failed to register APP_FOCUS event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_WINDOW_FOCUS));
+        ret = false;
     }
     if (!eventRegister(EventCode::APP_WINDOW_HIDDEN, nullptr, onWindowHidden)) {
-        logFatal("Failed to register APP_HIDDEN event handler.");
-        return false;
+        logFatal("Failed to register %s event handler.", eventCodeToCptr(EventCode::APP_WINDOW_HIDDEN));
+        ret = false;
     }
 
-    return true;
+    return ret;
 }
 
 } // namespace
@@ -204,25 +206,25 @@ bool initAppEngine(i32 argc, char** argv) {
         Assert(false, "Failed to initialize logging system.");
         return false;
     }
-    logInfo("Logging system initialized.");
+    logInfo("Logging system initialized successfully.");
 
     if (!initPlt(appState.pltState)) {
         logFatal("Failed to initialize platform.");
         return false;
     }
-    logInfo("Platform initialized.");
+    logInfo("Platform initialized successfully.");
 
     if (!initEventSystem()) {
         logFatal("Failed to initialize event system.");
         return false;
     }
-    logInfo("Event system initialized.");
+    logInfo("Event system initialized successfully.");
 
+    logInfo("Registering global event handlers...");
     if (!registerGlobalEventHandlers()) {
         logFatal("Failed to register global event handlers.");
         return false;
     }
-    logInfo("Global event handlers registered.");
 
     logInfo("Application engine initialized.");
     g_isRunning.store(true);

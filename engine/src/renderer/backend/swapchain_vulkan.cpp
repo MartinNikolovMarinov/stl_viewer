@@ -175,15 +175,19 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
 }
 
 void destroySwapchain(RendererBackend& backend, VulkanSwapchain& swapchain) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan depth attachment.");
     vulkanImageDestroy(backend, swapchain.depthAttachment);
 
     // Only destroy the views, not the images, since they are owned by the swapchain and are destroyed automatically
     // when the swapchain is destroyed.
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain image views.");
     for (u32 i = 0; i < swapchain.imageCount; ++i) {
         vkDestroyImageView(backend.device.logicalDevice, swapchain.imageViews[i], backend.allocator);
     }
 
-    vkDestroySwapchainKHR(backend.device.logicalDevice, swapchain.handle, backend.allocator);
+    if (swapchain.handle) {
+        vkDestroySwapchainKHR(backend.device.logicalDevice, swapchain.handle, backend.allocator);
+    }
 }
 
 } // namespace

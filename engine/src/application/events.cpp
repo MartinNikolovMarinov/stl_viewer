@@ -34,7 +34,20 @@ bool initEventSystem() {
     return true;
 }
 
-void shutdownEventSystem() {}
+void shutdownEventSystem() {
+    if (!isInitialized) return;
+
+    core::mutexDestroy(eventFireMutex);
+
+    for (addr_size i = addr_size(EventCode::NONE) + 1; i < addr_size(EventCode::SENTINEL); i++) {
+        auto& entry = state.entries[i];
+        if (!eventUnregister(EventCode(i), entry.context, entry.handler)) {
+            logErr("Failed to unregister event handler for code: %s", eventCodeToCptr(EventCode(i)));
+        }
+    }
+
+    isInitialized = false;
+}
 
 bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
     if (!isInitialized) {
@@ -63,7 +76,7 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = handler;
     entry.context = context;
 
-    logInfo("Registered event handler for code: %d", i32(code));
+    logInfo("Registered event handler for code: %s", eventCodeToCptr(code));
     return true;
 }
 
@@ -92,6 +105,7 @@ bool eventUnregister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = nullptr;
     entry.context = nullptr;
 
+    logInfo("Unregistered event handler for code: %s", eventCodeToCptr(code));
     return true;
 }
 

@@ -50,6 +50,8 @@ bool initPlt(PlatformState& pstate) {
 }
 
 bool startPlt(const PlatformStartInfo& pstartInfo, PlatformState& pstate) {
+    logInfo("Starting GLFW platform.");
+
     GlfwPlatformState* glfwState = toGlfwPltState(pstate);
 
     // Create GLFW window
@@ -202,10 +204,18 @@ bool startPlt(const PlatformStartInfo& pstartInfo, PlatformState& pstate) {
 }
 
 void shutdownPlt(PlatformState& pstate) {
+    logInfo("Shutting down GLFW platform.");
+
     GlfwPlatformState* glfwState = toGlfwPltState(pstate);
-    glfwDestroyWindow(glfwState->glfwWindow);
+    if (glfwState) {
+        glfwDestroyWindow(glfwState->glfwWindow);
+        PlatformAllocator::free(glfwState);
+    }
+    else {
+        logWarn("GLFW state was not defined when shutting down GLFW platform. This is likely a bug.");
+    }
+
     glfwTerminate();
-    PlatformAllocator::free(glfwState);
 }
 
 bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds) {
@@ -380,7 +390,6 @@ bool pltGetKey(i32 pltKeyCode, bool& isLeft, bool& isMiddle, bool& isRight) {
 #if STLV_BACKEND_VULKAN
 
 void pltGetRequiredExtensionNames_vulkan([[maybe_unused]] ExtensionNames& names) {
-
     u32 glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
     for (u32 i = 0; i < glfwExtensionCount; ++i) {

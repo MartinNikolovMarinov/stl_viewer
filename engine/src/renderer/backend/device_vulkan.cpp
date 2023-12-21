@@ -425,7 +425,9 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
 void vulcanDeviceDestroy(RendererBackend& backend) {
     VulkanDevice& device = backend.device;
 
-    vkDestroyDevice(device.logicalDevice, nullptr);
+    if (device.logicalDevice) {
+        vkDestroyDevice(device.logicalDevice, nullptr);
+    }
 }
 
 bool vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info) {

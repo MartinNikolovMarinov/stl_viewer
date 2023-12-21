@@ -89,6 +89,7 @@ void vulkanImageViewCreate(RendererBackend& backend, VkFormat format,
 }
 
 void vulkanImageDestroy(RendererBackend& backend, VulkanImage& image) {
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan Destroying image.");
     if (image.view != nullptr) {
         vkDestroyImageView(backend.device.logicalDevice, image.view, backend.allocator);
         image.view = nullptr;

@@ -19,7 +19,9 @@ bool initLoggingSystem(LogLevel minLogLevel) {
     return true;
 }
 
-void shutdownLoggingSystem() {}
+void shutdownLoggingSystem() {
+    logInfo("Shutting down logging system");
+}
 
 void log(LogTag tag, LogLevel level, const char* format, ...) {
     if (level < minimumLogLevel) {
