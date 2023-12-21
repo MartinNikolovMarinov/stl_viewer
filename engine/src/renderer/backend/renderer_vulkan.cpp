@@ -148,6 +148,8 @@ VkDebugUtilsMessengerCreateInfoEXT createDebugMessengerInfo() {
 
 
 bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
+    logInfoTagged(LogTag::T_RENDERER, "Initializing renderer backend.");
+
     backend = {};
 
     VkApplicationInfo appInfo {};
@@ -258,7 +260,7 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     }
     logInfoTagged(LogTag::T_RENDERER, "Vulkan device created.");
 
-    logInfoTagged(LogTag::T_RENDERER, "Vulkan creating swapchain...");
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Vulkan swapchain initial creation...");
     vulkanSwapchainCreate(backend, backend.framebufferWidth, backend.framebufferHeight, backend.swapchain);
 
     return true;

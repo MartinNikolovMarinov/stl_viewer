@@ -23,23 +23,39 @@ enum struct LogTag : u8 {
     SENTINEL
 };
 
+enum struct LogSpecialMode : u8 {
+    NONE = 0,
+
+    SECTION_TITLE,
+
+    SENTINEL
+};
+
 bool initLoggingSystem(LogLevel minLogLevel);
 void shutdownLoggingSystem();
 
-STLV_EXPORT void log(LogTag tag, LogLevel level, const char* fmt, ...);
+// Event though this is exported it should not be directly used!
+STLV_EXPORT void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* format, ...);
 
-#define logTrace(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE, fmt, ##__VA_ARGS__)
-#define logDebug(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
-#define logInfo(fmt, ...)  log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
-#define logWarn(fmt, ...)  log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
-#define logErr(fmt, ...)   log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
-#define logFatal(fmt, ...) log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
+#define logTrace(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logDebug(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logInfo(format, ...)  __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logWarn(format, ...)  __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logErr(format, ...)   __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logFatal(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
 
-#define logTraceTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_TRACE, fmt, ##__VA_ARGS__)
-#define logDebugTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_DEBUG, fmt, ##__VA_ARGS__)
-#define logInfoTagged(tag, fmt, ...)  log(tag, stlv::LogLevel::L_INFO, fmt, ##__VA_ARGS__)
-#define logWarnTagged(tag, fmt, ...)  log(tag, stlv::LogLevel::L_WARNING, fmt, ##__VA_ARGS__)
-#define logErrTagged(tag, fmt, ...)   log(tag, stlv::LogLevel::L_ERROR, fmt, ##__VA_ARGS__)
-#define logFatalTagged(tag, fmt, ...) log(tag, stlv::LogLevel::L_FATAL, fmt, ##__VA_ARGS__)
+#define logTraceTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logDebugTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logInfoTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logWarnTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logErrTagged(tag, format, ...)   __log(tag, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logFatalTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+
+#define logSectionTitleTraceTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
+#define logSectionTitleDebugTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
+#define logSectionTitleInfoTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
+#define logSectionTitleWarnTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
+#define logSectionTitleErrTagged(tag, format, ...)   __log(tag, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
+#define logSectionTitleFatalTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
 
 } // namespace stlv

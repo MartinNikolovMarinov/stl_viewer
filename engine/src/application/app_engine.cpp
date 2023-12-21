@@ -192,6 +192,8 @@ bool registerGlobalEventHandlers() {
 } // namespace
 
 bool initAppEngine(i32 argc, char** argv) {
+    core::threadingSetName("Main");
+
     ApplicationState& appState = g_appState; // app state is not initialized yet so use of getAppState is not possible.
     appState = {}; // Clear the entire app state.
 
@@ -247,7 +249,7 @@ bool AppCreateInfo::isValid() {
 }
 
 bool preMainLoop() {
-    logInfo("Starting pre-main loop.");
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Starting pre-main loop.");
 
     ApplicationState& appState = g_appState;
     AppCreateInfo& createInfo = appState.createInfo;
@@ -273,11 +275,12 @@ bool preMainLoop() {
     }
     logInfo("Platform started.");
 
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Starting renderer initialization process...");
     if (!initRenderer(appState.pltState)) {
         logFatal("Failed to initialize renderer.");
         return false;
     }
-    logInfo("Renderer initialized.");
+    logInfo("Renderer initialized!");
 
     logInfo("Setting up metrics.");
     clockClear(appState.frameMetrics.runningTime);
@@ -286,7 +289,7 @@ bool preMainLoop() {
     keyboardClear(appState.keyboard);
     mouseClear(appState.mouse);
 
-    logInfo("Pre-main loop complete.");
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Pre-main loop complete.");
     appState.isInitialized = true;
     return true;
 }

@@ -398,6 +398,8 @@ void pltGetRequiredExtensionNames_vulkan([[maybe_unused]] ExtensionNames& names)
 }
 
 bool pltCreateVulkanSurface_vulkan(PlatformState& pstate, RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan surface from GLFW.");
+
     GlfwPlatformState* glfwState = toGlfwPltState(pstate);
 
     VkInstance instance = backend.instance;

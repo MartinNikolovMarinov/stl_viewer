@@ -15,7 +15,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     bool found = false;
     for (u32 i = 0; i < backend.device.swapchainSupportInfo.formats.len(); ++i) {
         VkSurfaceFormatKHR& f = backend.device.swapchainSupportInfo.formats[i];
-        if (f.format == VK_FORMAT_R8G8B8A8_UNORM && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        if (f.format == VK_FORMAT_B8G8R8A8_UNORM && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             swapchain.format = f;
             found = true;
             break;
@@ -25,6 +25,8 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     if (!found) {
         // Preferred format was not found.
         // Use the first available format and hope for the best.
+        // TODO: The selected format should be normalized, or some behaviour might be undefined. I should, probably,
+        //       just panic here.
         logWarnTagged(LogTag::T_RENDERER, "Could not find preffered swapchain format, using first available.");
         swapchain.format = backend.device.swapchainSupportInfo.formats[0];
     }
@@ -59,7 +61,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     VkExtent2D swapchainExtent = { width, height };
     VkExtent2D& currentExtent = backend.device.swapchainSupportInfo.capabilities.currentExtent;
     if (currentExtent.width != core::MAX_U32) {
-        logWarnTagged(LogTag::T_RENDERER, "Swapchain extent is not set to max u32, using current extent.");
+        logInfoTagged(LogTag::T_RENDERER, "Swapchain extent is not set to max u32, using current extent.");
         swapchainExtent = currentExtent;
     }
 
@@ -138,6 +140,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     for (u32 i = 0; i < swapchain.imageCount; i++) {
         VkImageViewCreateInfo viewCreateInfo = {};
         viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        viewCreateInfo.image = swapchain.images[i];
         viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewCreateInfo.format = swapchain.format.format;
 

@@ -31,10 +31,10 @@ i32 main(i32 argc, char** argv) {
         return -1;
     }
 
-    // if (!stlv::preMainLoop()) {
-    //     Assert(false, "Application failed before starting the main loop.")
-    //     return -1;
-    // }
+    if (!stlv::preMainLoop()) {
+        Assert(false, "Application failed before starting the main loop.")
+        return -1;
+    }
 
     i32 retCode = 0;
     // while (stlv::updateAppState(retCode)) {

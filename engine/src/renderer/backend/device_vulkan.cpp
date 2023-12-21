@@ -345,11 +345,12 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
     };
     constexpr addr_size deviceExtensionsLen = sizeof(deviceExtensions) / sizeof(deviceExtensions[0]);
 
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Selecting Vulkan physical device...");
     if (!selectPhysicalDevice(backend, deviceExtensions, deviceExtensionsLen)) {
         logErrTagged(LogTag::T_RENDERER, "Failed to select physical device.");
         return false;
     }
-    logInfoTagged(LogTag::T_RENDERER, "Physical device selected.");
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Physical device selected.");
 
     bool presentSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.presentQueueFamilyIdx;
     bool transferSharesGraphicsQueue = backend.device.graphicsQueueFamilyIdx == backend.device.transferQueueFamilyIdx;

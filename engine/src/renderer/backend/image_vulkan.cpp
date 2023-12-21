@@ -44,6 +44,7 @@ void vulkanImageCreate(RendererBackend& backend, u32 width, u32 height, VkFormat
     // Allocate memory for the image.
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = u32(memoryTypeIdx);
     VK_CHECK(
         vkAllocateMemory(backend.device.logicalDevice, &allocInfo, backend.allocator, &outImage.memory),
@@ -72,6 +73,7 @@ void vulkanImageViewCreate(RendererBackend& backend, VkFormat format,
                            VulkanImage& image, VkImageAspectFlags aspectFlags) {
     VkImageViewCreateInfo viewCreateInfo = {};
     viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewCreateInfo.image = image.handle;
     viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewCreateInfo.format = format;
     viewCreateInfo.subresourceRange.aspectMask = aspectFlags;
@@ -94,13 +96,13 @@ void vulkanImageDestroy(RendererBackend& backend, VulkanImage& image) {
         vkDestroyImageView(backend.device.logicalDevice, image.view, backend.allocator);
         image.view = nullptr;
     }
-    if (image.memory != nullptr) {
-        vkFreeMemory(backend.device.logicalDevice, image.memory, backend.allocator);
-        image.memory = nullptr;
-    }
     if (image.handle != nullptr) {
         vkDestroyImage(backend.device.logicalDevice, image.handle, backend.allocator);
         image.handle = nullptr;
+    }
+    if (image.memory != nullptr) {
+        vkFreeMemory(backend.device.logicalDevice, image.memory, backend.allocator);
+        image.memory = nullptr;
     }
 }
 
