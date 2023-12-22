@@ -5,10 +5,12 @@ namespace stlv {
 
 namespace {
 
+static constexpr u32 MAX_FRAMES_IN_FLIGHT = 2;
+
 void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwapchain& swapchain) {
     logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan swapchain...");
 
-    swapchain.maxFramesInFlight = 2; // Setting up tripple buffering.
+    swapchain.maxFramesInFlight = MAX_FRAMES_IN_FLIGHT; // Setting up tripple buffering.
 
     // Chose a preffered format for the swapchain.
 
@@ -49,8 +51,8 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     // Re-query for swapchain support.
 
     bool ok = vulkanDeviceQuerySwapchainSupport(backend.device.physicalDevice,
-                                    backend.surface,
-                                    backend.device.swapchainSupportInfo);
+                                                backend.surface,
+                                                backend.device.swapchainSupportInfo);
     if (!ok) {
         // This is not good, but don't panic the program. Lets assume that the same supported info is still valid.
         logErrTagged(LogTag::T_RENDERER, "Failed to re-query swapchain support during swapchain creation.");
@@ -180,6 +182,8 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
 void destroySwapchain(RendererBackend& backend, VulkanSwapchain& swapchain) {
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
 
+    vkDeviceWaitIdle(backend.device.logicalDevice);
+
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan depth attachment.");
     vulkanImageDestroy(backend, swapchain.depthAttachment);
 
@@ -211,7 +215,7 @@ void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain
 }
 
 bool vulkanSwapchainAcquireNextImageIdx(RendererBackend& backend, VulkanSwapchain& swapchain, u64 timeoutNs,
-                                  VkSemaphore imageAvailableSemaphore, VkFence fence, u32& imageIdx) {
+                                        VkSemaphore imageAvailableSemaphore, VkFence fence, u32& imageIdx) {
     VkResult res = vkAcquireNextImageKHR(backend.device.logicalDevice, swapchain.handle,
                                          timeoutNs, imageAvailableSemaphore, fence, &imageIdx);
     if (res == VK_SUCCESS) return true;
@@ -253,6 +257,9 @@ void vulkanSwapchainPresent(RendererBackend& backend, VulkanSwapchain& swapchain
         logErrTagged(LogTag::T_RENDERER, "Failed to present swapchain image, result error code: %d", i32(result));
         Assert(false, "Failed to present swapchain image");
     }
+
+    // Increment the current frame index.
+    backend.currentFrame = (backend.currentFrame + 1) % swapchain.maxFramesInFlight;
 }
 
 } // namespace stlv

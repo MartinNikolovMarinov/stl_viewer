@@ -37,11 +37,11 @@ i32 main(i32 argc, char** argv) {
     }
 
     i32 retCode = 0;
-    // while (stlv::updateAppState(retCode)) {
-    //     if (!updateApp(stlv::getAppState())) {
-    //         break;
-    //     }
-    // }
+    while (stlv::updateAppState(retCode)) {
+        if (!updateApp(stlv::getAppState())) {
+            break;
+        }
+    }
 
     shutdownApp();
     stlv::shutdownAppEngine();

@@ -95,6 +95,15 @@ auto onWindowResize = [](Event ev, void*) {
     if (!s) return false;
     s->windowHeight = ev.data._u32[0];
     s->windowWidth = ev.data._u32[1];
+    bool changed = s->windowWidth != ev.data._u32[0] || s->windowHeight != ev.data._u32[1];
+    bool notZero = s->windowWidth > 0 && s->windowHeight > 0;
+    if (changed && notZero) {
+        g_isSuspended.store(false);
+        rendererOnResize(s->windowWidth, s->windowHeight);
+    }
+    if (!notZero) {
+        g_isSuspended.store(true);
+    }
     return true;
 };
 

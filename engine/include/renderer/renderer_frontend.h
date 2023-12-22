@@ -9,7 +9,7 @@ struct PlatformState;
 bool initRenderer(PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight);
 void shutdownRenderer();
 
-void rendererOnResize(i32, i32);
+void rendererOnResize(u32 width, u32 height);
 
 struct RenderPacket {
     f64 deltaTime;

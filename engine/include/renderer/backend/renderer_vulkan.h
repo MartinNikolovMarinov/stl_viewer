@@ -7,19 +7,22 @@
 
 namespace stlv {
 
+bool vulkanResultIsSuccess(VkResult result);
+const char* vulkanResultToCptr(VkResult result, bool extended);
+
 #define VK_EXPECT_OR_RETURN(expr, msg)                                 \
-    if (VkResult res = (expr); res != VK_SUCCESS) {                    \
+    if (VkResult res = (expr); !vulkanResultIsSuccess(res)) {          \
         logErrTagged(LogTag::T_RENDERER,                               \
                     "Vulkan expect failed: %s, result error code: %d", \
-                    (msg), i32(res));                                  \
+                    (msg), vulkanResultToCptr(res, true));             \
         return false;                                                  \
     }
 
-#define VK_EXPECT(expr, msg)                                             \
-    if (VkResult res = (expr); res != VK_SUCCESS) {                     \
+#define VK_EXPECT(expr, msg)                                            \
+    if (VkResult res = (expr); !vulkanResultIsSuccess(res)) {           \
         logFatalTagged(LogTag::T_RENDERER,                              \
                       "Vulkan check failed: %s, result error code: %d", \
-                      (msg), i32(res));                                 \
+                      (msg), vulkanResultToCptr(res, true));            \
         Panic(res == VK_SUCCESS, (msg));                                \
     }
 
@@ -191,8 +194,12 @@ struct VulkanFence {
     bool isSignaled;
 };
 
-using VulkanFenceList = core::Arr<VulkanFence, RendererBackendAllocator>;
-using VulkanFencesForImagesInFlightList = core::Arr<VulkanFenceList*, RendererBackendAllocator>;
+struct VulkanInFlightFence {
+    VulkanFence fence;
+    bool inFlight;
+};
+
+using VulkanInFlightFenceList = core::Arr<VulkanInFlightFence, RendererBackendAllocator>;
 
 void vulkanFenceCreate(RendererBackend& backend, bool isSignaled, VulkanFence& outFence);
 void vulkanFenceDestroy(RendererBackend& backend, VulkanFence& fence);
@@ -206,6 +213,8 @@ struct RendererBackend {
 
     u32 framebufferWidth;
     u32 framebufferHeight;
+    addr_size frameBufferSizeGeneration;
+    addr_size frameBufferSizeLastGeneration;
 
 #if STLV_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -214,7 +223,7 @@ struct RendererBackend {
     VulkanDevice device;
 
     VulkanSwapchain swapchain;
-    u32 imageIndx;
+    u32 imageIdx;
     u32 currentFrame;
     bool recreatingSwapchain;
     VulkanRenderPass mainRenderPass;
@@ -222,8 +231,7 @@ struct RendererBackend {
     VulkanCommandBufferList graphicsCmdBuffers;
 
     u32 inFlightFenceCount;
-    VulkanFenceList inFlightFences;
-    VulkanFencesForImagesInFlightList fencesForImagesInFlight;
+    VulkanInFlightFenceList inFlightFences;
     VkSemaphoreList imageAvailableSemaphores;
     VkSemaphoreList queueCompleteSemaphores;
 

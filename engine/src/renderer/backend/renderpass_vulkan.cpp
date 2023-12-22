@@ -126,10 +126,10 @@ void vulkanRenderpassDestroy(RendererBackend& backend, VulkanRenderPass& renderP
 void vulkanRenderpassBegin(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer, VkFramebuffer framebuffer) {
     VkClearValue clearValues[2] = {};
     clearValues[0].color = {
-        renderPass.clearColor.x(),
-        renderPass.clearColor.y(),
-        renderPass.clearColor.z(),
-        renderPass.clearColor.w()
+        renderPass.clearColor.r(),
+        renderPass.clearColor.g(),
+        renderPass.clearColor.b(),
+        renderPass.clearColor.a()
     };
     clearValues[1].depthStencil = { renderPass.depth, renderPass.stencil };
 

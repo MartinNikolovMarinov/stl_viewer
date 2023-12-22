@@ -5,29 +5,29 @@ namespace stlv {
 
 namespace {
 
-RendererBackend backend;
+RendererBackend g_backend;
 
 }; // namespace
 
 bool initRenderer(PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight) {
     logInfoTagged(LogTag::T_RENDERER, "Initializing renderer frontend.");
-    bool ret = initRendererBE(backend, pltState, frameBufferWidth, frameBufferHeight);
+    bool ret = initRendererBE(g_backend, pltState, frameBufferWidth, frameBufferHeight);
     return ret;
 }
 
 void shutdownRenderer() {
     logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer frontend.");
-    shutdownRendererBE(backend);
+    shutdownRendererBE(g_backend);
 }
 
-void rendererOnResize(i32, i32) {
-    Assert(false, "TODO: Not implemented.");
+void rendererOnResize(u32 width, u32 height) {
+    rendererOnResizeBE(g_backend, width, height);
 }
 
 void rendererDrawFrame(RenderPacket& packet) {
-    bool ret = beginFrameRendererBE(backend, packet.deltaTime);
+    bool ret = beginFrameRendererBE(g_backend, packet.deltaTime);
     if (ret) {
-        ret = endFrameRendererBE(backend, packet.deltaTime);
+        ret = endFrameRendererBE(g_backend, packet.deltaTime);
         Panic(ret, "[BUG] Failed to end frame.");
     }
 }
