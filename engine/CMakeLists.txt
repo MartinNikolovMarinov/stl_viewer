@@ -37,6 +37,7 @@ if (STLV_BACKEND_VULKAN)
         src/renderer/backend/device_vulkan.cpp
         src/renderer/backend/swapchain_vulkan.cpp
         src/renderer/backend/image_vulkan.cpp
+        src/renderer/backend/renderpass_vulkan.cpp
     )
 else()
     message(FATAL_ERROR "Only Vulkan is supported at the moment.")

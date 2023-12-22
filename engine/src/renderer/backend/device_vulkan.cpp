@@ -423,7 +423,9 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
     return true;
 }
 
-void vulcanDeviceDestroy(RendererBackend& backend) {
+void  vulcanDeviceDestroy(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
+
     VulkanDevice& device = backend.device;
 
     if (device.logicalDevice) {

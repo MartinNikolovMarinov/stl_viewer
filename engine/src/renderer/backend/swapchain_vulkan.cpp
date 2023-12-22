@@ -16,7 +16,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     for (u32 i = 0; i < backend.device.swapchainSupportInfo.formats.len(); ++i) {
         VkSurfaceFormatKHR& f = backend.device.swapchainSupportInfo.formats[i];
         if (f.format == VK_FORMAT_B8G8R8A8_UNORM && f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            swapchain.format = f;
+            swapchain.imageFormat = f;
             found = true;
             break;
         }
@@ -28,7 +28,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
         // TODO: The selected format should be normalized, or some behaviour might be undefined. I should, probably,
         //       just panic here.
         logWarnTagged(LogTag::T_RENDERER, "Could not find preffered swapchain format, using first available.");
-        swapchain.format = backend.device.swapchainSupportInfo.formats[0];
+        swapchain.imageFormat = backend.device.swapchainSupportInfo.formats[0];
     }
 
     // Choose a preffered preset mode for the swapchain.
@@ -78,8 +78,8 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.surface = backend.surface;
     createInfo.minImageCount = imageCount;
-    createInfo.imageFormat = swapchain.format.format;
-    createInfo.imageColorSpace = swapchain.format.colorSpace;
+    createInfo.imageFormat = swapchain.imageFormat.format;
+    createInfo.imageColorSpace = swapchain.imageFormat.colorSpace;
     createInfo.imageExtent = swapchainExtent;
     createInfo.imageArrayLayers = 1;
     // VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT specifies that the image can be used to create a VkImageView suitable for use
@@ -142,7 +142,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
         viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         viewCreateInfo.image = swapchain.images[i];
         viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        viewCreateInfo.format = swapchain.format.format;
+        viewCreateInfo.format = swapchain.imageFormat.format;
 
         viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         viewCreateInfo.subresourceRange.baseMipLevel = 0;
@@ -178,6 +178,8 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
 }
 
 void destroySwapchain(RendererBackend& backend, VulkanSwapchain& swapchain) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
+
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan depth attachment.");
     vulkanImageDestroy(backend, swapchain.depthAttachment);
 

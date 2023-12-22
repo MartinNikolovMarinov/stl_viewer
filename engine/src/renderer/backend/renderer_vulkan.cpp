@@ -263,16 +263,22 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     logSectionTitleInfoTagged(LogTag::T_RENDERER, "Vulkan swapchain initial creation...");
     vulkanSwapchainCreate(backend, backend.framebufferWidth, backend.framebufferHeight, backend.swapchain);
 
+    constexpr core::vec4f clearColor = core::v(0.0f, 0.0f, 0.4f, 1.0f);
+    vulkanRenderpassCreate(backend, backend.mainRenderPass,
+                           0, 0, f32(backend.framebufferWidth), f32(backend.framebufferHeight),
+                           clearColor, 1.0f, 0);
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan renderpass created.");
+
     return true;
 }
 
 void shutdownRendererBE(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
 
-    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
+    vulkanRenderpassDestroy(backend, backend.mainRenderPass);
+
     vulkanSwapchainDestroy(backend, backend.swapchain);
 
-    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
     vulcanDeviceDestroy(backend);
 
 #if STLV_DEBUG

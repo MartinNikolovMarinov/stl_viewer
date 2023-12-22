@@ -76,7 +76,7 @@ void vulkanImageViewCreate(RendererBackend& backend, VkFormat format,
 void vulkanImageDestroy(RendererBackend& backend, VulkanImage& image);
 
 struct VulkanSwapchain {
-    VkSurfaceFormatKHR format;
+    VkSurfaceFormatKHR imageFormat;
     u32 maxFramesInFlight;
     VkSwapchainKHR handle;
     u32 imageCount;
@@ -94,6 +94,54 @@ bool vulkanSwapchainAcquireNextImageIdx(RendererBackend& backend, VulkanSwapchai
 void vulkanSwapchainPresent(RendererBackend& backend, VulkanSwapchain& swapchain,
                             VkQueue graphicsQueue, VkQueue presentQueue,
                             VkSemaphore renderCompleteSemaphore, u32 imageIdx);
+
+enum struct VulkanCommandBufferState {
+    NOT_ALLOCATED = 0,
+
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+
+    SENTINEL
+};
+
+struct VulkanCommandBuffer {
+    VkCommandBuffer handle;
+    VulkanCommandBufferState state;
+};
+
+enum struct VulkanRenderPassState {
+    NOT_ALLOCATED = 0,
+
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+
+    SENTINEL
+};
+
+struct VulkanRenderPass {
+    VkRenderPass handle;
+    f32 x, y, w, h;
+    core::vec4f clearColor;
+    f32 depth;
+    u32 stencil;
+
+    VulkanRenderPassState state;
+};
+
+void vulkanRenderpassCreate(RendererBackend& backend,
+                            VulkanRenderPass& renderPass,
+                            f32 x, f32 y, f32 w, f32 h,
+                            const core::vec4f& clearColor,
+                            f32 depth, u32 stencil);
+void vulkanRenderpassDestroy(RendererBackend& backend, VulkanRenderPass& renderPass);
+void vulkanRenderpassBegin(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer, VkFramebuffer framebuffer);
+void vulkanRenderpassEnd(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer);
 
 struct RendererBackend {
     VkInstance instance;
@@ -113,6 +161,7 @@ struct RendererBackend {
     u32 imageIndx;
     u32 currentFrame;
     bool recreatingSwapchain;
+    VulkanRenderPass mainRenderPass;
 
     i32 findMemoryTypeIndex(u32 memoryTypeBits, VkMemoryPropertyFlags memoryFlags);
 };
