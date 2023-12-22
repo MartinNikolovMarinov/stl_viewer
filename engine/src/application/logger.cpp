@@ -78,9 +78,15 @@ void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName
     }
 
     // Print Message
-    printf("%s: %s\n", funcName, loggingBuffer);
     if (mode == LogSpecialMode::SECTION_TITLE) {
-        printf(ANSI_BOLD(ANSI_BRIGHT_WHITE("------------------------------------------------------------\n")));
+        constexpr const char* separator = ANSI_BOLD(ANSI_BRIGHT_WHITE("---------------------------------------------------------------------"));
+        printf(" _fn_(%s):\n", funcName);
+        printf("%s\n", separator);
+        printf("%s\n", loggingBuffer);
+        printf("%s\n", separator);
+    }
+    else {
+        printf(" _fn_(%s): %s\n", funcName, loggingBuffer);
     }
 }
 
