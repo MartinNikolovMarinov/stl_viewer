@@ -197,13 +197,13 @@ bool isSwapchainSupported(VkPhysicalDevice pdevice,
     }
 
     u32 availableExtentionsCount = 0;
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumerateDeviceExtensionProperties(pdevice, nullptr, &availableExtentionsCount, nullptr),
         "Failed to get surface present modes."
     );
 
     VkExtensionProperties availableDeviceExtensions[availableExtentionsCount];
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumerateDeviceExtensionProperties(pdevice, nullptr, &availableExtentionsCount, availableDeviceExtensions),
         "Failed to get surface present modes."
     );
@@ -229,7 +229,7 @@ bool isSwapchainSupported(VkPhysicalDevice pdevice,
 
 bool selectPhysicalDevice(RendererBackend& backend, const char** deviceExtensions, addr_size deviceExtensionsLen) {
     u32 physicalDeviceCount = 0;
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumeratePhysicalDevices(backend.instance, &physicalDeviceCount, nullptr),
         "Failed to enumerate physical devices."
     );
@@ -239,7 +239,7 @@ bool selectPhysicalDevice(RendererBackend& backend, const char** deviceExtension
     }
 
     VkPhysicalDevice physicalDevices[physicalDeviceCount];
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumeratePhysicalDevices(backend.instance, &physicalDeviceCount, physicalDevices),
         "Failed to enumerate physical devices."
     );
@@ -395,7 +395,7 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
     deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions;
     deviceCreateInfo.enabledExtensionCount = deviceExtensionsLen;
 
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkCreateDevice(backend.device.physicalDevice, &deviceCreateInfo, nullptr, &backend.device.logicalDevice),
         "Failed to create logical device."
     );
@@ -434,13 +434,13 @@ void  vulcanDeviceDestroy(RendererBackend& backend) {
 }
 
 bool vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info) {
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice, surface, &info.capabilities),
         "Failed to get surface capabilities."
     );
 
     u32 formatCount = 0;
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &formatCount, nullptr),
         "Failed to get surface formats."
     );
@@ -448,14 +448,14 @@ bool vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR su
         if (info.formats.len() < formatCount) {
             info.formats = VkSurfaceFormatKHRList (formatCount);
         }
-        VK_EXPECT(
+        VK_EXPECT_OR_RETURN(
             vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, surface, &formatCount, info.formats.data()),
             "Failed to get surface formats."
         );
     }
 
     u32 presentModeCount = 0;
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, surface, &presentModeCount, nullptr),
         "Failed to get surface present modes."
     );
@@ -463,7 +463,7 @@ bool vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR su
         if (info.presentModes.len() < presentModeCount) {
             info.presentModes = VkPresentModeKHRList (presentModeCount);
         }
-        VK_EXPECT(
+        VK_EXPECT_OR_RETURN(
             vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, surface, &presentModeCount, info.presentModes.data()),
             "Failed to get surface present modes."
         );

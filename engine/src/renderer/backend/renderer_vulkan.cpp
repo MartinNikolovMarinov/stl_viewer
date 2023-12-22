@@ -66,12 +66,12 @@ VkBool32 debugCallback (
 
 bool verifyExtensionsAreSupported(const ExtensionNames& extNames) {
     u32 allSupportedExtCount = 0;
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumerateInstanceExtensionProperties(nullptr, &allSupportedExtCount, nullptr),
         "Failed to enumerate Vulkan instance extensions."
     );
     VkExtensionProperties allSupportedExt[allSupportedExtCount];
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumerateInstanceExtensionProperties(nullptr, &allSupportedExtCount, allSupportedExt),
         "Failed to enumerate Vulkan instance extensions."
     );
@@ -98,12 +98,12 @@ bool verifyExtensionsAreSupported(const ExtensionNames& extNames) {
 
 bool verifyLayersAreSupported(const char** layers, addr_size layersCount) {
     u32 availableLayersCount = 0;
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumerateInstanceLayerProperties(&availableLayersCount, nullptr),
         "Failed to enumerate Vulkan instance layers."
     );
     VkLayerProperties availableLayers[availableLayersCount];
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkEnumerateInstanceLayerProperties(&availableLayersCount, availableLayers),
         "Failed to enumerate Vulkan instance layers."
     );
@@ -230,14 +230,14 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
     logInfoTagged(LogTag::T_RENDERER, "Vulkan validation layers DISABLED.");
 #endif
 
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         vkCreateInstance(&instanceInfo, backend.allocator, &backend.instance),
         "Failed to create Vulkan instance."
     );
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Instance created.");
 
 #if STLV_DEBUG
-    VK_EXPECT(
+    VK_EXPECT_OR_RETURN(
         call_vkCreateDebugUtilsMessengerEXT(backend.instance,
                                             &debugMessengerInfo,
                                             backend.allocator,

@@ -7,7 +7,7 @@
 
 namespace stlv {
 
-#define VK_EXPECT(expr, msg)                                           \
+#define VK_EXPECT_OR_RETURN(expr, msg)                                 \
     if (VkResult res = (expr); res != VK_SUCCESS) {                    \
         logErrTagged(LogTag::T_RENDERER,                               \
                     "Vulkan expect failed: %s, result error code: %d", \
@@ -15,7 +15,7 @@ namespace stlv {
         return false;                                                  \
     }
 
-#define VK_CHECK(expr, msg)                                             \
+#define VK_EXPECT(expr, msg)                                             \
     if (VkResult res = (expr); res != VK_SUCCESS) {                     \
         logFatalTagged(LogTag::T_RENDERER,                              \
                       "Vulkan check failed: %s, result error code: %d", \

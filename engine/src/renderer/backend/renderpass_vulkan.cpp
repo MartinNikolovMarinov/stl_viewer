@@ -108,7 +108,7 @@ void vulkanRenderpassCreate(RendererBackend& backend,
     renderPassCreateInfo.pNext = nullptr;
     renderPassCreateInfo.flags = 0;
 
-    VK_CHECK(
+    VK_EXPECT(
         vkCreateRenderPass(backend.device.logicalDevice, &renderPassCreateInfo, backend.allocator, &renderPass.handle),
         "Failed to create render pass."
     );

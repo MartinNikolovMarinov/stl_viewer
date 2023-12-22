@@ -105,7 +105,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     createInfo.oldSwapchain = VK_NULL_HANDLE; // TODO: Try using the old swapchain.
 
     // Create the swapchain:
-    VK_CHECK(
+    VK_EXPECT(
         vkCreateSwapchainKHR(backend.device.logicalDevice, &createInfo, backend.allocator, &swapchain.handle),
         "Failed to create swapchain"
     )
@@ -115,7 +115,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
 
     // Get the number of images in the swapchain:
     swapchain.imageCount = 0;
-    VK_CHECK(
+    VK_EXPECT(
         vkGetSwapchainImagesKHR(backend.device.logicalDevice, swapchain.handle, &swapchain.imageCount, nullptr),
         "Failed to get swapchain image count"
     )
@@ -131,7 +131,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
     }
 
     // Get the swapchain images.
-    VK_CHECK(
+    VK_EXPECT(
         vkGetSwapchainImagesKHR(backend.device.logicalDevice, swapchain.handle, &swapchain.imageCount, swapchain.images),
         "Failed to get swapchain images"
     )
@@ -150,7 +150,7 @@ void createSwapchain(RendererBackend& backend, u32 width, u32 height, VulkanSwap
         viewCreateInfo.subresourceRange.baseArrayLayer = 0;
         viewCreateInfo.subresourceRange.layerCount = 1;
 
-        VK_CHECK(
+        VK_EXPECT(
             vkCreateImageView(backend.device.logicalDevice, &viewCreateInfo, backend.allocator, &swapchain.imageViews[i]),
             "Failed to create swapchain image view"
         )

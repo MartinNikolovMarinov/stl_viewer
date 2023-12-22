@@ -25,7 +25,7 @@ void vulkanImageCreate(RendererBackend& backend, u32 width, u32 height, VkFormat
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT; // TODO: Support multisampling.
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // TODO: Support concurrent sharing.
 
-    VK_CHECK(
+    VK_EXPECT(
         vkCreateImage(backend.device.logicalDevice, &imageInfo, backend.allocator, &outImage.handle),
         "Failed to create image."
     );
@@ -46,14 +46,14 @@ void vulkanImageCreate(RendererBackend& backend, u32 width, u32 height, VkFormat
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
     allocInfo.memoryTypeIndex = u32(memoryTypeIdx);
-    VK_CHECK(
+    VK_EXPECT(
         vkAllocateMemory(backend.device.logicalDevice, &allocInfo, backend.allocator, &outImage.memory),
         "Failed to allocate image memory."
     );
 
     // Bind the memory
     VkDeviceSize memoryOffset = 0; // TODO: Will need this for image pooling.
-    VK_CHECK(
+    VK_EXPECT(
         vkBindImageMemory(backend.device.logicalDevice, outImage.handle, outImage.memory, memoryOffset),
         "Failed to bind image memory."
     );
@@ -84,7 +84,7 @@ void vulkanImageViewCreate(RendererBackend& backend, VkFormat format,
     viewCreateInfo.subresourceRange.baseArrayLayer = 0;
     viewCreateInfo.subresourceRange.layerCount = 1;
 
-    VK_CHECK(
+    VK_EXPECT(
         vkCreateImageView(backend.device.logicalDevice, &viewCreateInfo, backend.allocator, &image.view),
         "Failed to create image view."
     );
