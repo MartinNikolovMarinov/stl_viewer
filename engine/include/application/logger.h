@@ -35,27 +35,27 @@ bool initLoggingSystem(LogLevel minLogLevel);
 void shutdownLoggingSystem();
 
 // Event though this is exported it should not be directly used!
-STLV_EXPORT void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* format, ...);
+STLV_EXPORT void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName, const char* format, ...);
 
-#define logTrace(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logDebug(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logInfo(format, ...)  __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logWarn(format, ...)  __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logErr(format, ...)   __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logFatal(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logTrace(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logDebug(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logInfo(format, ...)  __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logWarn(format, ...)  __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logErr(format, ...)   __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logFatal(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
 
-#define logTraceTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logDebugTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logInfoTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logWarnTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logErrTagged(tag, format, ...)   __log(tag, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
-#define logFatalTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::NONE, format, ##__VA_ARGS__)
+#define logTraceTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logDebugTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logInfoTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logWarnTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logErrTagged(tag, format, ...)   __log(tag, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
+#define logFatalTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
 
-#define logSectionTitleTraceTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
-#define logSectionTitleDebugTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
-#define logSectionTitleInfoTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
-#define logSectionTitleWarnTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
-#define logSectionTitleErrTagged(tag, format, ...)   __log(tag, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
-#define logSectionTitleFatalTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::SECTION_TITLE, format, ##__VA_ARGS__)
+#define logSectionTitleTraceTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::SECTION_TITLE, __func__, format, ##__VA_ARGS__)
+#define logSectionTitleDebugTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::SECTION_TITLE, __func__, format, ##__VA_ARGS__)
+#define logSectionTitleInfoTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_INFO,    stlv::LogSpecialMode::SECTION_TITLE, __func__, format, ##__VA_ARGS__)
+#define logSectionTitleWarnTagged(tag, format, ...)  __log(tag, stlv::LogLevel::L_WARNING, stlv::LogSpecialMode::SECTION_TITLE, __func__, format, ##__VA_ARGS__)
+#define logSectionTitleErrTagged(tag, format, ...)   __log(tag, stlv::LogLevel::L_ERROR,   stlv::LogSpecialMode::SECTION_TITLE, __func__, format, ##__VA_ARGS__)
+#define logSectionTitleFatalTagged(tag, format, ...) __log(tag, stlv::LogLevel::L_FATAL,   stlv::LogSpecialMode::SECTION_TITLE, __func__, format, ##__VA_ARGS__)
 
 } // namespace stlv

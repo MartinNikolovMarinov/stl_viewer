@@ -39,7 +39,7 @@ bool core::eq(const u32& a, const u32& b) {
 }
 
 bool initCore(i32, char**) {
-    core::setGlobalAssertHandler([](const char* failedExpr, const char* file, i32 line, const char* errMsg) {
+    core::setGlobalAssertHandler([](const char* failedExpr, const char* file, i32 line, const char* funcName, const char* errMsg) {
         constexpr u32 stackFramesToSkip = 3;
         constexpr addr_size stackTraceBufferSize = 4096;
         char trace[stackTraceBufferSize] = {};
@@ -48,10 +48,11 @@ bool initCore(i32, char**) {
 
         fprintf(stderr,
                 ANSI_BOLD(ANSI_RED("[ASSERTION] [EXPR]:")) ANSI_BOLD(" %s\n")
+                ANSI_BOLD(ANSI_RED("[FUNC]:"))             ANSI_BOLD(" %s\n")
                 ANSI_BOLD(ANSI_RED("[FILE]:"))             ANSI_BOLD(" %s:%d\n")
                 ANSI_BOLD(ANSI_RED("[MSG]:"))              ANSI_BOLD(" %s\n"),
 
-                failedExpr, file, line, errMsg
+                failedExpr, funcName, file, line, errMsg
         );
 
         fprintf(stderr, ANSI_BOLD("[TRACE]:\n%s\n"), trace);

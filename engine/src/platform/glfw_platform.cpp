@@ -55,8 +55,8 @@ bool startPlt(const PlatformStartInfo& pstartInfo, PlatformState& pstate) {
     GlfwPlatformState* glfwState = toGlfwPltState(pstate);
 
     // Create GLFW window
-    auto w = pstartInfo.windowWidth;
-    auto h = pstartInfo.windowHeight;
+    i32 w = i32(pstartInfo.windowWidth);
+    i32 h = i32(pstartInfo.windowHeight);
     auto title = pstartInfo.windowTitle;
     glfwState->glfwWindow = glfwCreateWindow(w, h, title, nullptr, nullptr);
     if (!glfwState->glfwWindow) {
@@ -142,8 +142,8 @@ bool startPlt(const PlatformStartInfo& pstartInfo, PlatformState& pstate) {
 
     glfwSetFramebufferSizeCallback(glfwState->glfwWindow, [](GLFWwindow*, i32 width, i32 height) {
         Event ev;
-        ev.data._i32[0] = width;
-        ev.data._i32[1] = height;
+        ev.data._u32[0] = u32(width);
+        ev.data._u32[1] = u32(height);
         eventFire(EventCode::APP_WINDOW_RESIZE, ev);
     });
     if (i32 errCode = glfwGetError(&errDesc); errCode != GLFW_NO_ERROR) {

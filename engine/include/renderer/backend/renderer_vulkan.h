@@ -25,6 +25,7 @@ namespace stlv {
 
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
+using VkSemaphoreList = core::Arr<VkSemaphore, RendererBackendAllocator>;
 
 struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -185,6 +186,19 @@ void vulkanFrameBufferCreate(RendererBackend& backend,
                              VulkanFrameBuffer& outFrameBuffer);
 void vulkanFrameBufferDestroy(RendererBackend& backend, VulkanFrameBuffer& frameBuffer);
 
+struct VulkanFence {
+    VkFence handle;
+    bool isSignaled;
+};
+
+using VulkanFenceList = core::Arr<VulkanFence, RendererBackendAllocator>;
+using VulkanFencesForImagesInFlightList = core::Arr<VulkanFenceList*, RendererBackendAllocator>;
+
+void vulkanFenceCreate(RendererBackend& backend, bool isSignaled, VulkanFence& outFence);
+void vulkanFenceDestroy(RendererBackend& backend, VulkanFence& fence);
+bool vulkanFenceWait(RendererBackend& backend, VulkanFence& fence, u64 timeoutNs);
+void vulkanFenceReset(RendererBackend& backend, VulkanFence& fence);
+
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
@@ -206,6 +220,12 @@ struct RendererBackend {
     VulkanRenderPass mainRenderPass;
 
     VulkanCommandBufferList graphicsCmdBuffers;
+
+    u32 inFlightFenceCount;
+    VulkanFenceList inFlightFences;
+    VulkanFencesForImagesInFlightList fencesForImagesInFlight;
+    VkSemaphoreList imageAvailableSemaphores;
+    VkSemaphoreList queueCompleteSemaphores;
 
     i32 findMemoryTypeIndex(u32 memoryTypeBits, VkMemoryPropertyFlags memoryFlags);
 };

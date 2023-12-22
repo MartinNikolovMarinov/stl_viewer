@@ -23,7 +23,7 @@ void shutdownLoggingSystem() {
     logInfo("Shutting down logging system");
 }
 
-void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* format, ...) {
+void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName, const char* format, ...) {
     if (level < minimumLogLevel) {
         // silence
         return;
@@ -78,7 +78,7 @@ void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* format, 
     }
 
     // Print Message
-    printf(" %s\n", loggingBuffer);
+    printf("%s: %s\n", funcName, loggingBuffer);
     if (mode == LogSpecialMode::SECTION_TITLE) {
         printf(ANSI_BOLD(ANSI_BRIGHT_WHITE("------------------------------------------------------------\n")));
     }

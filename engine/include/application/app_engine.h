@@ -9,8 +9,8 @@
 namespace stlv {
 
 struct AppCreateInfo {
-    i32 startWindowWidth;
-    i32 startWindowHeight;
+    u32 startWindowWidth;
+    u32 startWindowHeight;
     const char* windowTitle;
 
     bool capFrameRate;
@@ -51,8 +51,8 @@ struct ApplicationState {
 
     Keyboard keyboard;
     Mouse mouse;
-    i32 windowWidth;
-    i32 windowHeight;
+    u32 windowWidth;
+    u32 windowHeight;
 };
 
 /**

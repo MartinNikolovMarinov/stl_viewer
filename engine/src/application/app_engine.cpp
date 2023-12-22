@@ -93,8 +93,8 @@ auto onMouseEnter = [](Event ev, void*) {
 auto onWindowResize = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    s->windowHeight = ev.data._i32[0];
-    s->windowWidth = ev.data._i32[1];
+    s->windowHeight = ev.data._u32[0];
+    s->windowWidth = ev.data._u32[1];
     return true;
 };
 

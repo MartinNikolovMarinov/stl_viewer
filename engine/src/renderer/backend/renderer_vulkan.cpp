@@ -203,9 +203,66 @@ void destroyFrameBuffers(RendererBackend& backend) {
     }
 }
 
-} // namespace
+void createSyncObjects(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan sync objects...");
 
-extern core::tuple<u32, u32> getAppFrameBufferSize();
+    backend.imageAvailableSemaphores.fill(VK_NULL_HANDLE, 0, backend.swapchain.maxFramesInFlight);
+    backend.queueCompleteSemaphores.fill(VK_NULL_HANDLE, 0, backend.swapchain.maxFramesInFlight);
+    backend.inFlightFences.fill(VulkanFence{}, 0, backend.swapchain.maxFramesInFlight);
+
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; i++) {
+        VkSemaphoreCreateInfo semaphoreInfo = {};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        semaphoreInfo.pNext = nullptr;
+        semaphoreInfo.flags = 0;
+
+        {
+            VkSemaphore& semaphore = backend.imageAvailableSemaphores[i];
+            VK_EXPECT(
+                vkCreateSemaphore(backend.device.logicalDevice, &semaphoreInfo, backend.allocator, &semaphore),
+                "Failed to create Vulkan image available semaphore."
+            );
+        }
+        {
+            VkSemaphore& semaphore = backend.queueCompleteSemaphores[i];
+            VK_EXPECT(
+                vkCreateSemaphore(backend.device.logicalDevice, &semaphoreInfo, backend.allocator, &semaphore),
+                "Failed to create Vulkan queue complete semaphore."
+            );
+        }
+
+        // The in flight fences are created in the signaled state set to true.
+        // This is done to prevent blocking forever on the first frame.
+        VulkanFence& fence = backend.inFlightFences[i];
+        vulkanFenceCreate(backend, true, fence);
+    }
+
+    backend.fencesForImagesInFlight.fill(nullptr, 0, backend.swapchain.imageCount);
+}
+
+void destroySyncObjects(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan sync objects...");
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan image available semaphores...");
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; i++) {
+        VkSemaphore& semaphore = backend.imageAvailableSemaphores[i];
+        vkDestroySemaphore(backend.device.logicalDevice, semaphore, backend.allocator);
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan queue complete semaphores...");
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; i++) {
+        VkSemaphore& semaphore = backend.queueCompleteSemaphores[i];
+        vkDestroySemaphore(backend.device.logicalDevice, semaphore, backend.allocator);
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan in flight fences...");
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; i++) {
+        VulkanFence& fence = backend.inFlightFences[i];
+        vulkanFenceDestroy(backend, fence);
+    }
+}
+
+} // namespace
 
 bool initRendererBE(RendererBackend& backend, PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight) {
     logInfoTagged(LogTag::T_RENDERER, "Initializing renderer backend.");
@@ -339,11 +396,19 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState, u32 frame
     createCommandBuffers(backend);
     logInfoTagged(LogTag::T_RENDERER, "Vulkan command buffers created.");
 
+    createSyncObjects(backend);
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan created sync objects.");
+
     return true;
 }
 
 void shutdownRendererBE(RendererBackend& backend) {
-    logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
+
+    logInfoTagged(LogTag::T_RENDERER, "Waiting for Vulkan device to become idle...");
+    vkDeviceWaitIdle(backend.device.logicalDevice);
+
+    destroySyncObjects(backend);
 
     destroyFrameBuffers(backend);
 

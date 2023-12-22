@@ -11,8 +11,8 @@ struct PlatformState {
 };
 
 struct PlatformStartInfo {
-    i32 windowWidth;
-    i32 windowHeight;
+    u32 windowWidth;
+    u32 windowHeight;
     const char* windowTitle;
 };
 
