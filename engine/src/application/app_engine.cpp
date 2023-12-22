@@ -265,9 +265,6 @@ bool preMainLoop() {
     pstartInfo.windowWidth = createInfo.startWindowWidth;
     pstartInfo.windowTitle = createInfo.windowTitle;
 
-    appState.windowWidth = pstartInfo.windowWidth;
-    appState.windowHeight = pstartInfo.windowHeight;
-
     logInfo("Starting platform.");
     if (!startPlt(pstartInfo, appState.pltState)) {
         logFatal("Failed to start platform.");
@@ -275,8 +272,11 @@ bool preMainLoop() {
     }
     logInfo("Platform started.");
 
+    appState.windowWidth = pstartInfo.windowWidth;
+    appState.windowHeight = pstartInfo.windowHeight;
+
     logSectionTitleInfoTagged(LogTag::T_ENGINE, "Starting renderer initialization process...");
-    if (!initRenderer(appState.pltState)) {
+    if (!initRenderer(appState.pltState, appState.windowWidth, appState.windowHeight)) {
         logFatal("Failed to initialize renderer.");
         return false;
     }

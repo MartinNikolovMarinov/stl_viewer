@@ -11,7 +11,7 @@ namespace stlv {
 struct PlatformState;
 struct RendererBackend;
 
-bool initRendererBE(RendererBackend& backend, PlatformState& pltState);
+bool initRendererBE(RendererBackend& backend, PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight);
 void shutdownRendererBE(RendererBackend& backend);
 
 bool beginFrameRendererBE(RendererBackend& renderer, f64 deltaTime);

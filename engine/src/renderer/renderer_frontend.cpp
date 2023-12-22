@@ -9,9 +9,9 @@ RendererBackend backend;
 
 }; // namespace
 
-bool initRenderer(PlatformState& pltState) {
+bool initRenderer(PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight) {
     logInfoTagged(LogTag::T_RENDERER, "Initializing renderer frontend.");
-    bool ret = initRendererBE(backend, pltState);
+    bool ret = initRendererBE(backend, pltState, frameBufferWidth, frameBufferHeight);
     return ret;
 }
 

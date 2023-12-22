@@ -77,6 +77,8 @@ void vulkanImageViewCreate(RendererBackend& backend, VkFormat format,
                            VulkanImage& image, VkImageAspectFlags aspectFlags);
 void vulkanImageDestroy(RendererBackend& backend, VulkanImage& image);
 
+struct VulkanFrameBuffer;
+
 struct VulkanSwapchain {
     VkSurfaceFormatKHR imageFormat;
     u32 maxFramesInFlight;
@@ -86,6 +88,8 @@ struct VulkanSwapchain {
     VkImageView* imageViews;
 
     VulkanImage depthAttachment;
+
+    VulkanFrameBuffer* frameBuffers;
 };
 
 void vulkanSwapchainCreate(RendererBackend& backend, u32 width, u32 height, VulkanSwapchain& swapchain);
@@ -166,6 +170,20 @@ void vulkanRenderpassCreate(RendererBackend& backend,
 void vulkanRenderpassDestroy(RendererBackend& backend, VulkanRenderPass& renderPass);
 void vulkanRenderpassBegin(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer, VkFramebuffer framebuffer);
 void vulkanRenderpassEnd(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer);
+
+struct VulkanFrameBuffer {
+    VkFramebuffer handle;
+    u32 attachmentCount;
+    VkImageView* attachments;
+    VulkanRenderPass* renderPass;
+};
+
+void vulkanFrameBufferCreate(RendererBackend& backend,
+                             VulkanRenderPass& renderPass,
+                             u32 width, u32 height,
+                             const VkImageView* attachments, u32 attachmentCount,
+                             VulkanFrameBuffer& outFrameBuffer);
+void vulkanFrameBufferDestroy(RendererBackend& backend, VulkanFrameBuffer& frameBuffer);
 
 struct RendererBackend {
     VkInstance instance;

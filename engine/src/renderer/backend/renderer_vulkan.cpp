@@ -176,13 +176,43 @@ void destroyCommandBuffers(RendererBackend& backend) {
     }
 }
 
+void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass* renderpass) {
+    logInfoTagged(LogTag::T_RENDERER, "Regenerating Vulkan frame buffers...");
+
+    for (u32 i = 0; i < swapchain.imageCount; i++) {
+        u32 attachmentCount = 2;
+        VkImageView attachments[attachmentCount] = {
+            swapchain.imageViews[i],       // color attachment
+            swapchain.depthAttachment.view // depth attachment
+        };
+
+        VulkanFrameBuffer& frameBuffer = swapchain.frameBuffers[i];
+        vulkanFrameBufferCreate(backend, *renderpass,
+                                backend.framebufferWidth, backend.framebufferHeight,
+                                attachments, attachmentCount,
+                                frameBuffer);
+    }
+}
+
+void destroyFrameBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan frame buffers...");
+
+    for (u32 i = 0; i < backend.swapchain.imageCount; i++) {
+        VulkanFrameBuffer& frameBuffer = backend.swapchain.frameBuffers[i];
+        vulkanFrameBufferDestroy(backend, frameBuffer);
+    }
+}
+
 } // namespace
 
+extern core::tuple<u32, u32> getAppFrameBufferSize();
 
-bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
+bool initRendererBE(RendererBackend& backend, PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight) {
     logInfoTagged(LogTag::T_RENDERER, "Initializing renderer backend.");
 
     backend = {};
+    backend.framebufferWidth = frameBufferWidth;
+    backend.framebufferHeight = frameBufferHeight;
 
     VkApplicationInfo appInfo {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -301,14 +331,21 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
                            clearColor, 1.0f, 0);
     logInfoTagged(LogTag::T_RENDERER, "Vulkan renderpass created.");
 
+    backend.swapchain.frameBuffers = reinterpret_cast<VulkanFrameBuffer*>(
+        RendererBackendAllocator::alloc(sizeof(VulkanFrameBuffer) * backend.swapchain.imageCount));
+    regenerateFrameBuffers(backend, backend.swapchain, &backend.mainRenderPass);
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan initial frame buffers created.");
+
     createCommandBuffers(backend);
-    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Vulkan command buffers created.");
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan command buffers created.");
 
     return true;
 }
 
 void shutdownRendererBE(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
+
+    destroyFrameBuffers(backend);
 
     destroyCommandBuffers(backend);
 
