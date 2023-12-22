@@ -48,6 +48,8 @@ struct VulkanDevice {
     VkQueue transferQueue;
     VkQueue presentQueue;
 
+    VkCommandPool graphicsCmdPool;
+
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceFeatures features;
     VkPhysicalDeviceMemoryProperties memoryProperties;
@@ -112,6 +114,28 @@ struct VulkanCommandBuffer {
     VulkanCommandBufferState state;
 };
 
+using VulkanCommandBufferList = core::Arr<VulkanCommandBuffer, RendererBackendAllocator>;
+
+void vulkanCommandBufferAllocate(RendererBackend& backend,
+                                 VkCommandPool pool,
+                                 bool isPrimary,
+                                 VulkanCommandBuffer& outCmdBuffer);
+void vulkanCommandBufferFree(RendererBackend& backend, VkCommandPool pool, VulkanCommandBuffer& cmdBuffer);
+void vulkanCommandBufferBegin(VulkanCommandBuffer& cmdBuffer,
+                              bool isSingleUse,
+                              bool isRenderpassContinue,
+                              bool isSimultaneousUse);
+void vulkanCommandBufferEnd(VulkanCommandBuffer& cmdBuffer);
+void vulkanCommandBufferUpdateSubmitted(VulkanCommandBuffer& cmdBuffer);
+void vulkanCommandBufferReset(VulkanCommandBuffer& cmdBuffer);
+void vulkanCommandBufferAllocateAndBeginSingleUse(RendererBackend& backend,
+                                                  VkCommandPool pool,
+                                                  VulkanCommandBuffer& cmdBuffer);
+void vulkanCommandBufferEndSingleUse(RendererBackend& backend,
+                                     VkCommandPool pool,
+                                     VulkanCommandBuffer& cmdBuffer,
+                                     VkQueue queue);
+
 enum struct VulkanRenderPassState {
     NOT_ALLOCATED = 0,
 
@@ -162,6 +186,8 @@ struct RendererBackend {
     u32 currentFrame;
     bool recreatingSwapchain;
     VulkanRenderPass mainRenderPass;
+
+    VulkanCommandBufferList graphicsCmdBuffers;
 
     i32 findMemoryTypeIndex(u32 memoryTypeBits, VkMemoryPropertyFlags memoryFlags);
 };

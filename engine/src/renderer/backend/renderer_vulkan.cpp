@@ -17,7 +17,8 @@ VkBool32 debugCallback (
 ) {
     char buff[core::KILOBYTE*2] = {};
     char* pbuff = buff;
-    pbuff = core::cptrCopyUnsafe(pbuff, "[VULKAN MESSAGE] \ntype: ");
+    pbuff = core::cptrCopyUnsafe(pbuff, ANSI_BOLD(ANSI_BRIGHT_MAGENTA("[VULKAN MESSAGE]")));
+    pbuff = core::cptrCopyUnsafe(pbuff, "\ntype: ");
 
     switch (messageTypes) {
         case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
@@ -142,6 +143,37 @@ VkDebugUtilsMessengerCreateInfoEXT createDebugMessengerInfo() {
     info.pfnUserCallback = &debugCallback;
     info.pUserData = nullptr;
     return info;
+}
+
+void createCommandBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan graphics command buffers...");
+
+    if (backend.graphicsCmdBuffers.empty()) {
+        backend.graphicsCmdBuffers.fill(VulkanCommandBuffer{}, 0, backend.swapchain.imageCount);
+    }
+
+    for (addr_size i = 0; i < backend.graphicsCmdBuffers.len(); ++i) {
+        VulkanCommandBuffer& cmdBuffer = backend.graphicsCmdBuffers[i];
+        if (cmdBuffer.handle) {
+            vkFreeCommandBuffers(backend.device.logicalDevice,
+                                backend.device.graphicsCmdPool, 1,
+                                &cmdBuffer.handle);
+        }
+        cmdBuffer = {};
+        vulkanCommandBufferAllocate(backend,
+                                    backend.device.graphicsCmdPool,
+                                    true,
+                                    cmdBuffer);
+    }
+}
+
+void destroyCommandBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan graphics command buffers...");
+
+    for (addr_size i = 0; i < backend.graphicsCmdBuffers.len(); ++i) {
+        VulkanCommandBuffer& cmdBuffer = backend.graphicsCmdBuffers[i];
+        vulkanCommandBufferFree(backend, backend.device.graphicsCmdPool, cmdBuffer);
+    }
 }
 
 } // namespace
@@ -269,11 +301,16 @@ bool initRendererBE(RendererBackend& backend, PlatformState& pltState) {
                            clearColor, 1.0f, 0);
     logInfoTagged(LogTag::T_RENDERER, "Vulkan renderpass created.");
 
+    createCommandBuffers(backend);
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Vulkan command buffers created.");
+
     return true;
 }
 
 void shutdownRendererBE(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Shutting down renderer backend.");
+
+    destroyCommandBuffers(backend);
 
     vulkanRenderpassDestroy(backend, backend.mainRenderPass);
 
