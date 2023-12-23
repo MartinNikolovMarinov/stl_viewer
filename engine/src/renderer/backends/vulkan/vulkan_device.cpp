@@ -120,9 +120,11 @@ bool vulkanDeviceDetectDepthFormat(VulkanDevice& device) {
         VkFormatProperties props;
         vkGetPhysicalDeviceFormatProperties(device.physicalDevice, candidates[i], &props);
 
-        if ((props.linearTilingFeatures & flags) == flags ||
-            (props.optimalTilingFeatures & flags) == flags
-        ) {
+        if ((props.linearTilingFeatures & flags) == flags) {
+            device.depthFormat = candidates[i];
+            return true;
+        }
+        else if ((props.optimalTilingFeatures & flags) == flags) {
             device.depthFormat = candidates[i];
             return true;
         }

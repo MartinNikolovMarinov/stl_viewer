@@ -52,6 +52,11 @@ void destroyVulkanSurface(RendererBackend& backend);
 bool createVulkanDevice(RendererBackend& backend);
 void destroyVulkanDevice(RendererBackend& backend);
 
+// Swapchain
+
+bool createVulkanSwapchain(RendererBackend& backend);
+void destroyVulkanSwapchain(RendererBackend& backend);
+
 } // namespace
 
 bool initRendererBackend(RendererBackend& backend,
@@ -65,11 +70,13 @@ bool initRendererBackend(RendererBackend& backend,
     if (!createVulkanInstance(backend))          return false;
     if (!createVulkanSurface(backend, pltState)) return false;
     if (!createVulkanDevice(backend))            return false;
+    if (!createVulkanSwapchain(backend))         return false;
 
     return true;
 }
 
 void shutdownRendererBackend(RendererBackend& backend) {
+    destroyVulkanSwapchain(backend);
     destroyVulkanDevice(backend);
     destroyVulkanSurface(backend);
 #if STLV_DEBUG
@@ -94,6 +101,21 @@ bool beginFrameRendererBackend(RendererBackend&, f64) {
 
 bool endFrameRendererBackend(RendererBackend&, f64) {
     return true;
+}
+
+i32 RendererBackend::findMemoryTypeIndex(u32 typeFilter, u32 propertyFlags) {
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(this->device.physicalDevice, &memProperties);
+
+    for (u32 i = 0; i < memProperties.memoryTypeCount; ++i) {
+        if ((typeFilter & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & propertyFlags) == propertyFlags) {
+            return i32(i);
+        }
+    }
+
+    logWarnTagged(LogTag::T_RENDERER, "Failed to find suitable memory type.");
+    return -1;
 }
 
 namespace {
@@ -414,6 +436,17 @@ bool createVulkanDevice(RendererBackend& backend) {
 void destroyVulkanDevice(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
     vulkanDeviceDestroy(backend);
+}
+
+bool createVulkanSwapchain(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan swapchain.");
+    vulkanSwapchainCreate(backend, g_cachedFrameBufferWidth, g_cachedFrameBufferHeight, backend.swapchain);
+    return true;
+}
+
+void destroyVulkanSwapchain(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
+    vulkanSwapchainDestroy(backend, backend.swapchain);
 }
 
 } // namespace

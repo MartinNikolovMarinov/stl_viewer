@@ -8,7 +8,7 @@
 namespace stlv {
 
 bool vulkanResultIsSuccess(VkResult result);
-const char* vulkanResultToCptr(VkResult result, bool extended);
+const char* vulkanResultToCptr(VkResult result, bool extended = true);
 
 #define VK_EXPECT_OR_RETURN(expr, msg)                                 \
 {                                                                      \
@@ -70,6 +70,59 @@ void vulkanDeviceDestroy(RendererBackend& backend);
 void vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info);
 bool vulkanDeviceDetectDepthFormat(VulkanDevice& device);
 
+struct VulkanImage {
+    VkImage handle;
+    VkDeviceMemory memory;
+    VkImageView view;
+    u32 width;
+    u32 height;
+};
+
+void vulkanImageCreate(RendererBackend& backend,
+                       u32 width, u32 height,
+                       VkFormat format,
+                       VkImageTiling tiling,
+                       VkImageUsageFlags usage,
+                       VkMemoryPropertyFlags memoryFlags,
+                       bool createView,
+                       VkImageAspectFlags viewAspectFlags,
+                       VulkanImage& outImage);
+void vulkanImageViewCreate(RendererBackend& backend,
+                           VkFormat format,
+                           VkImageAspectFlags aspectFlags,
+                           VulkanImage& outImage);
+void vulkanImageDestroy(RendererBackend& backend, VulkanImage& image);
+
+struct VulkanSwapchain {
+    VkSurfaceFormatKHR imageFormat;
+    u32 maxFramesInFlight;
+    VkSwapchainKHR handle;
+
+    u32 imageCount;
+    VkImage* images;
+    VkImageView* imageViews;
+
+    VulkanImage depthAttachment;
+
+    // VulkanFrameBuffer* frameBuffers; // FIXME: Uncomment this
+};
+
+void vulkanSwapchainCreate(RendererBackend& backend, u32 width, u32 height, VulkanSwapchain& outSwapchain);
+void vulkanSwapchainRecreate(RendererBackend& backend, u32 width, u32 height, VulkanSwapchain& outSwapchain);
+void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain);
+bool vulkanSwapchainAcquireNextImage(RendererBackend& backend,
+                                     VulkanSwapchain& swapchain,
+                                     u64 timeoutNs,
+                                     VkSemaphore imageAvailableSemaphore,
+                                     VkFence fence,
+                                     u32& outImageIdx);
+void vulkanSwapchainPresent(RendererBackend& backend,
+                            VulkanSwapchain& swapchain,
+                            VulkanQueue& graphicsQueue,
+                            VulkanQueue& presentQueue,
+                            VkSemaphore renderCompleteSemaphore,
+                            u32 presentImageIdx);
+
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
@@ -85,6 +138,12 @@ struct RendererBackend {
 #endif
 
     VulkanDevice device;
+
+    VulkanSwapchain swapchain;
+    u32 imageIdx;
+    u64 currentFrame;
+
+    i32 findMemoryTypeIndex(u32 typeFilter, u32 propertyFlags);
 };
 
 } // namespace stlv
