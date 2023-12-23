@@ -38,7 +38,7 @@ if (STLV_BACKEND_VULKAN)
         src/renderer/backends/vulkan/vulkan_device.cpp
         src/renderer/backends/vulkan/vulkan_swapchain.cpp
         src/renderer/backends/vulkan/vulkan_image.cpp
-        # src/renderer/backends/renderpass_vulkan.cpp
+        src/renderer/backends/vulkan/vulkan_renderpass.cpp
         # src/renderer/backends/command_buffer_vulkan.cpp
         # src/renderer/backends/frame_buffer_vulkan.cpp
         # src/renderer/backends/sync_objects_vulkan.cpp

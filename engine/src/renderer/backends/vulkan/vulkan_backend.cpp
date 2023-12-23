@@ -57,6 +57,10 @@ void destroyVulkanDevice(RendererBackend& backend);
 bool createVulkanSwapchain(RendererBackend& backend);
 void destroyVulkanSwapchain(RendererBackend& backend);
 
+// Render Pass
+bool createVulkanRenderPass(RendererBackend& backend);
+void destroyVulkanRenderPass(RendererBackend& backend);
+
 } // namespace
 
 bool initRendererBackend(RendererBackend& backend,
@@ -438,6 +442,8 @@ void destroyVulkanDevice(RendererBackend& backend) {
     vulkanDeviceDestroy(backend);
 }
 
+// Swapchain
+
 bool createVulkanSwapchain(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan swapchain.");
     vulkanSwapchainCreate(backend, g_cachedFrameBufferWidth, g_cachedFrameBufferHeight, backend.swapchain);
@@ -448,6 +454,24 @@ void destroyVulkanSwapchain(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
     vulkanSwapchainDestroy(backend, backend.swapchain);
 }
+
+// Render Pass
+
+bool createVulkanRenderPass(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan main render pass.");
+    constexpr core::vec4 clearColor = core::v(0.0f, 0.3f, 0.4f, 1.0f);
+    vulkanRenderPassCreate(backend, backend.mainRenderPass,
+                           0, 0, f32(backend.frameBufferWidth), f32(backend.frameBufferHeight),
+                           clearColor,
+                           1.0f, 0);
+    return true;
+}
+
+void destroyVulkanRenderPass(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan main render pass.");
+    vulkanRenderPassDestroy(backend, backend.mainRenderPass);
+}
+
 
 } // namespace
 

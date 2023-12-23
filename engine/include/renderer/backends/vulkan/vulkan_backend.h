@@ -123,6 +123,56 @@ void vulkanSwapchainPresent(RendererBackend& backend,
                             VkSemaphore renderCompleteSemaphore,
                             u32 presentImageIdx);
 
+enum struct VulkanCommandBufferState {
+    NONE,
+
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+
+    SENTINEL
+};
+
+struct VulkanCommandBuffer {
+    VkCommandBuffer handle;
+    VulkanCommandBufferState state;
+};
+
+enum struct VulkanRenderPassState {
+    NONE,
+
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED,
+
+    SENTINEL
+};
+
+struct VulkanRenderPass {
+    VkRenderPass handle;
+    f32 x, y, w, h;
+    core::vec4f clearColor;
+
+    f32 depth;
+    u32 stencil;
+
+    VulkanRenderPassState state;
+};
+
+void vulkanRenderPassCreate(RendererBackend& backend,
+                            VulkanRenderPass& outRenderPass,
+                            f32 x, f32 y, f32 width, f32 height,
+                            core::vec4f clearColor,
+                            f32 depth,
+                            u32 stencil);
+void vulkanRenderPassDestroy(RendererBackend& backend, VulkanRenderPass& renderPass);
+void vulkanRenderPassBegin(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer, VkFramebuffer framebuffer);
+void vulkanRenderPassEnd(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer);
+
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
@@ -140,6 +190,7 @@ struct RendererBackend {
     VulkanDevice device;
 
     VulkanSwapchain swapchain;
+    VulkanRenderPass mainRenderPass;
     u32 imageIdx;
     u64 currentFrame;
 
