@@ -61,6 +61,10 @@ void destroyVulkanSwapchain(RendererBackend& backend);
 bool createVulkanRenderPass(RendererBackend& backend);
 void destroyVulkanRenderPass(RendererBackend& backend);
 
+// Command Buffers
+bool createCommandBuffers(RendererBackend& backend);
+void destroyCommandBuffers(RendererBackend& backend);
+
 } // namespace
 
 bool initRendererBackend(RendererBackend& backend,
@@ -75,11 +79,15 @@ bool initRendererBackend(RendererBackend& backend,
     if (!createVulkanSurface(backend, pltState)) return false;
     if (!createVulkanDevice(backend))            return false;
     if (!createVulkanSwapchain(backend))         return false;
+    if (!createVulkanRenderPass(backend))        return false;
+    if (!createCommandBuffers(backend))          return false;
 
     return true;
 }
 
 void shutdownRendererBackend(RendererBackend& backend) {
+    destroyCommandBuffers(backend);
+    destroyVulkanRenderPass(backend);
     destroyVulkanSwapchain(backend);
     destroyVulkanDevice(backend);
     destroyVulkanSurface(backend);
@@ -472,6 +480,39 @@ void destroyVulkanRenderPass(RendererBackend& backend) {
     vulkanRenderPassDestroy(backend, backend.mainRenderPass);
 }
 
+// Command Buffers
+
+bool createCommandBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan command buffers.");
+
+    if (backend.graphicsCmdBuffers.empty()) {
+        backend.graphicsCmdBuffers = VulkanCommandBufferList (backend.swapchain.imageCount);
+    }
+
+    for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
+        if (backend.graphicsCmdBuffers[i].handle) {
+            vulkanCommandBufferFree(backend,
+                                    backend.device.graphicsCmdPool,
+                                    backend.graphicsCmdBuffers[i]);
+        }
+        vulkanCommandBufferAllocate(backend,
+                                    backend.device.graphicsCmdPool,
+                                    true,
+                                    backend.graphicsCmdBuffers[i]);
+    }
+
+    return true;
+}
+
+void destroyCommandBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan command buffers.");
+     for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
+        if (backend.graphicsCmdBuffers[i].handle) {
+            vulkanCommandBufferFree(backend, backend.device.graphicsCmdPool, backend.graphicsCmdBuffers[i]);
+            backend.graphicsCmdBuffers[i].handle = VK_NULL_HANDLE;
+        }
+    }
+}
 
 } // namespace
 

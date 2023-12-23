@@ -60,12 +60,12 @@ void vulkanDeviceDestroy(RendererBackend& backend) {
 
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan graphics command pool.");
     if (device.graphicsCmdPool) {
-        vkDestroyCommandPool(device.logicalDevice, device.graphicsCmdPool, nullptr);
+        vkDestroyCommandPool(device.logicalDevice, device.graphicsCmdPool, backend.allocator);
     }
 
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
     if (device.logicalDevice) {
-        vkDestroyDevice(device.logicalDevice, nullptr);
+        vkDestroyDevice(device.logicalDevice, backend.allocator);
     }
 }
 
@@ -338,7 +338,7 @@ bool createLogicalDevice(RendererBackend& backend, const char** requiredDeviceEx
     deviceCreateInfo.enabledExtensionCount = u32(requiredDeviceExtsLen);
 
     VK_EXPECT_OR_RETURN(
-        vkCreateDevice(backend.device.physicalDevice, &deviceCreateInfo, nullptr, &backend.device.logicalDevice),
+        vkCreateDevice(backend.device.physicalDevice, &deviceCreateInfo, backend.allocator, &backend.device.logicalDevice),
         "Failed to create logical device."
     );
     logInfoTagged(LogTag::T_RENDERER, "Logical device created.");
@@ -367,21 +367,20 @@ bool createLogicalDevice(RendererBackend& backend, const char** requiredDeviceEx
                      0,
                      &backend.device.computeQueue.handle);
 
-    // FIXME: Uncomment this to create the graphics command pool!
-    // logInfoTagged(LogTag::T_RENDERER, "Create graphics command pool.");
-    // VkCommandPoolCreateInfo cmdGraphicsPoolCreateInfo = {};
-    // cmdGraphicsPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    // cmdGraphicsPoolCreateInfo.queueFamilyIndex = backend.device.graphicsQueueFamilyIdx;
-    // cmdGraphicsPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    // cmdGraphicsPoolCreateInfo.pNext = nullptr;
+    logInfoTagged(LogTag::T_RENDERER, "Create graphics command pool.");
+    VkCommandPoolCreateInfo cmdGraphicsPoolCreateInfo = {};
+    cmdGraphicsPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    cmdGraphicsPoolCreateInfo.queueFamilyIndex = backend.device.graphicsQueue.familyIdx;
+    cmdGraphicsPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    cmdGraphicsPoolCreateInfo.pNext = nullptr;
 
-    // VK_EXPECT_OR_RETURN(
-    //     vkCreateCommandPool(backend.device.logicalDevice,
-    //                         &cmdGraphicsPoolCreateInfo,
-    //                         nullptr,
-    //                         &backend.device.graphicsCmdPool),
-    //     "Failed to create graphics command pool."
-    // );
+    VK_EXPECT_OR_RETURN(
+        vkCreateCommandPool(backend.device.logicalDevice,
+                            &cmdGraphicsPoolCreateInfo,
+                            backend.allocator,
+                            &backend.device.graphicsCmdPool),
+        "Failed to create graphics command pool."
+    );
 
     return true;
 }

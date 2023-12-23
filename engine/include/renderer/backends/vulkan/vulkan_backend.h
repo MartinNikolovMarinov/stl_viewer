@@ -31,8 +31,10 @@ const char* vulkanResultToCptr(VkResult result, bool extended = true);
 }
 
 struct RendererBackend;
+struct VulkanCommandBuffer;
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
+using VulkanCommandBufferList = core::Arr<VulkanCommandBuffer, RendererBackendAllocator>;
 
 struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -124,7 +126,7 @@ void vulkanSwapchainPresent(RendererBackend& backend,
                             u32 presentImageIdx);
 
 enum struct VulkanCommandBufferState {
-    NONE,
+    NOT_ALLOCATED,
 
     READY,
     RECORDING,
@@ -139,6 +141,28 @@ struct VulkanCommandBuffer {
     VkCommandBuffer handle;
     VulkanCommandBufferState state;
 };
+
+void vulkanCommandBufferAllocate(RendererBackend& backend,
+                                 VkCommandPool pool,
+                                 bool isPrimary,
+                                 VulkanCommandBuffer& outCommandBuffer);
+void vulkanCommandBufferFree(RendererBackend& backend,
+                             VkCommandPool pool,
+                             VulkanCommandBuffer& commandBuffer);
+void vulkanCommandBufferBegin(VulkanCommandBuffer& commandBuffer,
+                              bool isSingleUse,
+                              bool isRenderpassContinue,
+                              bool isSimultaneousUse);
+void vulkanCommandBufferEnd(VulkanCommandBuffer& commandBuffer);
+void vulkanCommandBufferUpdateSubmitted(VulkanCommandBuffer& commandBuffer);
+void vulkanCommandBufferReset(VulkanCommandBuffer& commandBuffer);
+void vulkanCommandBufferAllocateAndBeginSingleUse(RendererBackend& backend,
+                                                  VkCommandPool pool,
+                                                  VulkanCommandBuffer& outCommandBuffer);
+void vulkanCommandBufferEndSingleUse(RendererBackend& backend,
+                                     VkCommandPool pool,
+                                     VulkanCommandBuffer& commandBuffer,
+                                     VkQueue queue);
 
 enum struct VulkanRenderPassState {
     NONE,
@@ -193,6 +217,8 @@ struct RendererBackend {
     VulkanRenderPass mainRenderPass;
     u32 imageIdx;
     u64 currentFrame;
+
+    VulkanCommandBufferList graphicsCmdBuffers;
 
     i32 findMemoryTypeIndex(u32 typeFilter, u32 propertyFlags);
 };
