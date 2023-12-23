@@ -219,6 +219,7 @@ bool initAppEngine(i32 argc, char** argv) {
         Assert(false, "Failed to initialize logging system.");
         return false;
     }
+    muteLogger(false);
     logInfo("Logging system initialized successfully.");
 
     if (!initPlt(appState.pltState)) {

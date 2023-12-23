@@ -12,6 +12,7 @@ thread_local static char loggingBuffer[BUFFER_SIZE];
 
 LogLevel minimumLogLevel = LogLevel::L_INFO;
 bool ignoredTagsTable[addr_size(LogTag::SENTINEL)] = {};
+bool muted = false;
 
 } // namespace
 
@@ -30,15 +31,14 @@ void shutdownLoggingSystem() {
     minimumLogLevel = LogLevel::L_INFO;
 }
 
+void muteLogger(bool mute) {
+    muted = mute;
+}
+
 void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName, const char* format, ...) {
-    if (level < minimumLogLevel) {
-        // silence
-        return;
-    }
-    if (ignoredTagsTable[addr_size(tag)]) {
-        // silence
-        return;
-    }
+    if (level < minimumLogLevel)          return;
+    if (ignoredTagsTable[addr_size(tag)]) return;
+    if (muted)                            return;
 
     loggingBuffer[0] = '\0';
 

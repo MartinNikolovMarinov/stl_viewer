@@ -34,8 +34,8 @@ enum struct LogSpecialMode : u8 {
 bool initLoggingSystem(LogLevel minLogLevel, LogTag* tagsToIgnore, addr_size tagsToIgnoreCount);
 void shutdownLoggingSystem();
 
-// Event though this is exported it should not be directly used!
 STLV_EXPORT void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName, const char* format, ...);
+STLV_EXPORT void muteLogger(bool mute);
 
 #define logTrace(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_TRACE,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)
 #define logDebug(format, ...) __log(stlv::LogTag::T_ENGINE, stlv::LogLevel::L_DEBUG,   stlv::LogSpecialMode::NONE, __func__, format, ##__VA_ARGS__)

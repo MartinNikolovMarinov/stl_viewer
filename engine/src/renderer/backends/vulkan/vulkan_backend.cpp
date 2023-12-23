@@ -42,6 +42,15 @@ void call_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 
 #endif
 
+// Surface
+
+bool createVulkanSurface(RendererBackend& backend, PlatformState& pltState);
+void destroyVulkanSurface(RendererBackend& backend);
+
+// Device
+
+bool createVulkanDevice(RendererBackend& backend);
+void destroyVulkanDevice(RendererBackend& backend);
 
 } // namespace
 
@@ -53,13 +62,16 @@ bool initRendererBackend(RendererBackend& backend,
     backend.frameBufferWidth = frameBufferWidth;
     backend.frameBufferHeight = frameBufferHeight;
 
-    if (!createVulkanInstance(backend)) return false;
-    logInfoTagged(LogTag::T_RENDERER, "Vulkan instance created.");
+    if (!createVulkanInstance(backend))          return false;
+    if (!createVulkanSurface(backend, pltState)) return false;
+    if (!createVulkanDevice(backend))            return false;
 
     return true;
 }
 
 void shutdownRendererBackend(RendererBackend& backend) {
+    destroyVulkanDevice(backend);
+    destroyVulkanSurface(backend);
 #if STLV_DEBUG
     destroyDebugMessenger(backend);
 #endif
@@ -181,6 +193,7 @@ bool createVulkanInstance(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Vulkan debug messenger created.");
 #endif
 
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan instance created.");
     return true;
 }
 
@@ -369,6 +382,39 @@ void call_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 }
 
 #endif
+
+bool createVulkanSurface(RendererBackend& backend, PlatformState& pltState) {
+    if (!pltCreateVulkanSurface_vulkan(pltState, backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create window surface.");
+        return false;
+    }
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan surface created.");
+    return true;
+}
+
+void destroyVulkanSurface(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan surface.");
+    if (backend.surface) {
+        vkDestroySurfaceKHR(backend.instance, backend.surface, backend.allocator);
+    }
+}
+
+// Device
+
+bool createVulkanDevice(RendererBackend& backend) {
+    if (!vulkanDeviceCreate(backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan device.");
+        return false;
+    }
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan device created.");
+
+    return true;
+}
+
+void destroyVulkanDevice(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
+    vulkanDeviceDestroy(backend);
+}
 
 } // namespace
 
