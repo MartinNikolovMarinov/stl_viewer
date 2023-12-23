@@ -21,6 +21,7 @@ bool initLoggingSystem(LogLevel minLogLevel) {
 
 void shutdownLoggingSystem() {
     logInfo("Shutting down logging system");
+    minimumLogLevel = LogLevel::L_INFO;
 }
 
 void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName, const char* format, ...) {

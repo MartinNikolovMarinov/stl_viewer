@@ -2,16 +2,11 @@
 #include <application/events.h>
 #include <application/logger.h>
 #include <application/input.h>
+#include <renderer/renderer_backend.h>
 
 #if STLV_BACKEND_VULKAN
-
-    #include <renderer/backend/platform_vulkan.h>
-    #include <renderer/renderer_backend.h>
-
     #define GLFW_INCLUDE_VULKAN
-
 #endif
-
 #include <GLFW/glfw3.h>
 
 namespace stlv {

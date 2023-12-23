@@ -3,7 +3,8 @@
 #include <fwd_internal.h>
 
 #if STLV_BACKEND_VULKAN
-#include <renderer/backend/renderer_vulkan.h>
+#include <renderer/backends/vulkan/vulkan_backend.h>
+#include <renderer/backends/vulkan/vulkan_platform.h>
 #endif
 
 namespace stlv {
@@ -11,12 +12,12 @@ namespace stlv {
 struct PlatformState;
 struct RendererBackend;
 
-bool initRendererBE(RendererBackend& backend, PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight);
-void shutdownRendererBE(RendererBackend& backend);
+bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight);
+void shutdownRendererBackend(RendererBackend& backend);
 
-void rendererOnResizeBE(RendererBackend& backend, u32 width, u32 height);
+void rendererOnResizeBackend(RendererBackend& backend, u32 width, u32 height);
 
-bool beginFrameRendererBE(RendererBackend& backend, f64 deltaTime);
-bool endFrameRendererBE(RendererBackend& backend, f64 deltaTime);
+bool beginFrameRendererBackend(RendererBackend& backend, f64 deltaTime);
+bool endFrameRendererBackend(RendererBackend& backend, f64 deltaTime);
 
 } // namespace stlv

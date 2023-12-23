@@ -9,7 +9,7 @@ void keyboardClear(Keyboard& keyboard) {
 
 void keyboardUpdate(Keyboard& keyboard, i32 pltKeyCode, i32 scancode, bool isDown) {
     KeyboardKey key;
-    bool ok = pltGetKey(pltKeyCode, key);
+    [[maybe_unused]] bool ok = pltGetKey(pltKeyCode, key);
     Assert(ok, "Failed to get key info for key code.");
 
     key.isDown = isDown;
@@ -17,7 +17,7 @@ void keyboardUpdate(Keyboard& keyboard, i32 pltKeyCode, i32 scancode, bool isDow
     keyboard.keys[addr_size(key.info)] = key;
 
     if (keyIsModifier(key.info)) {
-        KeyboardModifiers modFlag;
+        KeyboardModifiers modFlag = KeyboardModifiers::NONE;
 
         if (key.info == KeyInfo::KEY_LEFT_SHIFT || key.info == KeyInfo::KEY_RIGHT_SHIFT) {
             modFlag = KeyboardModifiers::SHIFT;
@@ -53,7 +53,7 @@ void mouseClear(Mouse& mouse) {
 
 void mouseUpdateClick(Mouse& mouse, i32 pletKeyCode, bool isDown) {
     bool isLeft, isMiddle, isRight;
-    bool ok = pltGetKey(pletKeyCode, isLeft, isMiddle, isRight);
+    [[maybe_unused]] bool ok = pltGetKey(pletKeyCode, isLeft, isMiddle, isRight);
     Assert(ok, "Failed to get key info for key code.");
 
     if (isLeft) {

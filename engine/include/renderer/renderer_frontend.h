@@ -18,7 +18,3 @@ struct RenderPacket {
 void rendererDrawFrame(RenderPacket& packet);
 
 } // namespace stlv
-
-#if STLV_BACKEND_VULKAN
-#include <renderer/backend/renderer_vulkan.h>
-#endif
