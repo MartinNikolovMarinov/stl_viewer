@@ -163,6 +163,7 @@ bool createVulkanInstance(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Vulkan validation layers DISABLED.");
 #endif
 
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan instance.");
     VK_EXPECT_OR_RETURN(
         vkCreateInstance(&instanceCreateInfo, backend.allocator, &backend.instance),
         "Failed to create Vulkan instance."

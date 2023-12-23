@@ -31,7 +31,7 @@ enum struct LogSpecialMode : u8 {
     SENTINEL
 };
 
-bool initLoggingSystem(LogLevel minLogLevel);
+bool initLoggingSystem(LogLevel minLogLevel, LogTag* tagsToIgnore, addr_size tagsToIgnoreCount);
 void shutdownLoggingSystem();
 
 // Event though this is exported it should not be directly used!

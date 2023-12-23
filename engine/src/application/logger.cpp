@@ -11,11 +11,17 @@ constexpr addr_size BUFFER_SIZE = core::KILOBYTE * 32;
 thread_local static char loggingBuffer[BUFFER_SIZE];
 
 LogLevel minimumLogLevel = LogLevel::L_INFO;
+bool ignoredTagsTable[addr_size(LogTag::SENTINEL)] = {};
 
 } // namespace
 
-bool initLoggingSystem(LogLevel minLogLevel) {
+bool initLoggingSystem(LogLevel minLogLevel, LogTag* tagsToIgnore, addr_size tagsToIgnoreCount) {
     minimumLogLevel = minLogLevel;
+    if (tagsToIgnore != nullptr) {
+        for (addr_size i = 0; i < tagsToIgnoreCount; ++i) {
+            ignoredTagsTable[addr_size(tagsToIgnore[i])] = true;
+        }
+    }
     return true;
 }
 
@@ -26,6 +32,10 @@ void shutdownLoggingSystem() {
 
 void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName, const char* format, ...) {
     if (level < minimumLogLevel) {
+        // silence
+        return;
+    }
+    if (ignoredTagsTable[addr_size(tag)]) {
         // silence
         return;
     }

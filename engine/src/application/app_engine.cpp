@@ -212,7 +212,9 @@ bool initAppEngine(i32 argc, char** argv) {
         return false;
     }
 
-    if (!initLoggingSystem(LogLevel::L_TRACE)) {
+    LogTag tagsToIgnore[] = { LogTag::T_APP, LogTag::T_ENGINE };
+    constexpr addr_size tagsToIgnoreCount = sizeof(tagsToIgnore) / sizeof(LogTag);
+    if (!initLoggingSystem(LogLevel::L_TRACE, tagsToIgnore, tagsToIgnoreCount)) {
         // no logger available
         Assert(false, "Failed to initialize logging system.");
         return false;
