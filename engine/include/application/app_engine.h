@@ -66,6 +66,7 @@ struct ApplicationState {
 */
 STLV_EXPORT ApplicationState* getAppState();
 STLV_EXPORT AppCreateInfo* getAppCreateInfo(ApplicationState* appState);
+STLV_EXPORT void stopApp();
 
 STLV_EXPORT bool initAppEngine(i32 argc, char** argv);
 STLV_EXPORT void shutdownAppEngine();

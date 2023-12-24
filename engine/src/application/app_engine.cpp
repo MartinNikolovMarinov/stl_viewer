@@ -29,6 +29,10 @@ AppCreateInfo* getAppCreateInfo(ApplicationState* appState) {
     return &appState->createInfo;
 }
 
+void stopApp() {
+    g_isRunning.store(false);
+}
+
 namespace {
 
 auto onAppQuit = [](Event, void*) {
@@ -212,7 +216,7 @@ bool initAppEngine(i32 argc, char** argv) {
         return false;
     }
 
-    LogTag tagsToIgnore[] = { LogTag::T_APP, LogTag::T_ENGINE };
+    LogTag tagsToIgnore[] = { LogTag::T_ENGINE, LogTag::T_APP };
     // constexpr addr_size tagsToIgnoreCount = sizeof(tagsToIgnore) / sizeof(LogTag);
     constexpr addr_size tagsToIgnoreCount = 0;
     if (!initLoggingSystem(LogLevel::L_TRACE, tagsToIgnore, tagsToIgnoreCount)) {
@@ -221,6 +225,7 @@ bool initAppEngine(i32 argc, char** argv) {
         return false;
     }
     muteLogger(false);
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Initializing application engine...");
     logInfo("Logging system initialized successfully.");
 
     if (!initPlt(appState.pltState)) {
@@ -241,7 +246,7 @@ bool initAppEngine(i32 argc, char** argv) {
         return false;
     }
 
-    logInfo("Application engine initialized.");
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Application engine initialized SUCCESSFULLY.");
     g_isRunning.store(true);
     g_isSuspended.store(false);
     return true;
@@ -262,7 +267,7 @@ bool AppCreateInfo::isValid() {
 }
 
 bool preMainLoop() {
-    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Starting pre-main loop.");
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Starting pre-main loop...");
 
     ApplicationState& appState = g_appState;
     AppCreateInfo& createInfo = appState.createInfo;
@@ -288,12 +293,12 @@ bool preMainLoop() {
     appState.windowWidth = pstartInfo.windowWidth;
     appState.windowHeight = pstartInfo.windowHeight;
 
-    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Starting renderer initialization process...");
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Starting renderer initialization process...");
     if (!initRenderer(appState.pltState, appState.windowWidth, appState.windowHeight)) {
         logFatal("Failed to initialize renderer.");
         return false;
     }
-    logInfo("Renderer initialized!");
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Renderer initialized successfully.");
 
     logInfo("Setting up metrics.");
     clockClear(appState.frameMetrics.runningTime);
@@ -302,7 +307,7 @@ bool preMainLoop() {
     keyboardClear(appState.keyboard);
     mouseClear(appState.mouse);
 
-    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Pre-main loop complete.");
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Pre-main loop complete SUCCESSFULLY. Starting main loop.");
     appState.isInitialized = true;
     return true;
 }
@@ -379,14 +384,20 @@ bool updateAppState(i32& retCode) {
 }
 
 void shutdownAppEngine() {
-    logInfo("Shutting down application engine.");
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Shutting down application engine.");
 
     shutdownEventSystem();
+
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Shutting down renderer.");
     shutdownRenderer();
+    logSectionTitleInfoTagged(LogTag::T_RENDERER, "Renderer shutdown complete.");
+
     shutdownPlt(g_appState.pltState);
 
     shutdownLoggingSystem(); // keep this last, assume no logger availabe after this
     shutdownMemorySystem();
+
+    logSectionTitleInfoTagged(LogTag::T_ENGINE, "Application engine shutdown complete.");
 }
 
 } // namespace stlv

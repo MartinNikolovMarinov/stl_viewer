@@ -37,6 +37,8 @@ bool initEventSystem() {
 void shutdownEventSystem() {
     if (!isInitialized) return;
 
+    logInfo("Shutting down event system.");
+
     core::mutexDestroy(eventFireMutex);
 
     for (addr_size i = addr_size(EventCode::NONE) + 1; i < addr_size(EventCode::SENTINEL); i++) {
@@ -76,7 +78,7 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = handler;
     entry.context = context;
 
-    logInfo("Registered event handler for code: %s", eventCodeToCptr(code));
+    logTrace("Registered event handler for code: %s", eventCodeToCptr(code));
     return true;
 }
 
@@ -105,7 +107,7 @@ bool eventUnregister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = nullptr;
     entry.context = nullptr;
 
-    logInfo("Unregistered event handler for code: %s", eventCodeToCptr(code));
+    logTrace("Unregistered event handler for code: %s", eventCodeToCptr(code));
     return true;
 }
 

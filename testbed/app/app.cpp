@@ -175,5 +175,6 @@ NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
     stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
     printMemoryMetrics(memoryMetrics);
 
+    stlv::stopApp();
     return true;
 }
