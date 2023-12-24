@@ -86,7 +86,7 @@ void vulkanSwapchainPresent(RendererBackend& backend,
     }
 
     // Updateing the current frame index.
-    backend.currentFrame = (backend.currentFrame + 1) % backend.swapchain.maxFramesInFlight; // TODO: Use a function for this ?
+    backend.currentFrame = (backend.currentFrame + 1) % backend.swapchain.maxFramesInFlight; // TODO: Use a function for this, also avoid using module when max frames is an even number ?
 }
 
 namespace {

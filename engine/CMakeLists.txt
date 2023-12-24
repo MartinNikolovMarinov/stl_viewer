@@ -40,8 +40,8 @@ if (STLV_BACKEND_VULKAN)
         src/renderer/backends/vulkan/vulkan_image.cpp
         src/renderer/backends/vulkan/vulkan_renderpass.cpp
         src/renderer/backends/vulkan/vulkan_command_buffer.cpp
-        # src/renderer/backends/frame_buffer_vulkan.cpp
-        # src/renderer/backends/sync_objects_vulkan.cpp
+        src/renderer/backends/vulkan/vulkan_frame_buffer.cpp
+        src/renderer/backends/vulkan/vulkan_sync_objects.cpp
     )
 else()
     message(FATAL_ERROR "Only Vulkan is supported at the moment.")

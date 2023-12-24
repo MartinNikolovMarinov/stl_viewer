@@ -32,9 +32,11 @@ const char* vulkanResultToCptr(VkResult result, bool extended = true);
 
 struct RendererBackend;
 struct VulkanCommandBuffer;
+struct VulkanRenderPass;
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
 using VulkanCommandBufferList = core::Arr<VulkanCommandBuffer, RendererBackendAllocator>;
+using VkSemaphoreList = core::Arr<VkSemaphore, RendererBackendAllocator>;
 
 struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -95,6 +97,21 @@ void vulkanImageViewCreate(RendererBackend& backend,
                            VulkanImage& outImage);
 void vulkanImageDestroy(RendererBackend& backend, VulkanImage& image);
 
+struct VulkanFrameBuffer{
+    VkFramebuffer handle;
+    u32 attachmentCount;
+    VkImageView* attachments;
+    VulkanRenderPass* renderPass;
+};
+
+void vulkanFrameBufferCreate(RendererBackend& backend,
+                             VulkanRenderPass& renderPass,
+                             u32 width, u32 height,
+                             u32 attachmentCount,
+                             const VkImageView* attachments,
+                             VulkanFrameBuffer& outFramebuffer);
+void vulkanFrameBufferDestroy(RendererBackend& backend, VulkanFrameBuffer& framebuffer);
+
 struct VulkanSwapchain {
     VkSurfaceFormatKHR imageFormat;
     u32 maxFramesInFlight;
@@ -106,7 +123,7 @@ struct VulkanSwapchain {
 
     VulkanImage depthAttachment;
 
-    // VulkanFrameBuffer* frameBuffers; // FIXME: Uncomment this
+    VulkanFrameBuffer* frameBuffers; // FIXME: Uncomment this
 };
 
 void vulkanSwapchainCreate(RendererBackend& backend, u32 width, u32 height, VulkanSwapchain& outSwapchain);
@@ -197,6 +214,16 @@ void vulkanRenderPassDestroy(RendererBackend& backend, VulkanRenderPass& renderP
 void vulkanRenderPassBegin(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer, VkFramebuffer framebuffer);
 void vulkanRenderPassEnd(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer);
 
+struct VulkanFence {
+    VkFence handle;
+    bool isSignaled;
+};
+
+void vulkanFenceCreate(RendererBackend& backend, bool isSignaled, VulkanFence& outFence);
+void vulkanFenceDestroy(RendererBackend& backend, VulkanFence& fence);
+bool vulkanFenceWait(RendererBackend& backend, VulkanFence& fence, u64 timeoutNs);
+void vulkanFenceReset(RendererBackend& backend, VulkanFence& fence);
+
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
@@ -219,6 +246,12 @@ struct RendererBackend {
     u64 currentFrame;
 
     VulkanCommandBufferList graphicsCmdBuffers;
+
+    VkSemaphoreList imageAvailableSemaphores;
+    VkSemaphoreList renderCompleteSemaphores;
+    u32 inFlightFenceCount;
+    VulkanFence* inFlightFences;
+    VulkanFence** imagesInFlight;
 
     i32 findMemoryTypeIndex(u32 typeFilter, u32 propertyFlags);
 };
