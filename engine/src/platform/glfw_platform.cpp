@@ -204,7 +204,7 @@ void shutdownPlt(PlatformState& pstate) {
     GlfwPlatformState* glfwState = toGlfwPltState(pstate);
     if (glfwState) {
         glfwDestroyWindow(glfwState->glfwWindow);
-        PlatformAllocator::free(glfwState);
+        PlatformAllocator::free(glfwState, sizeof(GlfwPlatformState));
     }
     else {
         logWarn("GLFW state was not defined when shutting down GLFW platform. This is likely a bug.");

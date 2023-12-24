@@ -34,14 +34,6 @@ endif()
 if (STLV_BACKEND_VULKAN)
     set(src_files ${src_files}
         src/renderer/backends/vulkan/vulkan_backend.cpp
-        src/renderer/backends/vulkan/vulkan_utils.cpp
-        src/renderer/backends/vulkan/vulkan_device.cpp
-        src/renderer/backends/vulkan/vulkan_swapchain.cpp
-        src/renderer/backends/vulkan/vulkan_image.cpp
-        src/renderer/backends/vulkan/vulkan_renderpass.cpp
-        src/renderer/backends/vulkan/vulkan_command_buffer.cpp
-        src/renderer/backends/vulkan/vulkan_frame_buffer.cpp
-        src/renderer/backends/vulkan/vulkan_sync_objects.cpp
     )
 else()
     message(FATAL_ERROR "Only Vulkan is supported at the moment.")

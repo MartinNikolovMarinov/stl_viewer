@@ -89,22 +89,14 @@ struct STLV_Allocator {
         return p;
     }
 
-    static void free(void* ptr) noexcept {
+    static void free(void* ptr, addr_size size) noexcept {
         if (ptr == nullptr) {
             return;
         }
 
-        switch (TType) {
-            // TODO: When allocator types with specific lifetime are added then memoryInUse should be decreased here.
+        getMemoryStats(TType)->memoryInUse.fetch_sub(size);
 
-            case AllocationType::UNTAGGED:         [[fallthrough]];
-            case AllocationType::PLATFORM:         [[fallthrough]];
-            case AllocationType::RENDERER_BACKEND: [[fallthrough]];
-            default:
-                break;
-        }
-
-        da::free(ptr);
+        da::free(ptr, size);
     }
 
     static void clear() noexcept {
@@ -116,16 +108,12 @@ struct STLV_Allocator {
         return getMemoryStats(TType)->memoryInUse.load();
     }
 
-    static void decreaseUsedMem(addr_size size) noexcept {
-        getMemoryStats(TType)->memoryInUse.fetch_sub(size);
-    }
-
     static addr_size totalAllocatedMem() noexcept {
         return getMemoryStats(TType)->memoryAllocatedTotal.load();
     }
 
     static bool isThredSafe() noexcept {
-        return true;
+        return da::isThredSafe();
     }
 
     template <typename T, typename ...Args>

@@ -17,8 +17,6 @@ macro(stlv_target_append_common_flags
             -Wshadow -Wold-style-cast -Wdouble-promotion -Wswitch-enum -Wundef -Wcast-align -Wsign-conversion
             -Wmisleading-indentation -Woverloaded-virtual -Wnon-virtual-dtor
             -Wdisabled-optimization # warn if the compailer disables requestd level of optimization
-
-            -Wno-vla # variable length arrays are fine
             -Wno-unknown-pragmas -Wno-unused-function -Wno-variadic-macros
         )
         set(local_debug_flags ${local_debug_flags} -g -O0 -Wnull-dereference)
