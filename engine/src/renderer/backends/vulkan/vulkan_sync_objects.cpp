@@ -5,7 +5,8 @@ namespace stlv {
 void vulkanFenceCreate(RendererBackend& backend, bool isSignaled, VulkanFence& outFence) {
     VkFenceCreateInfo fenceCreateInfo = {};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-    fenceCreateInfo.flags = outFence.isSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
+    fenceCreateInfo.pNext = nullptr;
+    fenceCreateInfo.flags = isSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : 0;
 
     VK_EXPECT(
         vkCreateFence(backend.device.logicalDevice, &fenceCreateInfo, backend.allocator, &outFence.handle),
@@ -27,6 +28,7 @@ bool vulkanFenceWait(RendererBackend& backend, VulkanFence& fence, u64 timeoutNs
     if (!fence.isSignaled) {
         VkResult result = vkWaitForFences(backend.device.logicalDevice, 1, &fence.handle, VK_TRUE, timeoutNs);
         if (result == VK_SUCCESS) {
+            fence.isSignaled = true;
             return true;
         }
 
