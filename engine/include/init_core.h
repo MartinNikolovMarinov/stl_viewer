@@ -31,13 +31,8 @@ namespace stlv {
 enum struct AllocationType : u8 {
     UNTAGGED = 0,
 
-    // Allocated objects with global lifetime and variable allocation size:
     PLATFORM,
     RENDERER_BACKEND,
-
-    // Allocated objects with specific lifetime and constant allocation size:
-
-    // None for now..
 
     SENTINEL
 };

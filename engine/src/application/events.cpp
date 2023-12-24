@@ -78,7 +78,7 @@ bool eventRegister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = handler;
     entry.context = context;
 
-    logTrace("Registered event handler for code: %s", eventCodeToCptr(code));
+    logDebug("Registered event handler for code: %s", eventCodeToCptr(code));
     return true;
 }
 
@@ -107,7 +107,7 @@ bool eventUnregister(EventCode code, void* context, OnEventHandler handler) {
     entry.handler = nullptr;
     entry.context = nullptr;
 
-    logTrace("Unregistered event handler for code: %s", eventCodeToCptr(code));
+    logDebug("Unregistered event handler for code: %s", eventCodeToCptr(code));
     return true;
 }
 

@@ -34,6 +34,14 @@ struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
     VkSurfaceKHR surface;
+
+    u32 frameBufferWidth;
+    u32 frameBufferHeight;
+
+#if STLV_DEBUG
+    VkDebugUtilsMessengerEXT debugMessenger;
+#endif
+
 };
 
 } // namespace stlv
