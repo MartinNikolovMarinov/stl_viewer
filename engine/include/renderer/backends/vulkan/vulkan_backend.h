@@ -232,7 +232,7 @@ struct RendererBackend {
     u32 frameBufferWidth;
     u32 frameBufferHeight;
     u64 frameBufferSizeGen;
-    u64 frameBufferSizeGenLast;
+    u64 frameBufferSizeLastGen;
 
 #if STLV_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;
@@ -241,6 +241,7 @@ struct RendererBackend {
     VulkanDevice device;
 
     VulkanSwapchain swapchain;
+    bool recreatingSwapchain;
     VulkanRenderPass mainRenderPass;
     u32 imageIdx;
     u64 currentFrame;

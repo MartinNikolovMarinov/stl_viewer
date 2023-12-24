@@ -128,6 +128,8 @@ void vulkanRenderPassDestroy(RendererBackend& backend, VulkanRenderPass& renderP
 void vulkanRenderPassBegin(VulkanRenderPass& renderPass, VulkanCommandBuffer& cmdBuffer, VkFramebuffer framebuffer) {
     VkRenderPassBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    beginInfo.pNext = nullptr;
+    beginInfo.renderPass = renderPass.handle;
     beginInfo.framebuffer = framebuffer;
     beginInfo.renderArea.offset.x = i32(renderPass.x);
     beginInfo.renderArea.offset.y = i32(renderPass.y);
