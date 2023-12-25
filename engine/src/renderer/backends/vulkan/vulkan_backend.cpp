@@ -36,12 +36,24 @@ void call_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 
 #endif
 
+// Create Surface
+
+bool createSurface(RendererBackend& backend, PlatformState& pltState);
+void destroySurface(RendererBackend& backend);
+
+// Device
+
+bool deviceCreate(RendererBackend& device);
+void deviceDestroy(RendererBackend& backend);
+
 } // namespace
 
-bool initRendererBackend(RendererBackend& backend, PlatformState&, u32, u32) {
+bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32, u32) {
     logInfoTagged(LogTag::T_RENDERER, "Initializing Vulkan Backend...");
 
     if (!createInstance(backend)) return false;
+    if (!createSurface(backend, pltState)) return false;
+    if (!deviceCreate(backend)) return false;
 
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Backend Initialized SUCCESSFULLY.");
     return true;
@@ -50,10 +62,14 @@ bool initRendererBackend(RendererBackend& backend, PlatformState&, u32, u32) {
 void shutdownRendererBackend(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Renderer Vulkan Backend Shutting Down...");
 
+    deviceDestroy(backend);
+    destroySurface(backend);
 #if STLV_DEBUG
     destroyDebugMessenger(backend);
 #endif
     destroyInstance(backend);
+
+    backend = {};
 }
 
 void rendererOnResizeBackend(RendererBackend& backend, u32 width, u32 height) {
@@ -183,7 +199,7 @@ bool createInstance(RendererBackend& backend) {
 }
 
 void destroyInstance(RendererBackend& backend) {
-    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan Instance...");
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan Instance.");
 
     if (backend.instance) {
         vkDestroyInstance(backend.instance, backend.allocator);
@@ -367,6 +383,41 @@ void call_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 }
 
 #endif
+
+// Surface
+
+bool createSurface(RendererBackend& backend, PlatformState& pltState) {
+    if (!pltCreateVulkanSurface_vulkan(pltState, backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create window surface.");
+        return false;
+    }
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan surface created.");
+    return true;
+}
+
+void destroySurface(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan surface.");
+    if (backend.surface) {
+        vkDestroySurfaceKHR(backend.instance, backend.surface, backend.allocator);
+    }
+}
+
+// Device
+
+bool deviceCreate(RendererBackend& backend) {
+    if (!vulkanDeviceCreate(backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan device.");
+        return false;
+    }
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan device created.");
+
+    return true;
+}
+
+void deviceDestroy(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
+    vulkanDeviceDestroy(backend);
+}
 
 } // namespace
 

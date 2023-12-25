@@ -30,10 +30,47 @@ const char* vulkanResultToCptr(VkResult result, bool extended = true);
     }                                                                   \
 }
 
+struct RendererBackend;
+using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
+using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
+
+struct VulkanSwapchainSupportInfo {
+    VkSurfaceCapabilitiesKHR capabilities;
+    VkSurfaceFormatKHRList formats;
+    VkPresentModeKHRList presentModes;
+};
+
+struct VulkanQueue {
+    VkQueue handle;
+    u32 familyIndex;
+};
+
+struct VulkanDevice {
+    VkPhysicalDevice physicalDevice;
+    VkDevice logicalDevice;
+    VkFormat depthFormat;
+
+    VulkanQueue graphicsQueue;
+    VulkanQueue presentQueue;
+    VulkanQueue transferQueue;
+    VulkanQueue computeQueue;
+
+    VulkanSwapchainSupportInfo swapchainSupportInfo;
+
+    VkPhysicalDeviceProperties properties;
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    VkPhysicalDeviceFeatures features;
+};
+
+bool vulkanDeviceCreate(RendererBackend& device);
+void vulkanDeviceDestroy(RendererBackend& device);
+void vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info);
+
 struct RendererBackend {
     VkInstance instance;
     VkAllocationCallbacks* allocator;
     VkSurfaceKHR surface;
+    VulkanDevice device;
 
     u32 frameBufferWidth;
     u32 frameBufferHeight;
@@ -41,7 +78,6 @@ struct RendererBackend {
 #if STLV_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif
-
 };
 
 } // namespace stlv

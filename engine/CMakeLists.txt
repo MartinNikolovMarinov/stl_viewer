@@ -35,6 +35,7 @@ if (STLV_BACKEND_VULKAN)
     set(src_files ${src_files}
         src/renderer/backends/vulkan/vulkan_backend.cpp
         src/renderer/backends/vulkan/vulkan_utils.cpp
+        src/renderer/backends/vulkan/vulkan_device.cpp
     )
 else()
     message(FATAL_ERROR "Only Vulkan is supported at the moment.")
