@@ -82,6 +82,9 @@ void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName
         case LogTag::T_RENDERER:
             printf(ANSI_BOLD(ANSI_BRIGHT_WHITE("[RENDERER]")));
             break;
+        case LogTag::T_VULKAN:
+            printf(ANSI_BOLD(ANSI_BRIGHT_MAGENTA("[VULKAN]")));
+            break;
 
         case LogTag::T_ENGINE: [[fallthrough]];
         case LogTag::SENTINEL:

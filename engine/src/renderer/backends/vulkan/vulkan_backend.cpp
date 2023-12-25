@@ -264,7 +264,6 @@ VkBool32 debugCallback (
 ) {
     char buff[core::KILOBYTE*2] = {};
     char* pbuff = buff;
-    pbuff = core::cptrCopyUnsafe(pbuff, ANSI_BOLD(ANSI_BRIGHT_MAGENTA("[VULKAN MESSAGE]")));
     pbuff = core::cptrCopyUnsafe(pbuff, "\ntype: ");
 
     switch (messageTypes) {
@@ -291,21 +290,21 @@ VkBool32 debugCallback (
 
     switch (messageSeverity) {
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-            logTraceTagged(LogTag::T_RENDERER, buff);
+            logTraceTagged(LogTag::T_VULKAN, buff);
             break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-            logInfoTagged(LogTag::T_RENDERER, buff);
+            logInfoTagged(LogTag::T_VULKAN, buff);
             break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            logWarnTagged(LogTag::T_RENDERER, buff);
+            logWarnTagged(LogTag::T_VULKAN, buff);
             break;
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-            logErrTagged(LogTag::T_RENDERER, buff);
+            logErrTagged(LogTag::T_VULKAN, buff);
             break;
 
         case VK_DEBUG_UTILS_MESSAGE_SEVERITY_FLAG_BITS_MAX_ENUM_EXT: [[fallthrough]];
         default:
-            logErrTagged(LogTag::T_RENDERER, buff);
+            logErrTagged(LogTag::T_VULKAN, buff);
             break;
     }
 
