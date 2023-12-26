@@ -33,6 +33,28 @@ const char* vulkanResultToCptr(VkResult result, bool extended = true);
 struct RendererBackend;
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
+using VkImageList = core::Arr<VkImage, RendererBackendAllocator>;
+using VkImageViewList = core::Arr<VkImageView, RendererBackendAllocator>;
+
+struct VulkanSwapchainCreationInfo {
+    u32 width;
+    u32 height;
+    u32 maxFramesInFlight;
+};
+
+struct VulkanSwapchain {
+    VkSwapchainKHR handle;
+    VkSurfaceFormatKHR imageFormat;
+    u32 maxFramesInFlight;
+
+    u32 imageCount; // capabilities minImageCount + 1
+    VkImageList images;
+    VkImageViewList imageViews;
+};
+
+bool vulkanSwapchainCreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
+void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain);
+bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
 
 struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -78,6 +100,8 @@ struct RendererBackend {
 #if STLV_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;
 #endif
+
+    VulkanSwapchain swapchain;
 };
 
 } // namespace stlv

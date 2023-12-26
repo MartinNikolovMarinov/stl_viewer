@@ -46,6 +46,11 @@ void destroySurface(RendererBackend& backend);
 bool deviceCreate(RendererBackend& device);
 void deviceDestroy(RendererBackend& backend);
 
+// Swapchain
+
+bool swapchainCreate(RendererBackend& backend);
+void swapchainDestroy(RendererBackend& backend);
+
 } // namespace
 
 bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32, u32) {
@@ -54,6 +59,7 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32,
     if (!createInstance(backend)) return false;
     if (!createSurface(backend, pltState)) return false;
     if (!deviceCreate(backend)) return false;
+    if (!swapchainCreate(backend)) return false;
 
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Backend Initialized SUCCESSFULLY.");
     return true;
@@ -62,6 +68,7 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32,
 void shutdownRendererBackend(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Renderer Vulkan Backend Shutting Down...");
 
+    swapchainDestroy(backend);
     deviceDestroy(backend);
     destroySurface(backend);
 #if STLV_DEBUG
@@ -417,6 +424,27 @@ bool deviceCreate(RendererBackend& backend) {
 void deviceDestroy(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan device.");
     vulkanDeviceDestroy(backend);
+}
+
+// Swapchain
+
+bool swapchainCreate(RendererBackend& backend) {
+    VulkanSwapchainCreationInfo createInfo = {};
+    createInfo.width = backend.frameBufferWidth;
+    createInfo.height = backend.frameBufferHeight;
+    createInfo.maxFramesInFlight = 2; // FIXME: move this to AppCreateInfo
+    if (!vulkanSwapchainCreate(backend, backend.swapchain, createInfo)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan swapchain.");
+        return false;
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan swapchain created.");
+    return true;
+}
+
+void swapchainDestroy(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan swapchain.");
+    vulkanSwapchainDestroy(backend, backend.swapchain);
 }
 
 } // namespace
