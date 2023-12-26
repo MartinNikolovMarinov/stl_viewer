@@ -102,6 +102,7 @@ struct RendererBackend {
 #endif
 
     VulkanSwapchain swapchain;
+    VkRenderPass mainRenderPass;
 };
 
 } // namespace stlv
