@@ -30,6 +30,84 @@ bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchai
     return true;
 }
 
+bool vulkanSwapchainAqureNextImage(
+    RendererBackend& backend,
+    VulkanSwapchain& swapchain,
+    u64 timeoutNs,
+    VkSemaphore imageAvailableSemaphore,
+    VkFence fence,
+    u32& outImageIdx
+) {
+    VkResult result = vkAcquireNextImageKHR(
+        backend.device.logicalDevice,
+        swapchain.handle,
+        timeoutNs,
+        imageAvailableSemaphore,
+        fence,
+        &outImageIdx);
+
+    if (result != VK_SUCCESS) {
+        return true;
+    }
+    if (result != VK_SUBOPTIMAL_KHR) {
+        // TODO: Maybe this should be a re-create as well ?
+        return true;
+    }
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        VulkanSwapchainCreationInfo createInfo;
+        createInfo.width = backend.frameBufferWidth;
+        createInfo.height = backend.frameBufferHeight;
+        createInfo.maxFramesInFlight = swapchain.maxFramesInFlight;
+        if (!vulkanSwapchainRecreate(backend, swapchain, createInfo)) {
+            logErrTagged(LogTag::T_RENDERER, "Failed to recreate swapchain");
+        }
+        return false;
+    }
+
+    // Might be that a device was lost, or somthing worse.
+    logErrTagged(LogTag::T_RENDERER, "Failed to acquire next image from swapchain");
+    return false;
+}
+
+bool vulkanSwapchainPreset(
+    RendererBackend& backend,
+    VulkanSwapchain& swapchain,
+    VkQueue graphicsQueue,
+    VkQueue presentQueue,
+    VkSemaphore renderCompleteSemaphore,
+    u32 presentImageIdx
+) {
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderCompleteSemaphore;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &swapchain.handle;
+    presentInfo.pImageIndices = &presentImageIdx;
+    presentInfo.pResults = nullptr;
+
+    VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    if (result == VK_SUCCESS) {
+        return true;
+    }
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        VulkanSwapchainCreationInfo createInfo;
+        createInfo.width = backend.frameBufferWidth;
+        createInfo.height = backend.frameBufferHeight;
+        createInfo.maxFramesInFlight = swapchain.maxFramesInFlight;
+        if (!vulkanSwapchainRecreate(backend, swapchain, createInfo)) {
+            logErrTagged(LogTag::T_RENDERER, "Failed to recreate swapchain");
+            return false;
+        }
+        return true;
+    }
+
+    return false;
+}
+
 namespace {
 
 bool create(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo) {

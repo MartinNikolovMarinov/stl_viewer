@@ -55,6 +55,22 @@ struct VulkanSwapchain {
 bool vulkanSwapchainCreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
 void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain);
 bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
+bool vulkanSwapchainAqureNextImage(
+    RendererBackend& backend,
+    VulkanSwapchain& swapchain,
+    u64 timeoutNs,
+    VkSemaphore imageAvailableSemaphore,
+    VkFence fence,
+    u32& outImgIdx
+);
+bool vulkanSwapchainPreset(
+    RendererBackend& backend,
+    VulkanSwapchain& swapchain,
+    VkQueue graphicsQueue,
+    VkQueue presentQueue,
+    VkSemaphore renderCompleteSemaphore,
+    u32 presentImageIdx
+);
 
 struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
