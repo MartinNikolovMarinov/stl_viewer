@@ -30,7 +30,7 @@ bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchai
     return true;
 }
 
-bool vulkanSwapchainAqureNextImage(
+bool vulkanSwapchainAcquireNextImage(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     u64 timeoutNs,
@@ -70,7 +70,7 @@ bool vulkanSwapchainAqureNextImage(
     return false;
 }
 
-bool vulkanSwapchainPreset(
+bool vulkanSwapchainPresent(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     VkQueue,
@@ -88,24 +88,27 @@ bool vulkanSwapchainPreset(
     presentInfo.pResults = nullptr;
 
     VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+    bool ret = false;
 
     if (result == VK_SUCCESS) {
-        return true;
+        ret = true;
     }
-
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+    else if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
         VulkanSwapchainCreationInfo createInfo;
         createInfo.width = backend.frameBufferWidth;
         createInfo.height = backend.frameBufferHeight;
         createInfo.maxFramesInFlight = swapchain.maxFramesInFlight;
         if (!vulkanSwapchainRecreate(backend, swapchain, createInfo)) {
             logErrTagged(LogTag::T_RENDERER, "Failed to recreate swapchain");
-            return false;
+            ret = false;
         }
-        return true;
+        else {
+            ret = true;
+        }
     }
 
-    return false;
+    backend.currentFrame = (backend.currentFrame + 1) % swapchain.maxFramesInFlight;
+    return ret;
 }
 
 namespace {

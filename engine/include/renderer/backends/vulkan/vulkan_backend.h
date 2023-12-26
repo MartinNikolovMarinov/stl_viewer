@@ -34,12 +34,26 @@ struct RendererBackend;
 struct VulkanCommandBuffer;
 struct VulkanRenderPass;
 struct VulkanFrameBuffer;
+struct VulkanFence;
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
 using VkImageList = core::Arr<VkImage, RendererBackendAllocator>;
 using VkImageViewList = core::Arr<VkImageView, RendererBackendAllocator>;
 using VulkanCommandBufferList = core::Arr<VulkanCommandBuffer, RendererBackendAllocator>;
 using VulkanFrameBufferList = core::Arr<VulkanFrameBuffer, RendererBackendAllocator>;
+using VkSemaphoreList = core::Arr<VkSemaphore, RendererBackendAllocator>;
+using VulkanFenceList = core::Arr<VulkanFence, RendererBackendAllocator>;
+using ImagesInFlight = core::Arr<VulkanFence*, RendererBackendAllocator>;
+
+struct VulkanFence {
+    VkFence handle;
+    bool isSignaled;
+};
+
+bool vulkanFenceCreate(RendererBackend& backend, bool isSignaled, VulkanFence& outFence);
+void vulkanFenceDestroy(RendererBackend& backend, VulkanFence& fence);
+bool vulkanFenceWait(RendererBackend& backend, VulkanFence& fence, u64 timeoutNs);
+bool vulkanFenceReset(RendererBackend& backend, VulkanFence& fence);
 
 struct VulkanFrameBuffer {
     VkFramebuffer handle;
@@ -174,14 +188,14 @@ struct VulkanSwapchain {
 bool vulkanSwapchainCreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
 void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain);
 bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
-bool vulkanSwapchainAqureNextImage(
+bool vulkanSwapchainAcquireNextImage(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     u64 timeoutNs,
     VkSemaphore imageAvailableSemaphore,
     VkFence fence,
     u32& outImgIdx);
-bool vulkanSwapchainPreset(
+bool vulkanSwapchainPresent(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     VkQueue graphicsQueue,
@@ -239,6 +253,15 @@ struct RendererBackend {
     VulkanSwapchain swapchain;
     VulkanRenderPass mainRenderPass;
     VulkanCommandBufferList graphicsCommandBuffers;
+
+    u32 currentFrame;
+    u32 imageIdx;
+
+    VkSemaphoreList imageAvailableSemaphores;
+    VkSemaphoreList queueCompleteSemaphores;
+    u32 inFlightFenceCount;
+    VulkanFenceList inFlightFences;
+    ImagesInFlight imagesInFlight;
 
     i32 findMemoryIndex(u32 typeFilter, u32 propertyFlags);
 };

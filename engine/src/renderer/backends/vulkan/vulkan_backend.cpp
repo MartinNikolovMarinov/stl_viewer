@@ -67,6 +67,11 @@ bool createFrameBuffers(RendererBackend& backend);
 void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass);
 void destroyFrameBuffers(RendererBackend& backend);
 
+// Sync Objects
+
+bool createSyncObjects(RendererBackend& backend);
+void destroySyncObjects(RendererBackend& backend);
+
 } // namespace
 
 i32 RendererBackend::findMemoryIndex(u32 typeFilter, u32 propertyFlags) {
@@ -96,6 +101,7 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 
     if (!renderPassesCreate(backend)) return false;
     if (!createFrameBuffers(backend)) return false;
     if (!createCommandBuffers(backend)) return false;
+    if (!createSyncObjects(backend)) return false;
 
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Backend Initialized SUCCESSFULLY.");
     return true;
@@ -104,6 +110,9 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 
 void shutdownRendererBackend(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Renderer Vulkan Backend Shutting Down...");
 
+    VK_EXPECT(vkDeviceWaitIdle(backend.device.logicalDevice), "Failed to wait for Vulkan device to become idle.");
+
+    destroySyncObjects(backend);
     destroyCommandBuffers(backend);
     destroyFrameBuffers(backend);
     renderPassesDestroy(backend);
@@ -580,6 +589,74 @@ void destroyFrameBuffers(RendererBackend& backend) {
     for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
         vulkanFrameBufferDestroy(backend, backend.swapchain.frameBuffers[i]);
     }
+}
+
+// Sync Objects
+
+bool createSyncObjects(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan sync objects.");
+
+    backend.imageAvailableSemaphores.fill(VK_NULL_HANDLE, 0, backend.swapchain.maxFramesInFlight);
+    backend.queueCompleteSemaphores.fill(VK_NULL_HANDLE, 0, backend.swapchain.maxFramesInFlight);
+    backend.imagesInFlight.fill(nullptr, 0, backend.swapchain.imageCount);
+    backend.inFlightFences.fill({}, 0, backend.swapchain.maxFramesInFlight);
+
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; ++i) {
+        VkSemaphoreCreateInfo semaphoreInfo = {};
+        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+        VK_EXPECT_OR_RETURN(
+            vkCreateSemaphore(
+                backend.device.logicalDevice,
+                &semaphoreInfo,
+                backend.allocator,
+                &backend.imageAvailableSemaphores[i]),
+            "Failed to create Vulkan semaphore."
+        );
+
+        VK_EXPECT_OR_RETURN(
+            vkCreateSemaphore(
+                backend.device.logicalDevice,
+                &semaphoreInfo,
+                backend.allocator,
+                &backend.queueCompleteSemaphores[i]),
+            "Failed to create Vulkan semaphore."
+        );
+
+        VulkanFence& fence = backend.inFlightFences[i];
+        if (!vulkanFenceCreate(backend, true, fence)) {
+            logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan fence.");
+            return false;
+        }
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan sync objects created.");
+    return true;
+}
+
+void destroySyncObjects(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan sync objects.");
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying image available semaphores.");
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; ++i) {
+        if (backend.imageAvailableSemaphores[i]) {
+            vkDestroySemaphore(backend.device.logicalDevice, backend.imageAvailableSemaphores[i], backend.allocator);
+        }
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying queue complete semaphores.");
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; ++i) {
+        if (backend.queueCompleteSemaphores[i]) {
+            vkDestroySemaphore(backend.device.logicalDevice, backend.queueCompleteSemaphores[i], backend.allocator);
+        }
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying in flight fences.");
+    for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; ++i) {
+        vulkanFenceDestroy(backend, backend.inFlightFences[i]);
+    }
+
+    backend.imagesInFlight.clear();
 }
 
 } // namespace
