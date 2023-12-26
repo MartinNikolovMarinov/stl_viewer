@@ -56,6 +56,11 @@ void swapchainDestroy(RendererBackend& backend);
 bool renderPassesCreate(RendererBackend& backend);
 void renderPassesDestroy(RendererBackend& backend);
 
+// Command Buffers
+
+bool createCommandBuffers(RendererBackend& backend);
+void destroyCommandBuffers(RendererBackend& backend);
+
 } // namespace
 
 i32 RendererBackend::findMemoryIndex(u32 typeFilter, u32 propertyFlags) {
@@ -83,6 +88,7 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 
     if (!deviceCreate(backend)) return false;
     if (!swapchainCreate(backend)) return false;
     if (!renderPassesCreate(backend)) return false;
+    if (!createCommandBuffers(backend)) return false;
 
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Backend Initialized SUCCESSFULLY.");
     return true;
@@ -91,6 +97,7 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 
 void shutdownRendererBackend(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Renderer Vulkan Backend Shutting Down...");
 
+    destroyCommandBuffers(backend);
     renderPassesDestroy(backend);
     swapchainDestroy(backend);
     deviceDestroy(backend);
@@ -492,6 +499,38 @@ void renderPassesDestroy(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan render passes.");
     if (backend.mainRenderPass.handle) {
         vulkanDestroyRenderPass(backend, backend.mainRenderPass);
+    }
+}
+
+// Command Buffers
+
+bool createCommandBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan command buffers.");
+
+    backend.graphicsCommandBuffers.fill({}, 0, backend.swapchain.imageCount);
+
+    for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
+        VulkanCommandBuffer& cmdBuffer = backend.graphicsCommandBuffers[i];
+        if (cmdBuffer.handle) {
+            vulkanCommandBufferFree(backend, backend.device.graphicsCommandPool, cmdBuffer);
+        }
+        if (!vulkanCommandBufferAllocate(backend, backend.device.graphicsCommandPool, true, cmdBuffer)) {
+            logErrTagged(LogTag::T_RENDERER, "Failed to allocate Vulkan command buffer.");
+            return false;
+        }
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan command buffers created.");
+    return true;
+}
+
+void destroyCommandBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan command buffers.");
+    for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
+        VulkanCommandBuffer& cmdBuffer = backend.graphicsCommandBuffers[i];
+        if (cmdBuffer.handle) {
+            vulkanCommandBufferFree(backend, backend.device.graphicsCommandPool, cmdBuffer);
+        }
     }
 }
 

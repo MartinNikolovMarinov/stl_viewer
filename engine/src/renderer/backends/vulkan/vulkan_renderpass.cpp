@@ -15,6 +15,7 @@ bool vulkanCreateRenderPass(RendererBackend& backend,
     renderPass.depth = depth;
     renderPass.stencil = stencil;
     renderPass.clearColor = clearColor;
+    renderPass.state = VulkanRenderPassState::NOT_ALLOCATED;
 
     /**
      * NOTE: On load and store operations.
@@ -128,6 +129,7 @@ bool vulkanDestroyRenderPass(RendererBackend& backend, VulkanRenderPass& renderP
         renderPass.handle = VK_NULL_HANDLE;
     }
 
+    renderPass.state = VulkanRenderPassState::NOT_ALLOCATED;
     return true;
 }
 
@@ -153,16 +155,14 @@ bool vulkanRenderPassBegin(VulkanCommandBuffer cmdBuffer, VulkanRenderPass& rend
     beginInfo.pClearValues = clearValues;
 
     vkCmdBeginRenderPass(cmdBuffer.handle, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
-    cmdBuffer.state = CommandBufferState::IN_RENDER_PASS;
-    renderPass.state = VulkanRenderPassState::IN_RENDER_PASS;
+    cmdBuffer.state = VulkanCommandBufferState::IN_RENDER_PASS;
 
     return true;
 }
 
-bool vulkanRenderPassEnd(VulkanCommandBuffer cmdBuffer, VulkanRenderPass& renderPass) {
+bool vulkanRenderPassEnd(VulkanCommandBuffer cmdBuffer, VulkanRenderPass&) {
     vkCmdEndRenderPass(cmdBuffer.handle);
-    cmdBuffer.state = CommandBufferState::RECORDING;
-    renderPass.state = VulkanRenderPassState::RECORDING;
+    cmdBuffer.state = VulkanCommandBufferState::RECORDING;
     return true;
 }
 

@@ -31,12 +31,14 @@ const char* vulkanResultToCptr(VkResult result, bool extended = true);
 }
 
 struct RendererBackend;
+struct VulkanCommandBuffer;
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
 using VkImageList = core::Arr<VkImage, RendererBackendAllocator>;
 using VkImageViewList = core::Arr<VkImageView, RendererBackendAllocator>;
+using VulkanCommandBufferList = core::Arr<VulkanCommandBuffer, RendererBackendAllocator>;
 
-enum struct CommandBufferState {
+enum struct VulkanCommandBufferState {
     NOT_ALLOCATED,
     READY,
     RECORDING,
@@ -47,8 +49,33 @@ enum struct CommandBufferState {
 
 struct VulkanCommandBuffer {
     VkCommandBuffer handle;
-    CommandBufferState state;
+    VulkanCommandBufferState state;
 };
+
+bool vulkanCommandBufferAllocate(
+    RendererBackend& backend,
+    VkCommandPool pool,
+    bool isPrimary,
+    VulkanCommandBuffer& outCmdBuffer);
+void vulkanCommandBufferFree(RendererBackend& backend, VkCommandPool pool, VulkanCommandBuffer& cmdBuffer);
+bool vulkanCommandBufferBegin(
+    VulkanCommandBuffer& cmdBuffer,
+    bool isSingleUse,
+    bool isRenderPassContinue,
+    bool isSimultaneousUse
+);
+bool vulkanCommandBufferEnd(VulkanCommandBuffer& cmdBuffer);
+bool vulkanCommandBufferUpdateSubmitted(VulkanCommandBuffer& cmdBuffer);
+bool vulkanCommandBufferReset(VulkanCommandBuffer& cmdBuffer);
+bool vulkanCommandBufferAllocateAndBeginSingleUse(
+    RendererBackend& backend,
+    VkCommandPool pool,
+    VulkanCommandBuffer& outCmdBuffer);
+bool vulkanCommandBufferEndSingleUse(
+    RendererBackend& backend,
+    VkCommandPool pool,
+    VulkanCommandBuffer& cmdBuffer,
+    VkQueue queue);
 
 enum struct VulkanRenderPassState {
     NOT_ALLOCATED,
@@ -189,6 +216,7 @@ struct RendererBackend {
 
     VulkanSwapchain swapchain;
     VulkanRenderPass mainRenderPass;
+    VulkanCommandBufferList graphicsCommandBuffers;
 
     i32 findMemoryIndex(u32 typeFilter, u32 propertyFlags);
 };

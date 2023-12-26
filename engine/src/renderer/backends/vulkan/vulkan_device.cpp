@@ -64,7 +64,7 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Creating graphics command pool...");
     VkCommandPoolCreateInfo createPoolInfo{};
     createPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    createPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    createPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // TODO: Consider resseting the entire pool at some far point in the future.
     createPoolInfo.queueFamilyIndex = u32(backend.device.graphicsQueue.familyIndex);
     VK_EXPECT_OR_RETURN(
         vkCreateCommandPool(
