@@ -36,6 +36,48 @@ using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocato
 using VkImageList = core::Arr<VkImage, RendererBackendAllocator>;
 using VkImageViewList = core::Arr<VkImageView, RendererBackendAllocator>;
 
+enum struct CommandBufferState {
+    NOT_ALLOCATED,
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    RECORDING_ENDED,
+    SUBMITTED
+};
+
+struct VulkanCommandBuffer {
+    VkCommandBuffer handle;
+    CommandBufferState state;
+};
+
+enum struct VulkanRenderPassState {
+    NOT_ALLOCATED,
+    READY,
+    RECORDING,
+    IN_RENDER_PASS,
+    SUBMITTED
+};
+
+struct VulkanRenderPass {
+    VkRenderPass handle;
+    f32 x, y, w, h;
+    core::vec4f clearColor;
+
+    f32 depth;
+    u32 stencil;
+
+    VulkanRenderPassState state;
+};
+
+bool vulkanCreateRenderPass(RendererBackend& backend,
+    VulkanRenderPass& renderPass,
+    f32 x, f32 y, f32 w, f32 h,
+    f32 depth, u32 stencil,
+    core::vec4f clearColor);
+bool vulkanDestroyRenderPass(RendererBackend& backend, VulkanRenderPass& renderPass);
+bool vulkanRenderPassBegin(VulkanCommandBuffer cmdBuffer, VulkanRenderPass& renderPass, VkFramebuffer frameBuffer);
+bool vulkanRenderPassEnd(VulkanCommandBuffer cmdBuffer, VulkanRenderPass& renderPass);
+
 struct VulkanImage {
     VkImage handle;
     VkDeviceMemory memory;
@@ -146,7 +188,7 @@ struct RendererBackend {
 #endif
 
     VulkanSwapchain swapchain;
-    VkRenderPass mainRenderPass;
+    VulkanRenderPass mainRenderPass;
 
     i32 findMemoryIndex(u32 typeFilter, u32 propertyFlags);
 };

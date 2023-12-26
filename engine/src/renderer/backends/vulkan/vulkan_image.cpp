@@ -105,7 +105,7 @@ bool vulkanImageViewCreate(
         "Failed to create image view"
     );
 
-    logTraceTagged(LogTag::T_RENDERER, "Creating Vulkan image view.");
+    logTraceTagged(LogTag::T_RENDERER, "Vulkan image view created successfully.");
     return true;
 }
 
