@@ -61,11 +61,31 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
     }
     logInfoTagged(LogTag::T_RENDERER, "Logical device created.");
 
+    logInfoTagged(LogTag::T_RENDERER, "Creating graphics command pool...");
+    VkCommandPoolCreateInfo createPoolInfo{};
+    createPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    createPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    createPoolInfo.queueFamilyIndex = u32(backend.device.graphicsQueue.familyIndex);
+    VK_EXPECT_OR_RETURN(
+        vkCreateCommandPool(
+            backend.device.logicalDevice,
+            &createPoolInfo,
+            backend.allocator,
+            &backend.device.graphicsCommandPool),
+        "Failed to create graphics command pool."
+    )
+    logInfoTagged(LogTag::T_RENDERER, "Graphics command pool created.");
+
     return true;
 }
 
 void vulkanDeviceDestroy(RendererBackend& backend) {
     VulkanDevice& device = backend.device;
+
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan graphics command pool.");
+    if (device.graphicsCommandPool) {
+        vkDestroyCommandPool(device.logicalDevice, device.graphicsCommandPool, backend.allocator);
+    }
 
     logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan logical device.");
     if (device.logicalDevice) {

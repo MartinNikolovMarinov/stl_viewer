@@ -79,6 +79,8 @@ struct VulkanDevice {
 
     VulkanSwapchainSupportInfo swapchainSupportInfo;
 
+    VkCommandPool graphicsCommandPool;
+
     VkPhysicalDeviceProperties properties;
     VkPhysicalDeviceMemoryProperties memoryProperties;
     VkPhysicalDeviceFeatures features;
