@@ -61,6 +61,12 @@ void renderPassesDestroy(RendererBackend& backend);
 bool createCommandBuffers(RendererBackend& backend);
 void destroyCommandBuffers(RendererBackend& backend);
 
+// Frame Buffers
+
+bool createFrameBuffers(RendererBackend& backend);
+void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass);
+void destroyFrameBuffers(RendererBackend& backend);
+
 } // namespace
 
 i32 RendererBackend::findMemoryIndex(u32 typeFilter, u32 propertyFlags) {
@@ -88,6 +94,7 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 
     if (!deviceCreate(backend)) return false;
     if (!swapchainCreate(backend)) return false;
     if (!renderPassesCreate(backend)) return false;
+    if (!createFrameBuffers(backend)) return false;
     if (!createCommandBuffers(backend)) return false;
 
     logInfoTagged(LogTag::T_RENDERER, "Vulkan Backend Initialized SUCCESSFULLY.");
@@ -98,6 +105,7 @@ void shutdownRendererBackend(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Renderer Vulkan Backend Shutting Down...");
 
     destroyCommandBuffers(backend);
+    destroyFrameBuffers(backend);
     renderPassesDestroy(backend);
     swapchainDestroy(backend);
     deviceDestroy(backend);
@@ -531,6 +539,46 @@ void destroyCommandBuffers(RendererBackend& backend) {
         if (cmdBuffer.handle) {
             vulkanCommandBufferFree(backend, backend.device.graphicsCommandPool, cmdBuffer);
         }
+    }
+}
+
+// Frame Buffers
+
+bool createFrameBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan frame buffers.");
+
+    regenerateFrameBuffers(backend, backend.swapchain, backend.mainRenderPass);
+
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan frame buffers created.");
+    return true;
+}
+
+void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass) {
+    logTraceTagged(LogTag::T_RENDERER, "Regenerating Vulkan frame buffers.");
+
+    backend.swapchain.frameBuffers.ensureCap(backend.swapchain.imageCount);
+    for (u32 i = 0; i < swapchain.imageCount; i++) {
+        constexpr u32 attachmentCount = 2; // TODO: hardcodeness.
+        VkImageView& colorImageView = swapchain.imageViews[i];
+        VkImageView& depthImageView = swapchain.depthImage.view;
+        VkImageView attachments[attachmentCount] = { colorImageView, depthImageView };
+
+        VulkanFrameBuffer frameBuffer;
+        vulkanFrameBufferCreate(
+            backend,
+            renderPass,
+            backend.frameBufferWidth, backend.frameBufferHeight,
+            attachmentCount, attachments,
+            frameBuffer);
+        backend.swapchain.frameBuffers.append(core::move(frameBuffer));
+    }
+
+}
+
+void destroyFrameBuffers(RendererBackend& backend) {
+    logInfoTagged(LogTag::T_RENDERER, "Destroying Vulkan frame buffers.");
+    for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
+        vulkanFrameBufferDestroy(backend, backend.swapchain.frameBuffers[i]);
     }
 }
 

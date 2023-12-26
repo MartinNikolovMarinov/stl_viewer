@@ -32,11 +32,31 @@ const char* vulkanResultToCptr(VkResult result, bool extended = true);
 
 struct RendererBackend;
 struct VulkanCommandBuffer;
+struct VulkanRenderPass;
+struct VulkanFrameBuffer;
 using VkSurfaceFormatKHRList = core::Arr<VkSurfaceFormatKHR, RendererBackendAllocator>;
 using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocator>;
 using VkImageList = core::Arr<VkImage, RendererBackendAllocator>;
 using VkImageViewList = core::Arr<VkImageView, RendererBackendAllocator>;
 using VulkanCommandBufferList = core::Arr<VulkanCommandBuffer, RendererBackendAllocator>;
+using VulkanFrameBufferList = core::Arr<VulkanFrameBuffer, RendererBackendAllocator>;
+
+struct VulkanFrameBuffer {
+    VkFramebuffer handle;
+    u32 attachmentCount;
+    VkImageViewList attachments;
+    VulkanRenderPass* renderPass;
+};
+
+bool vulkanFrameBufferCreate(
+    RendererBackend& backend,
+    VulkanRenderPass& renderPass,
+    u32 width, u32 height,
+    u32 attachmentCount,
+    const VkImageView* attachments,
+    VulkanFrameBuffer& outFrameBuffer
+);
+void vulkanFrameBufferDestroy(RendererBackend& backend, VulkanFrameBuffer& frameBuffer);
 
 enum struct VulkanCommandBufferState {
     NOT_ALLOCATED,
@@ -145,6 +165,8 @@ struct VulkanSwapchain {
     u32 imageCount; // capabilities minImageCount + 1
     VkImageList images;
     VkImageViewList imageViews;
+
+    VulkanFrameBufferList frameBuffers;
 
     VulkanImage depthImage;
 };
