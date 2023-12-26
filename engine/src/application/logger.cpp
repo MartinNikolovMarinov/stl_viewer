@@ -65,7 +65,7 @@ void __log(LogTag tag, LogLevel level, LogSpecialMode mode, const char* funcName
             printf(ANSI_BOLD(ANSI_BACKGROUND_RED(ANSI_BRIGHT_WHITE("[FATAL]"))));
             break;
         case LogLevel::L_TRACE:
-            printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[INPUT_TRACE]")));
+            printf(ANSI_BOLD(ANSI_BRIGHT_GREEN("[TRACE]")));
             break;
 
         case LogLevel::SENTINEL: [[fallthrough]];

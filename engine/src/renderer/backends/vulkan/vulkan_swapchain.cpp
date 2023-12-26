@@ -73,7 +73,7 @@ bool vulkanSwapchainAqureNextImage(
 bool vulkanSwapchainPreset(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
-    VkQueue graphicsQueue,
+    VkQueue,
     VkQueue presentQueue,
     VkSemaphore renderCompleteSemaphore,
     u32 presentImageIdx
@@ -231,6 +231,25 @@ bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain) {
         );
     }
 
+    logTraceTagged(LogTag::T_RENDERER, "Create depth buffer in swapchian.");
+    bool ok = vulkanImageCreate(
+        backend,
+        backend.frameBufferWidth,
+        backend.frameBufferHeight,
+        backend.device.depthFormat,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        true,
+        VK_IMAGE_ASPECT_DEPTH_BIT,
+        swapchain.depthImage
+    );
+    if (!ok) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to create depth buffer in swapchain");
+        return false;
+    }
+
+
     logTraceTagged(LogTag::T_RENDERER, "Swapchain images retreaved.");
     return true;
 }
@@ -272,6 +291,10 @@ void destroy(RendererBackend& backend, VulkanSwapchain& swapchain) {
     if (swapchain.handle != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(backend.device.logicalDevice, swapchain.handle, backend.allocator);
         swapchain.handle = VK_NULL_HANDLE;
+    }
+
+    if (swapchain.depthImage.handle != VK_NULL_HANDLE) {
+        vulkanDestroyImage(backend, swapchain.depthImage);
     }
 }
 

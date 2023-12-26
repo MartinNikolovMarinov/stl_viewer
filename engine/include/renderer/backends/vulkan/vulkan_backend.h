@@ -36,6 +36,32 @@ using VkPresentModeKHRList = core::Arr<VkPresentModeKHR, RendererBackendAllocato
 using VkImageList = core::Arr<VkImage, RendererBackendAllocator>;
 using VkImageViewList = core::Arr<VkImageView, RendererBackendAllocator>;
 
+struct VulkanImage {
+    VkImage handle;
+    VkDeviceMemory memory;
+    VkImageView view;
+    u32 width;
+    u32 height;
+};
+
+bool vulkanImageCreate(
+    RendererBackend& backend,
+    u32 width,
+    u32 height,
+    VkFormat format,
+    VkImageTiling tiling,
+    VkImageUsageFlags usage,
+    VkMemoryPropertyFlags memoryProperties,
+    bool createView,
+    VkImageAspectFlags aspectFlags,
+    VulkanImage& outImage);
+bool vulkanImageViewCreate(
+    RendererBackend& backend,
+    VkFormat format,
+    VkImageAspectFlags aspectFlags,
+    VulkanImage& outImage);
+void vulkanDestroyImage(RendererBackend& backend, VulkanImage& image);
+
 struct VulkanSwapchainCreationInfo {
     u32 width;
     u32 height;
@@ -50,6 +76,8 @@ struct VulkanSwapchain {
     u32 imageCount; // capabilities minImageCount + 1
     VkImageList images;
     VkImageViewList imageViews;
+
+    VulkanImage depthImage;
 };
 
 bool vulkanSwapchainCreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
@@ -61,16 +89,14 @@ bool vulkanSwapchainAqureNextImage(
     u64 timeoutNs,
     VkSemaphore imageAvailableSemaphore,
     VkFence fence,
-    u32& outImgIdx
-);
+    u32& outImgIdx);
 bool vulkanSwapchainPreset(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     VkQueue graphicsQueue,
     VkQueue presentQueue,
     VkSemaphore renderCompleteSemaphore,
-    u32 presentImageIdx
-);
+    u32 presentImageIdx);
 
 struct VulkanSwapchainSupportInfo {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -121,6 +147,8 @@ struct RendererBackend {
 
     VulkanSwapchain swapchain;
     VkRenderPass mainRenderPass;
+
+    i32 findMemoryIndex(u32 typeFilter, u32 propertyFlags);
 };
 
 } // namespace stlv

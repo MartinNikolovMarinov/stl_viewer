@@ -58,8 +58,25 @@ void renderPassesDestroy(RendererBackend& backend);
 
 } // namespace
 
-bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32, u32) {
+i32 RendererBackend::findMemoryIndex(u32 typeFilter, u32 propertyFlags) {
+    VkPhysicalDeviceMemoryProperties memoryProperties;
+    vkGetPhysicalDeviceMemoryProperties(device.physicalDevice, &memoryProperties);
+
+    for (u32 i = 0; i < memoryProperties.memoryTypeCount; ++i) {
+        if ((typeFilter & (1 << i)) &&
+            (memoryProperties.memoryTypes[i].propertyFlags & propertyFlags) == propertyFlags) {
+            return i32(i);
+        }
+    }
+
+    return -1;
+}
+
+bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 frameBufferWidth, u32 frameBufferHeight) {
     logInfoTagged(LogTag::T_RENDERER, "Initializing Vulkan Backend...");
+
+    backend.frameBufferWidth = frameBufferWidth;
+    backend.frameBufferHeight = frameBufferHeight;
 
     if (!createInstance(backend)) return false;
     if (!createSurface(backend, pltState)) return false;
@@ -502,12 +519,26 @@ bool renderPassesCreate(RendererBackend& backend) {
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-    VkAttachmentReference colorAttachmentRef = {};
-    colorAttachmentRef.attachment = 0; // the index of the attachment description.
-    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // the layout to transition to during the subpass.
+    VkAttachmentDescription depthAttachment = {};
+    depthAttachment.format = backend.device.depthFormat;
+    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentDescription attachments[] = { colorAttachment };
-    constexpr addr_size attachmentsCount = sizeof(VkAttachmentDescription) / sizeof(attachments[0]);
+    VkAttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthAttachmentRef = {};
+    depthAttachmentRef.attachment = 1;
+    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentDescription attachments[] = { colorAttachment, depthAttachment };
+    constexpr addr_size attachmentsCount = sizeof(attachments) / sizeof(VkAttachmentDescription);
 
     // Subpasses
 
@@ -515,7 +546,7 @@ bool renderPassesCreate(RendererBackend& backend) {
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
-    subpass.pDepthStencilAttachment = nullptr; // TODO: add depth attachment.
+    subpass.pDepthStencilAttachment = &depthAttachmentRef;
     subpass.inputAttachmentCount = 0;
     subpass.pInputAttachments = nullptr; // TODO: add input attachments.
     subpass.preserveAttachmentCount = 0;

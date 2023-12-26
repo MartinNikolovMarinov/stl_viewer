@@ -13,7 +13,7 @@ VkFormat requiredDepthFormats[] = {
     VK_FORMAT_D32_SFLOAT_S8_UINT,
     VK_FORMAT_D24_UNORM_S8_UINT
 };
-constexpr addr_size requiredDepthFormatsLen = sizeof(requiredDepthFormats) / sizeof(requiredDepthFormats[0]);
+constexpr addr_size requiredDepthFormatsLen = sizeof(requiredDepthFormats) / sizeof(VkFormat);
 
 constexpr const char* depthFormatToCptr(VkFormat format) {
     if (format == VK_FORMAT_D32_SFLOAT)         return "VK_FORMAT_D32_SFLOAT";
@@ -45,7 +45,7 @@ bool vulkanDeviceCreate(RendererBackend& backend) {
     const char* requiredDeviceExts[] = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
-    constexpr addr_size requiredDeviceExtsLen = sizeof(requiredDeviceExts) / sizeof(requiredDeviceExts[0]);
+    constexpr addr_size requiredDeviceExtsLen = sizeof(requiredDeviceExts) / sizeof(const char*);
 
     logSectionTitleInfoTagged(LogTag::T_RENDERER, "Selecting Vulkan physical device...");
     if (!selectPhysicalDevice(backend, requiredDeviceExts, requiredDeviceExtsLen)) {
