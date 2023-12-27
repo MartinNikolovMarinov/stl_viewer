@@ -6,6 +6,9 @@ namespace stlv {
 
 namespace {
 
+u32 g_cachedframeBufferWidth;
+u32 g_cachedframeBufferHeight;
+
 // Instance
 
 bool createInstance(RendererBackend& backend);
@@ -50,6 +53,7 @@ void deviceDestroy(RendererBackend& backend);
 
 bool swapchainCreate(RendererBackend& backend);
 void swapchainDestroy(RendererBackend& backend);
+bool recreateSwapchain(RendererBackend& backend);
 
 // Render Pass
 
@@ -64,7 +68,7 @@ void destroyCommandBuffers(RendererBackend& backend);
 // Frame Buffers
 
 bool createFrameBuffers(RendererBackend& backend);
-void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass);
+bool regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass);
 void destroyFrameBuffers(RendererBackend& backend);
 
 // Sync Objects
@@ -93,6 +97,11 @@ bool initRendererBackend(RendererBackend& backend, PlatformState& pltState, u32 
 
     backend.frameBufferWidth = frameBufferWidth;
     backend.frameBufferHeight = frameBufferHeight;
+    backend.frameBufferSizeGen = 0;
+    backend.frameBufferSizeLastGen = 0;
+    g_cachedframeBufferHeight = 0;
+    g_cachedframeBufferWidth = 0;
+    backend.recreatingSwapchain = false;
 
     if (!createInstance(backend)) return false;
     if (!createSurface(backend, pltState)) return false;
@@ -128,17 +137,162 @@ void shutdownRendererBackend(RendererBackend& backend) {
 }
 
 void rendererOnResizeBackend(RendererBackend& backend, u32 width, u32 height) {
-    backend.frameBufferWidth = width;
-    backend.frameBufferHeight = height;
+    g_cachedframeBufferWidth = width;
+    g_cachedframeBufferHeight = height;
+    backend.frameBufferSizeGen++;
 
-    logTraceTagged(LogTag::T_RENDERER, "Renderer Vulkan Backend Resizing to %ux%u.", width, height);
+    logTraceTagged(
+        LogTag::T_RENDERER,
+        "Renderer Vulkan Backend Resizing to %u/%u/%llu",
+        width, height, backend.frameBufferSizeGen);
 }
 
-bool beginFrameRendererBackend(RendererBackend&, f64) {
+bool beginFrameRendererBackend(RendererBackend& backend, f64) {
+    VulkanDevice& device = backend.device;
+
+    if (backend.recreatingSwapchain) {
+        VK_EXPECT_OR_RETURN(
+            vkDeviceWaitIdle(device.logicalDevice),
+            "Failed to wait for Vulkan device to become idle (1)."
+        );
+        logTraceTagged(LogTag::T_RENDERER, "Recreating Vulkan swapchain.");
+        return false;
+    }
+
+    if (backend.frameBufferSizeGen != backend.frameBufferSizeLastGen) {
+        VK_EXPECT_OR_RETURN(
+            vkDeviceWaitIdle(device.logicalDevice),
+            "Failed to wait for Vulkan device to become idle (2)."
+        );
+
+        if (!recreateSwapchain(backend)) {
+            return false;
+        }
+
+        return false;
+    }
+
+    // Wait for the execution of the current frame to complete.
+    if (!vulkanFenceWait(backend, backend.inFlightFences[backend.currentFrame], core::MAX_U64)) {
+        logErrTagged(LogTag::T_RENDERER, "In flight fence failed to wait.");
+        return false;
+    }
+
+    if (!vulkanSwapchainAcquireNextImageIdx(
+            backend,
+            backend.swapchain,
+            core::MAX_U64,
+            backend.imageAvailableSemaphores[backend.currentFrame],
+            0, backend.imageIdx)
+    ) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to acquire Vulkan swapchain image.");
+        return false;
+    }
+
+    VulkanCommandBuffer& cmdBuffer = backend.graphicsCommandBuffers[backend.imageIdx];
+    if (!vulkanCommandBufferReset(cmdBuffer)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to reset Vulkan command buffer.");
+        return false;
+    }
+    if (!vulkanCommandBufferBegin(cmdBuffer, false, false, false)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to begin Vulkan command buffer.");
+        return false;
+    }
+
+    // Commands
+    {
+        // TODO: Think about how to setup the viewport to be like OpenGL and not trigger validation errors.
+        VkViewport viewport;
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = f32(backend.frameBufferWidth);
+        viewport.height = f32(backend.frameBufferHeight);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        VkRect2D scissor;
+        scissor.offset = { 0, 0 };
+        scissor.extent = { backend.frameBufferWidth, backend.frameBufferHeight };
+
+        vkCmdSetViewport(cmdBuffer.handle, 0, 1, &viewport);
+        vkCmdSetScissor(cmdBuffer.handle, 0, 1, &scissor);
+    }
+
+    auto& frameBuffer = backend.swapchain.frameBuffers[backend.imageIdx];
+
+    if (!vulkanRenderPassBegin(cmdBuffer, backend.mainRenderPass, frameBuffer.handle)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to begin Vulkan render pass.");
+        return false;
+    }
+
     return true;
 }
 
-bool endFrameRendererBackend(RendererBackend&, f64) {
+bool endFrameRendererBackend(RendererBackend& backend, f64) {
+    VulkanCommandBuffer& cmdBuffer = backend.graphicsCommandBuffers[backend.imageIdx];
+
+    if (!vulkanRenderPassEnd(cmdBuffer, backend.mainRenderPass)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to end Vulkan render pass.");
+        return false;
+    }
+    if (!vulkanCommandBufferEnd(cmdBuffer)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to end Vulkan command buffer.");
+        return false;
+    }
+
+    if (backend.imagesInFlight[backend.imageIdx]) {
+        if (!vulkanFenceWait(backend, *backend.imagesInFlight[backend.imageIdx], core::MAX_U64)) {
+            logErrTagged(LogTag::T_RENDERER, "Failed to wait for Vulkan fence.");
+            return false;
+        }
+    }
+
+    // Mark the image fence as in use by this frame:
+    backend.imagesInFlight[backend.imageIdx] = &backend.inFlightFences[backend.currentFrame];
+
+    // Reset fence for use on next frame:
+    if (!vulkanFenceReset(backend, backend.inFlightFences[backend.currentFrame])) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to reset Vulkan fence.");
+        return false;
+    }
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cmdBuffer.handle;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &backend.queueCompleteSemaphores[backend.currentFrame];
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &backend.imageAvailableSemaphores[backend.currentFrame];
+    VkPipelineStageFlags flags[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+    submitInfo.pWaitDstStageMask = flags;
+
+    VK_EXPECT_OR_RETURN(
+        vkQueueSubmit(
+            backend.device.graphicsQueue.handle,
+            1,
+            &submitInfo,
+            backend.inFlightFences[backend.currentFrame].handle),
+        "Failed to submit Vulkan queue."
+    );
+
+    if (!vulkanCommandBufferUpdateSubmitted(cmdBuffer)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to update Vulkan command buffer.");
+        return false;
+    }
+
+    if(!vulkanSwapchainPresent(
+            backend,
+            backend.swapchain,
+            backend.device.graphicsQueue.handle,
+            backend.device.presentQueue.handle,
+            backend.queueCompleteSemaphores[backend.currentFrame],
+            backend.imageIdx)
+    ) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to present Vulkan swapchain image.");
+        return false;
+    }
+
     return true;
 }
 
@@ -495,6 +649,74 @@ void swapchainDestroy(RendererBackend& backend) {
     vulkanSwapchainDestroy(backend, backend.swapchain);
 }
 
+bool recreateSwapchain(RendererBackend& backend) {
+    if (backend.recreatingSwapchain) {
+        logDebugTagged(LogTag::T_RENDERER, "Already recreating Vulkan swapchain.");
+        return false;
+    }
+
+    if (backend.frameBufferWidth == 0 || backend.frameBufferHeight == 0) {
+        logDebugTagged(LogTag::T_RENDERER, "Vulkan swapchain cannot be created with zero width or height.");
+        return false;
+    }
+
+    backend.recreatingSwapchain = true;
+
+    VK_EXPECT_OR_RETURN(
+        vkDeviceWaitIdle(backend.device.logicalDevice),
+        "Failed to wait for Vulkan device to become idle (3)."
+    );
+
+    backend.imagesInFlight.fill(nullptr, 0, backend.swapchain.imageCount);
+
+    vulkanDeviceQuerySwapchainSupport(backend.device.physicalDevice, backend.surface, backend.device.swapchainSupportInfo);
+    if (!vulkanDeviceDetectDepthFormat(backend.device.physicalDevice, backend.device.depthFormat)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to detect Vulkan depth format.");
+        return false;
+    }
+
+    VulkanSwapchainCreationInfo recreateInfo;
+    recreateInfo.width = g_cachedframeBufferWidth;
+    recreateInfo.height = g_cachedframeBufferHeight;
+    recreateInfo.maxFramesInFlight = 2; // FIXME: move this to AppCreateInfo
+    if (!vulkanSwapchainRecreate(backend, backend.swapchain, recreateInfo)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to recreate Vulkan swapchain.");
+        return false;
+    }
+
+    backend.frameBufferWidth = g_cachedframeBufferWidth;
+    backend.frameBufferHeight = g_cachedframeBufferHeight;
+    backend.mainRenderPass.w = f32(backend.frameBufferWidth);
+    backend.mainRenderPass.h = f32(backend.frameBufferHeight);
+    backend.frameBufferSizeLastGen = backend.frameBufferSizeGen;
+    g_cachedframeBufferHeight = 0;
+    g_cachedframeBufferWidth = 0;
+
+    backend.frameBufferSizeGen = backend.frameBufferSizeLastGen;
+
+    for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
+        vulkanFrameBufferDestroy(backend, backend.swapchain.frameBuffers[i]);
+    }
+
+    backend.mainRenderPass.x = 0.0f;
+    backend.mainRenderPass.y = 0.0f;
+    backend.mainRenderPass.w = f32(backend.frameBufferWidth);
+    backend.mainRenderPass.h = f32(backend.frameBufferHeight);
+
+    if (!regenerateFrameBuffers(backend, backend.swapchain, backend.mainRenderPass)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to regenerate Vulkan frame buffers.");
+        return false;
+    }
+
+    if (!createCommandBuffers(backend)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to recreate Vulkan command buffers.");
+        return false;
+    }
+
+    logInfoTagged(LogTag::T_RENDERER, "Vulkan swapchain recreated.");
+    return true;
+}
+
 // Render Pass
 
 bool renderPassesCreate(RendererBackend& backend) {
@@ -556,13 +778,16 @@ void destroyCommandBuffers(RendererBackend& backend) {
 bool createFrameBuffers(RendererBackend& backend) {
     logInfoTagged(LogTag::T_RENDERER, "Creating Vulkan frame buffers.");
 
-    regenerateFrameBuffers(backend, backend.swapchain, backend.mainRenderPass);
+    if (!regenerateFrameBuffers(backend, backend.swapchain, backend.mainRenderPass)) {
+        logErrTagged(LogTag::T_RENDERER, "Failed to regenerate Vulkan frame buffers.");
+        return false;
+    }
 
     logInfoTagged(LogTag::T_RENDERER, "Vulkan frame buffers created.");
     return true;
 }
 
-void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass) {
+bool regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass) {
     logTraceTagged(LogTag::T_RENDERER, "Regenerating Vulkan frame buffers.");
 
     backend.swapchain.frameBuffers.ensureCap(backend.swapchain.imageCount);
@@ -573,15 +798,21 @@ void regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain
         VkImageView attachments[attachmentCount] = { colorImageView, depthImageView };
 
         VulkanFrameBuffer frameBuffer;
-        vulkanFrameBufferCreate(
+        bool ok = vulkanFrameBufferCreate(
             backend,
             renderPass,
             backend.frameBufferWidth, backend.frameBufferHeight,
             attachmentCount, attachments,
             frameBuffer);
+        if (!ok) {
+            logErrTagged(LogTag::T_RENDERER, "Failed to create Vulkan frame buffer.");
+            return false;
+        }
+
         backend.swapchain.frameBuffers.append(core::move(frameBuffer));
     }
 
+    return true;
 }
 
 void destroyFrameBuffers(RendererBackend& backend) {
@@ -598,8 +829,8 @@ bool createSyncObjects(RendererBackend& backend) {
 
     backend.imageAvailableSemaphores.fill(VK_NULL_HANDLE, 0, backend.swapchain.maxFramesInFlight);
     backend.queueCompleteSemaphores.fill(VK_NULL_HANDLE, 0, backend.swapchain.maxFramesInFlight);
-    backend.imagesInFlight.fill(nullptr, 0, backend.swapchain.imageCount);
     backend.inFlightFences.fill({}, 0, backend.swapchain.maxFramesInFlight);
+    backend.imagesInFlight.fill(nullptr, 0, backend.swapchain.imageCount);
 
     for (u32 i = 0; i < backend.swapchain.maxFramesInFlight; ++i) {
         VkSemaphoreCreateInfo semaphoreInfo = {};

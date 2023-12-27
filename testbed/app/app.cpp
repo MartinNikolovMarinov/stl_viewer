@@ -172,9 +172,9 @@ NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);
 
-    stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
-    printMemoryMetrics(memoryMetrics);
+    // stlv::MemoryMetrics memoryMetrics = appState->memoryMetrics;
+    // printMemoryMetrics(memoryMetrics);
 
-    stlv::stopApp();
+    // stlv::stopApp();
     return true;
 }

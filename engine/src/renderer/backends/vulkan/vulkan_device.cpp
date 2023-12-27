@@ -25,7 +25,6 @@ constexpr const char* depthFormatToCptr(VkFormat format) {
 
 bool selectPhysicalDevice(RendererBackend& backend, const char** requiredDeviceExts, addr_size requiredDeviceExtsLen);
 bool createLogicalDevice(RendererBackend& backend, const char** requiredDeviceExts, addr_size requiredDeviceExtsLen);
-bool vulkanDeviceDetectDepthFormat(VkPhysicalDevice pdevice, VkFormat& outFormat);
 bool verifySwapchainSupportForExtensions(VkPhysicalDevice pdevice,
                                          const char** requiredDeviceExts,
                                          addr_size requiredDeviceExtsLen);
@@ -130,6 +129,25 @@ void vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR su
             "Failed to get surface present modes."
         );
     }
+}
+
+bool vulkanDeviceDetectDepthFormat(VkPhysicalDevice pdevice, VkFormat& outFormat) {
+    constexpr VkFormatFeatureFlagBits flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    for (addr_size i = 0; i < requiredDepthFormatsLen; ++i) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(pdevice, requiredDepthFormats[i], &props);
+
+        if ((props.linearTilingFeatures & flags) == flags) {
+            outFormat = requiredDepthFormats[i];
+            return true;
+        }
+        else if ((props.optimalTilingFeatures & flags) == flags) {
+            outFormat = requiredDepthFormats[i];
+            return true;
+        }
+    }
+
+    return false;
 }
 
 namespace {
@@ -619,25 +637,6 @@ void giveCompatibilityScoreForDevice(VkPhysicalDevice pdevice,
             return;
         }
     }
-}
-
-bool vulkanDeviceDetectDepthFormat(VkPhysicalDevice pdevice, VkFormat& outFormat) {
-    constexpr VkFormatFeatureFlagBits flags = VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    for (addr_size i = 0; i < requiredDepthFormatsLen; ++i) {
-        VkFormatProperties props;
-        vkGetPhysicalDeviceFormatProperties(pdevice, requiredDepthFormats[i], &props);
-
-        if ((props.linearTilingFeatures & flags) == flags) {
-            outFormat = requiredDepthFormats[i];
-            return true;
-        }
-        else if ((props.optimalTilingFeatures & flags) == flags) {
-            outFormat = requiredDepthFormats[i];
-            return true;
-        }
-    }
-
-    return false;
 }
 
 } // namespace

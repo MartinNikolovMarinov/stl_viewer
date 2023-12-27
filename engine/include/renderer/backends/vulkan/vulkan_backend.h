@@ -188,7 +188,7 @@ struct VulkanSwapchain {
 bool vulkanSwapchainCreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
 void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain);
 bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
-bool vulkanSwapchainAcquireNextImage(
+bool vulkanSwapchainAcquireNextImageIdx(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     u64 timeoutNs,
@@ -236,6 +236,7 @@ struct VulkanDevice {
 bool vulkanDeviceCreate(RendererBackend& device);
 void vulkanDeviceDestroy(RendererBackend& device);
 void vulkanDeviceQuerySwapchainSupport(VkPhysicalDevice pdevice, VkSurfaceKHR surface, VulkanSwapchainSupportInfo& info);
+bool vulkanDeviceDetectDepthFormat(VkPhysicalDevice pdevice, VkFormat& outFormat);
 
 struct RendererBackend {
     VkInstance instance;
@@ -245,6 +246,9 @@ struct RendererBackend {
 
     u32 frameBufferWidth;
     u32 frameBufferHeight;
+    u64 frameBufferSizeGen;
+    u64 frameBufferSizeLastGen;
+    bool recreatingSwapchain;
 
 #if STLV_DEBUG
     VkDebugUtilsMessengerEXT debugMessenger;

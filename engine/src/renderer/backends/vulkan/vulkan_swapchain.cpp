@@ -30,7 +30,7 @@ bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchai
     return true;
 }
 
-bool vulkanSwapchainAcquireNextImage(
+bool vulkanSwapchainAcquireNextImageIdx(
     RendererBackend& backend,
     VulkanSwapchain& swapchain,
     u64 timeoutNs,
