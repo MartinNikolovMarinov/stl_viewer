@@ -5,7 +5,7 @@ namespace stlv {
 namespace {
 
 bool create(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
-bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain);
+bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo);
 void destroy(RendererBackend& backend, VulkanSwapchain& swapchain);
 
 VkSurfaceFormatKHR chooseSwapchainSurfaceFormat(VkSurfaceFormatKHRList& availableFormats);
@@ -15,7 +15,7 @@ VkPresentModeKHR chooseSwapchainPresentMode(VkPresentModeKHRList& availablePrese
 
 bool vulkanSwapchainCreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo) {
     if (!create(backend, swapchain, createInfo)) return false;
-    if (!setSwapchainImages(backend, swapchain)) return false;
+    if (!setSwapchainImages(backend, swapchain, createInfo)) return false;
     return true;
 }
 
@@ -26,7 +26,7 @@ void vulkanSwapchainDestroy(RendererBackend& backend, VulkanSwapchain& swapchain
 bool vulkanSwapchainRecreate(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo) {
     destroy(backend, swapchain);
     if (!create(backend, swapchain, createInfo)) return false;
-    if (!setSwapchainImages(backend, swapchain)) return false;
+    if (!setSwapchainImages(backend, swapchain, createInfo)) return false;
     return true;
 }
 
@@ -120,7 +120,9 @@ bool create(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSw
 
     VkSurfaceFormatKHR imageFormat = chooseSwapchainSurfaceFormat(swapchainSupportInfo.formats);
     VkPresentModeKHR presentMode = chooseSwapchainPresentMode(swapchainSupportInfo.presentModes);
-    VkExtent2D extent = { createInfo.width, createInfo.height };
+    VkExtent2D extent;
+    extent.width = createInfo.width;
+    extent.height = createInfo.height;
 
     if (swapchainSupportInfo.capabilities.currentExtent.width != core::MAX_U32) {
         // Vulkan tells us to match the resolution of the window by setting the width and height in the currentExtent.
@@ -182,11 +184,13 @@ bool create(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSw
         "Failed to create swapchain"
     );
 
+    backend.currentFrame = 0;
+
     logTraceTagged(LogTag::T_RENDERER, "Swapchain created.");
     return true;
 }
 
-bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain) {
+bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain, const VulkanSwapchainCreationInfo& createInfo) {
     logTraceTagged(LogTag::T_RENDERER, "Retreaving swapchain images.");
 
     auto& device = backend.device;
@@ -198,10 +202,20 @@ bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain) {
         "Failed to get the number of images from the swapchain"
     );
 
-    swapchain.images.clear();
-    swapchain.imageViews.clear();
-    swapchain.images.fill(VK_NULL_HANDLE, 0, swapchain.imageCount);
-    swapchain.imageViews.fill(VK_NULL_HANDLE, 0, swapchain.imageCount);
+    if (swapchain.images.empty()) {
+        swapchain.images.fill(VK_NULL_HANDLE, 0, swapchain.imageCount);
+    }
+    else {
+        logWarnTagged(LogTag::T_RENDERER, "Swapchain images were not cleared before re-creating the swapchain");
+    }
+
+    if (swapchain.imageViews.empty()) {
+        swapchain.imageViews.fill(VK_NULL_HANDLE, 0, swapchain.imageCount);
+    }
+    else {
+        logWarnTagged(LogTag::T_RENDERER, "Swapchain image views were not cleared before re-creating the swapchain");
+    }
+
 
     VK_EXPECT_OR_RETURN(
         vkGetSwapchainImagesKHR(device.logicalDevice, swapchain.handle, &swapchain.imageCount, swapchain.images.data()),
@@ -211,25 +225,25 @@ bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain) {
     logTraceTagged(LogTag::T_RENDERER, "Creating swapchain image views.");
 
     for (u32 i = 0; i < swapchain.imageCount; i++) {
-        VkImageViewCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        createInfo.image = swapchain.images[i];
-        createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = swapchain.imageFormat.format;
-        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-        createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.levelCount = 1;
-        createInfo.subresourceRange.baseArrayLayer = 0;
-        createInfo.subresourceRange.layerCount = 1;
+        VkImageViewCreateInfo imageViewCreateInfo = {};
+        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewCreateInfo.pNext = nullptr;
+        imageViewCreateInfo.flags = 0;
+        imageViewCreateInfo.image = swapchain.images[i];
+        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewCreateInfo.format = swapchain.imageFormat.format;
+        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        imageViewCreateInfo.subresourceRange.levelCount = 1;
+        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
 
         VK_EXPECT_OR_RETURN(
-            vkCreateImageView(device.logicalDevice, &createInfo, backend.allocator, &swapchain.imageViews[i]),
+            vkCreateImageView(device.logicalDevice, &imageViewCreateInfo, backend.allocator, &swapchain.imageViews[i]),
             "Failed to create image view"
         );
     }
@@ -237,8 +251,8 @@ bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain) {
     logTraceTagged(LogTag::T_RENDERER, "Create depth buffer in swapchian.");
     bool ok = vulkanImageCreate(
         backend,
-        backend.frameBufferWidth,
-        backend.frameBufferHeight,
+        createInfo.width,
+        createInfo.height,
         backend.device.depthFormat,
         VK_IMAGE_TILING_OPTIMAL,
         VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
@@ -251,7 +265,6 @@ bool setSwapchainImages(RendererBackend& backend, VulkanSwapchain& swapchain) {
         logErrTagged(LogTag::T_RENDERER, "Failed to create depth buffer in swapchain");
         return false;
     }
-
 
     logTraceTagged(LogTag::T_RENDERER, "Swapchain images retreaved.");
     return true;
@@ -284,21 +297,28 @@ VkPresentModeKHR chooseSwapchainPresentMode(VkPresentModeKHRList& availablePrese
 }
 
 void destroy(RendererBackend& backend, VulkanSwapchain& swapchain) {
-    if (!swapchain.imageViews.empty()) {
-        for (u32 i = 0; i < swapchain.imageViews.len(); i++) {
-            vkDestroyImageView(backend.device.logicalDevice, swapchain.imageViews[i], backend.allocator);
-        }
-        swapchain.imageViews.clear();
+    VK_EXPECT(
+        vkDeviceWaitIdle(backend.device.logicalDevice),
+        "failed to wait for device idle before destroying swapchain."
+    );
+
+    // Destroy the image views:
+    for (u32 i = 0; i < swapchain.imageViews.len(); i++) {
+        vkDestroyImageView(backend.device.logicalDevice, swapchain.imageViews[i], backend.allocator);
+    }
+    swapchain.imageViews.clear();
+
+    // Destroy the depth image:
+    if (swapchain.depthImage.handle != VK_NULL_HANDLE) {
+        vulkanDestroyImage(backend, swapchain.depthImage);
     }
 
+    // Destroy the swapchain itself:
     if (swapchain.handle != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(backend.device.logicalDevice, swapchain.handle, backend.allocator);
         swapchain.handle = VK_NULL_HANDLE;
     }
-
-    if (swapchain.depthImage.handle != VK_NULL_HANDLE) {
-        vulkanDestroyImage(backend, swapchain.depthImage);
-    }
+    swapchain.images.clear();
 }
 
 } // namespace

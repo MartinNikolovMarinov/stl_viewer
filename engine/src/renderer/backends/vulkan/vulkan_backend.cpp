@@ -689,15 +689,13 @@ bool recreateSwapchain(RendererBackend& backend) {
     backend.frameBufferHeight = g_cachedframeBufferHeight;
     backend.mainRenderPass.w = f32(backend.frameBufferWidth);
     backend.mainRenderPass.h = f32(backend.frameBufferHeight);
-    backend.frameBufferSizeLastGen = backend.frameBufferSizeGen;
     g_cachedframeBufferHeight = 0;
     g_cachedframeBufferWidth = 0;
 
     backend.frameBufferSizeGen = backend.frameBufferSizeLastGen;
 
-    for (u32 i = 0; i < backend.swapchain.imageCount; ++i) {
-        vulkanFrameBufferDestroy(backend, backend.swapchain.frameBuffers[i]);
-    }
+    destroyCommandBuffers(backend);
+    destroyFrameBuffers(backend);
 
     backend.mainRenderPass.x = 0.0f;
     backend.mainRenderPass.y = 0.0f;

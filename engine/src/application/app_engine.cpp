@@ -97,17 +97,23 @@ auto onMouseEnter = [](Event ev, void*) {
 auto onWindowResize = [](Event ev, void*) {
     auto s = getAppState();
     if (!s) return false;
-    s->windowHeight = ev.data._u32[0];
-    s->windowWidth = ev.data._u32[1];
-    bool changed = s->windowWidth != ev.data._u32[0] || s->windowHeight != ev.data._u32[1];
-    bool notZero = s->windowWidth > 0 && s->windowHeight > 0;
+    u32 w = ev.data._u32[0];
+    u32 h = ev.data._u32[1];
+    bool changed = s->windowWidth != w || s->windowHeight != h;
+    bool notZero = w > 0 && h > 0;
+
+    s->windowWidth = w;
+    s->windowHeight = h;
+
     if (changed && notZero) {
         g_isSuspended.store(false);
         rendererOnResize(s->windowWidth, s->windowHeight);
     }
+
     if (!notZero) {
         g_isSuspended.store(true);
     }
+
     return true;
 };
 

@@ -166,8 +166,8 @@ NO_MANGLE bool update([[maybe_unused]] stlv::ApplicationState* appState) {
     // stlv::Keyboard& keyboard = appState->keyboard;
     // printKeyboardState(keyboard);
 
-    // stlv::CurrentFrameMetrics& metrics = appState->frameMetrics;
-    // printMetrics(metrics);
+    stlv::CurrentFrameMetrics& metrics = appState->frameMetrics;
+    printMetrics(metrics);
 
     // stlv::Mouse& mouse = appState->mouse;
     // printMouseState(mouse);

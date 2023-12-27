@@ -219,8 +219,8 @@ bool pltPollEvents(PlatformState& pstate, f64 timeoutSeconds) {
         glfwWaitEventsTimeout(timeoutSeconds);
     }
     else {
-        // glfwPollEvents(); // TODO: Uncomment this when swapchaining is implemented.
-        glfwWaitEventsTimeout(0.7);
+        glfwPollEvents();
+        // glfwWaitEventsTimeout(0.7);
     }
     bool shouldQuit = !glfwWindowShouldClose(glfwState->glfwWindow);
     return shouldQuit;
