@@ -11,10 +11,8 @@ bool vulkanFrameBufferCreate(
     VulkanFrameBuffer& outFrameBuffer
 ) {
     outFrameBuffer.renderPass = &renderPass;
-
-    // Copy the attachments array.
     outFrameBuffer.attachmentCount = attachmentCount;
-    outFrameBuffer.attachments.fill(VK_NULL_HANDLE, 0, attachmentCount);
+    outFrameBuffer.attachments.fill(VK_NULL_HANDLE, 0, attachmentCount); // Copy the attachments array.
     for (u32 i = 0; i < attachmentCount; ++i) {
         outFrameBuffer.attachments[i] = attachments[i];
     }

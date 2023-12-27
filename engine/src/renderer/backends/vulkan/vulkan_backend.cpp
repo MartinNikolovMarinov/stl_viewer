@@ -661,6 +661,7 @@ bool recreateSwapchain(RendererBackend& backend) {
     }
 
     backend.recreatingSwapchain = true;
+    defer { backend.recreatingSwapchain = false; };
 
     VK_EXPECT_OR_RETURN(
         vkDeviceWaitIdle(backend.device.logicalDevice),
@@ -790,6 +791,7 @@ bool createFrameBuffers(RendererBackend& backend) {
 bool regenerateFrameBuffers(RendererBackend& backend, VulkanSwapchain& swapchain, VulkanRenderPass& renderPass) {
     logTraceTagged(LogTag::T_RENDERER, "Regenerating Vulkan frame buffers.");
 
+    backend.swapchain.frameBuffers.clear();
     backend.swapchain.frameBuffers.ensureCap(backend.swapchain.imageCount);
     for (u32 i = 0; i < swapchain.imageCount; i++) {
         constexpr u32 attachmentCount = 2; // TODO: hardcodeness.

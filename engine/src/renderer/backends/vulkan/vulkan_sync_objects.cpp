@@ -12,6 +12,7 @@ bool vulkanFenceCreate(RendererBackend& backend, bool isSignaled, VulkanFence& o
         "Failed to create Vulkan fence"
     );
 
+    outFence.isSignaled = isSignaled;
     return true;
 }
 
@@ -20,35 +21,39 @@ void vulkanFenceDestroy(RendererBackend& backend, VulkanFence& fence) {
         vkDestroyFence(backend.device.logicalDevice, fence.handle, backend.allocator);
         fence.handle = VK_NULL_HANDLE;
     }
+    fence.isSignaled = false;
 }
 
 bool vulkanFenceWait(RendererBackend& backend, VulkanFence& fence, u64 timeoutNs) {
-    if (!fence.isSignaled) {
-        VkResult result = vkWaitForFences(backend.device.logicalDevice, 1, &fence.handle, VK_TRUE, timeoutNs);
+    if (fence.isSignaled) {
+        return true;
+    }
 
-        if (result == VK_SUCCESS) {
-            fence.isSignaled = true;
-            return true;
-        }
+    VkResult result = vkWaitForFences(backend.device.logicalDevice, 1, &fence.handle, VK_TRUE, timeoutNs);
 
-        if (result == VK_TIMEOUT) {
-            logWarnTagged(LogTag::T_RENDERER, "Vulkan fence wait timed out");
-            return false;
-        }
+    if (result == VK_SUCCESS) {
+        fence.isSignaled = true;
+        return true;
+    }
 
-        // Rest of the result codes are treated as errors.
-        VK_EXPECT_OR_RETURN(result, "Failed to wait for Vulkan fence");
+    if (result == VK_TIMEOUT) {
+        logWarnTagged(LogTag::T_RENDERER, "Vulkan fence wait timed out");
         return false;
     }
 
-    return true;
+    // Rest of the result codes are treated as errors.
+    VK_EXPECT_OR_RETURN(result, "Failed to wait for Vulkan fence");
+    return false;
 }
 
 bool vulkanFenceReset(RendererBackend& backend, VulkanFence& fence) {
-    VK_EXPECT_OR_RETURN(
-        vkResetFences(backend.device.logicalDevice, 1, &fence.handle),
-        "Failed to reset Vulkan fence"
-    );
+    if (fence.isSignaled) {
+        VK_EXPECT_OR_RETURN(
+            vkResetFences(backend.device.logicalDevice, 1, &fence.handle),
+            "Failed to reset Vulkan fence"
+        );
+        fence.isSignaled = false;
+    }
 
     return true;
 }
