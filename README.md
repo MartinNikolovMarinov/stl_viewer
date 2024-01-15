@@ -1,1 +1,1 @@
-Standard Triangle Language (STL) Viewer
+Stereolithography CAD (STL) Viewer.
