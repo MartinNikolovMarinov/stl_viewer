@@ -1,0 +1,55 @@
+{
+    "tasks": [
+        {
+            "type": "cppbuild",
+            "label": "Build with Makefile",
+            "command": "/usr/bin/make",
+            "presentation": {
+                "echo": false,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "args": [
+                "-j",
+                "-C",
+                "${workspaceFolder}/build",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "type": "cppbuild",
+            "label": "Build examples with Makefile",
+            "command": "/usr/bin/make",
+            "presentation": {
+                "echo": false,
+                "reveal": "never",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": false,
+                "clear": true
+            },
+            "args": [
+                "-j",
+                "-C",
+                "${workspaceFolder}/examples/build",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/examples/build"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+        },
+    ],
+    "version": "2.0.0"
+}
