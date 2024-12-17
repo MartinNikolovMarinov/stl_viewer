@@ -49,14 +49,14 @@ core::expected<RendererErr> Renderer::init() {
     instanceCreateInfo.enabledExtensionCount = extensions.size();
     instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
 
-    VkInstance instance;
+    VkInstance instance = VK_NULL_HANDLE;
     if (vkCreateInstance(&instanceCreateInfo, nullptr, &instance) != VK_SUCCESS) {
         std::cerr << "Failed to create Vulkan instance.\n";
         return core::unexpected(RendererErr::INIT_FAILED);
     }
     std::cout << "Vulkan instance created.\n";
 
-    VkSurfaceKHR surface;
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
     if (auto err = Platform::createVulkanSurface(instance, surface); !Platform::isOk(err)) {
         const char* errMsg = Platform::errToCStr(err);
         std::cout << "Error: " << errMsg << std::endl;

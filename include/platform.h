@@ -1,7 +1,7 @@
 #pragma once
 
 // IMPORTANT: The platform layer should not use basic.h or anything from core since there are collisions with some of
-//            the platforms internal definitions.
+//            the platforms internal definitions (like defer).
 
 #include <core_types.h>
 
@@ -24,7 +24,7 @@ struct Platform {
 
     static void requiredVulkanExtsCount(i32& count);
     static void requiredVulkanExts(const char** extensions);
-    static Error createVulkanSurface(VkInstance instance, VkSurfaceKHR surface);
+    static Error createVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
 };
 
 constexpr const char* Platform::errToCStr(Platform::Error err) {
