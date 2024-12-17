@@ -71,7 +71,7 @@ void Platform::requiredVulkanExts(const char** extensions) {
     extensions[0] = VK_EXT_METAL_SURFACE_EXTENSION_NAME;
 }
 
-PlatformErr Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR surface) {
+PlatformErr Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& surface) {
     VkMetalSurfaceCreateInfoEXT metalSurfaceInfo{};
     metalSurfaceInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
     metalSurfaceInfo.pLayer = metalLayer;
