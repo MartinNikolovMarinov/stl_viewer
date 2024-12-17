@@ -46,16 +46,32 @@ elseif(WIN32)
     find_package(Vulkan REQUIRED)
     target_link_libraries(${target_main} PRIVATE Vulkan::Vulkan)
 else()
-    # Create executable
-    add_executable(${target_main}
-        main.cpp
-        src/platform_x11.cpp
-        src/vulkan_renderer.cpp
-    )
+    option(USE_WAYLAND "Use Wayland instead of X11" OFF)
 
-    find_package(Vulkan REQUIRED)
-    find_package(X11 REQUIRED)
-    target_link_libraries(${target_main} PRIVATE Vulkan::Vulkan ${X11_LIBRARIES})
+    if(USE_WAYLAND)
+        # Create executable
+        add_executable(${target_main}
+            main.cpp
+            src/platform_wayland.cpp
+            src/vulkan_renderer.cpp
+        )
+        find_package(PkgConfig REQUIRED)
+        find_package(Vulkan REQUIRED)
+        pkg_check_modules(WAYLAND REQUIRED wayland-client)
+        target_include_directories(${target_main} PRIVATE ${WAYLAND_INCLUDE_DIRS})
+        target_link_libraries(${target_main} PRIVATE ${Vulkan_LIBRARIES} ${WAYLAND_LIBRARIES})
+    else()
+        # Create executable
+        add_executable(${target_main}
+            main.cpp
+            src/platform_x11.cpp
+            src/vulkan_renderer.cpp
+        )
+        find_package(X11 REQUIRED)
+        find_package(Vulkan REQUIRED)
+        target_link_libraries(${target_main} PRIVATE ${Vulkan_LIBRARIES} ${X11_LIBRARIES})
+        target_compile_definitions(${target_main} PRIVATE -DUSE_X11)
+    endif()
 endif()
 
 target_include_directories(${target_main} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
