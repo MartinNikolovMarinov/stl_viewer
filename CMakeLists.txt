@@ -45,6 +45,17 @@ elseif(WIN32)
     # Link to Vulkan from system
     find_package(Vulkan REQUIRED)
     target_link_libraries(${target_main} PRIVATE Vulkan::Vulkan)
+else()
+    # Create executable
+    add_executable(${target_main}
+        main.cpp
+        src/platform_x11.cpp
+        src/vulkan_renderer.cpp
+    )
+
+    find_package(Vulkan REQUIRED)
+    find_package(X11 REQUIRED)
+    target_link_libraries(${target_main} PRIVATE Vulkan::Vulkan ${X11_LIBRARIES})
 endif()
 
 target_include_directories(${target_main} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

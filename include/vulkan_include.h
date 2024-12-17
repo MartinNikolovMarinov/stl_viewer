@@ -10,5 +10,7 @@
     #define WIN32_LEAN_AND_MEAN // vulkan.h might import windows.h
     #include <vulkan/vulkan.h>
 #elif defined(OS_LINUX) && OS_LINUX == 1
-    // TODO: This should define either wayland or x11 and detecting that is always fun...
+    // FIXME: This should define either wayland or x11 and detecting that is always fun... Currently only x11 working.
+    #define VK_USE_PLATFORM_XLIB_KHR
+    #include <vulkan/vulkan.h>
 #endif
