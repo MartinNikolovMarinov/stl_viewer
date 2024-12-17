@@ -9,7 +9,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Generates compile_commands.json
 
 if(APPLE)
     # Create executable
-    add_executable(${target_main} main.mm)
+    add_executable(${target_main}
+        main.cpp
+        src/platform_mac.mm
+        src/vulkan_renderer.cpp
+    )
 
     # Correct paths for MoltenVK
     set(MOLTENVK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/MoltenVK/sdk-1.3.296.0)
@@ -35,6 +39,10 @@ else()
     find_package(Vulkan REQUIRED)
     target_link_libraries(${target_main} PRIVATE Vulkan::Vulkan)
 endif()
+
+target_include_directories(${target_main} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+# FIXME: Temporary include
+target_include_directories(${target_main} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib/core/include)
 
 # ---------------- Packaging with CPack ----------------
 include(CPack)

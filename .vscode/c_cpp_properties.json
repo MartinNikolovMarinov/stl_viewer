@@ -1,16 +1,14 @@
 {
     "configurations": [
         {
-            "name": "Configuration",
+            "name": "C and C++",
             "includePath": [
                 "${default}",
                 "${workspaceFolder}/**"
             ],
             // "compilerPath": "/usr/bin/gcc",
-            // "intelliSenseMode": "gcc-x64",
-            "intelliSenseMode": "${default}",
             "compileCommands": "${workspaceFolder}/build/compile_commands.json",
-            // "compileCommands": "${workspaceFolder}/examples/build/compile_commands.json",
+            "intelliSenseMode": "${default}",
             "cStandard": "c17",
             "cppStandard": "c++20"
         }
