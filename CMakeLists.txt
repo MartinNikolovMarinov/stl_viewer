@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # Generates compile_commands.json
 
+set(CORE_ASSERT_ENABLED ON CACHE BOOL "Enable Asserts in corelib" FORCE)
+add_subdirectory(lib/core)
+
 if(APPLE)
     # Create executable
     add_executable(${target_main}
@@ -75,8 +78,7 @@ else()
 endif()
 
 target_include_directories(${target_main} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-# FIXME: Temporary include
-target_include_directories(${target_main} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib/core/include)
+target_link_libraries(${target_main} PUBLIC core)
 
 # ---------------- Packaging with CPack ----------------
 # include(CPack)

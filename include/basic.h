@@ -1,7 +1,6 @@
 #pragma once
 
-#include <core_types.h>
-#include <core_expected.h>
+#include <core.h>
 
 using namespace coretypes;
 
