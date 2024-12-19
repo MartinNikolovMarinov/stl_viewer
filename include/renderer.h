@@ -1,23 +1,11 @@
 #pragma once
 
 #include <basic.h>
+#include <app_error.h>
 
 struct Renderer {
-    enum struct Error {
-        INIT_FAILED,
-        SENTINEL,
-    };
-    static constexpr const char* errToCStr(Error err);
+    static constexpr addr_size VERSION_BUFFER_SIZE = 255;
+    [[nodiscard]] static core::expected<AppError> getVersion(char version[VERSION_BUFFER_SIZE]);
 
-    static core::expected<Error> init();
+    [[nodiscard]] static core::expected<AppError> init();
 };
-
-constexpr const char* Renderer::errToCStr(Renderer::Error err) {
-    switch (err)
-    {
-        case Renderer::Error::INIT_FAILED: return "Initialization Failed";
-
-        case Renderer::Error::SENTINEL: break;
-    }
-    return "unknown";
-}

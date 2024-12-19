@@ -4,25 +4,43 @@
 
 #include <vector> // TODO: [REPLACE_WITH_CORE_IMPL]
 
-using RendererErr = Renderer::Error;
+using RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE;
+using RendererError::FAILED_TO_GET_VULKAN_VERSION;
 
-void logVulkanVersion() {
-    // Vulkan Initialization
+#define FAILED_TO_GET_VULKAN_VERSION_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_GET_VULKAN_VERSION));
+#define FAILED_TO_CREATE_VULKAN_INSTANCE_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_INSTANCE));
+
+core::expected<AppError> Renderer::getVersion(char out[VERSION_BUFFER_SIZE]) {
     u32 version = 0;
-    if (VkResult result = vkEnumerateInstanceVersion(&version); result == VK_SUCCESS) {
-        std::cout << "Vulkan version: " << VK_VERSION_MAJOR(version) << "."
-                  << VK_VERSION_MINOR(version) << "."
-                  << VK_VERSION_PATCH(version) << "\n";
+    if(VkResult vres = vkEnumerateInstanceVersion(&version); vres != VK_SUCCESS) {
+        return FAILED_TO_GET_VULKAN_VERSION_ERREXPR;
     }
-    else {
-        std::cerr << "Failed to enumerate Vulkan version.\n";
-        Assert(false, "call to vkEnumerateInstanceVersion was not successfull!");
-    }
+
+    u32 n;
+
+    out = core::memcopy(out, "Vulkan v", core::cstrLen("Vulkan v"));
+    n = core::Unpack(core::intToCstr(VK_VERSION_MAJOR(version), out, VERSION_BUFFER_SIZE));
+    out[n] = '.';
+    out += n + 1;
+
+    n = core::Unpack(core::intToCstr(VK_VERSION_MINOR(version), out, VERSION_BUFFER_SIZE));
+    out[n] = '.';
+    out += n + 1;
+
+    n = core::Unpack(core::intToCstr(VK_VERSION_PATCH(version), out, VERSION_BUFFER_SIZE));
+    out[n] = '\0';
+    out += n;
+
+
+    return {};
 }
 
-core::expected<RendererErr> Renderer::init() {
-    logVulkanVersion();
+core::expected<AppError> Renderer::init() {
+    // FIXME: getVersion and log it!
 
+    // TODO2: Verify I do not need this:
     // #ifdef OS_MAC
     //     setenv("VK_ICD_FILENAMES", "./lib/MoltenVK/sdk-1.3.296.0/MoltenVK_icd.json", 1);
     // #endif
@@ -39,7 +57,7 @@ core::expected<RendererErr> Renderer::init() {
     // Retrieve required extensions
     i32 requiredPlatformExtCount = 0;
     Platform::requiredVulkanExtsCount(requiredPlatformExtCount);
-    std::vector<const char*> extensions (requiredPlatformExtCount + 1);
+    std::vector<const char*> extensions (requiredPlatformExtCount + 1); // TODO: [REPLACE_WITH_CORE_IMPL]
     Platform::requiredVulkanExts(extensions.data());
     extensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
 
@@ -51,18 +69,17 @@ core::expected<RendererErr> Renderer::init() {
 
     VkInstance instance = VK_NULL_HANDLE;
     if (vkCreateInstance(&instanceCreateInfo, nullptr, &instance) != VK_SUCCESS) {
-        std::cerr << "Failed to create Vulkan instance.\n";
-        return core::unexpected(RendererErr::INIT_FAILED);
+        return FAILED_TO_CREATE_VULKAN_INSTANCE_ERREXPR;
     }
-    std::cout << "Vulkan instance created.\n";
+
+    std::cout << "Vulkan instance created.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
-    if (auto err = Platform::createVulkanSurface(instance, surface); !Platform::isOk(err)) {
-        const char* errMsg = Platform::errToCStr(err);
-        std::cout << "Error: " << errMsg << std::endl;
-        return core::unexpected(RendererErr::INIT_FAILED);
+    if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
+        return core::unexpected(err);
     }
-    std::cout << "Vulkan surface created.\n";
+
+    std::cout << "Vulkan surface created.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
 
     return {};
 }

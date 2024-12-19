@@ -4,40 +4,113 @@
 //            the platforms internal definitions (like defer).
 
 #include <core_types.h>
+#include <core_assert.h>
+#include <app_error.h>
 
 using namespace coretypes;
 
 typedef struct VkInstance_T* VkInstance;
 typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
 
-struct Platform {
-    enum struct Error : i32 {
-        SUCCESS,
-        FAILED_TO_CREATE_SURFACE,
-        SENTINEL
-    };
-    static constexpr const char* errToCStr(Error err);
-    static constexpr bool isOk(Error err);
+enum struct KeyboardModifiers : u8 {
+    MOD_NONE = 0,
+    MOD_SHIFT = 1 << 1,
+    MOD_CONTROL = 2 << 1,
+    MOD_ALT = 3 << 2,
+    MOD_SUPER = 4 << 3,
+};
 
-    static Error init(const char* windowTitle, i32 windowWidth, i32 windowHeight);
-    static Error start();
+inline constexpr KeyboardModifiers operator|(KeyboardModifiers lhs, KeyboardModifiers rhs) {
+    return KeyboardModifiers(u8(lhs) | u8(rhs));
+}
+
+inline constexpr KeyboardModifiers operator&(KeyboardModifiers lhs, KeyboardModifiers rhs) {
+    return KeyboardModifiers(u8(lhs) & u8(rhs));
+}
+
+inline constexpr KeyboardModifiers operator^(KeyboardModifiers lhs, KeyboardModifiers rhs) {
+    return KeyboardModifiers(u8(lhs) ^ u8(rhs));
+}
+
+// Define compound assignment operators
+inline constexpr KeyboardModifiers& operator|=(KeyboardModifiers& lhs, KeyboardModifiers rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+inline constexpr KeyboardModifiers& operator&=(KeyboardModifiers& lhs, KeyboardModifiers rhs) {
+    lhs = lhs & rhs;
+    return lhs;
+}
+
+inline constexpr KeyboardModifiers& operator^=(KeyboardModifiers& lhs, KeyboardModifiers rhs) {
+    lhs = lhs ^ rhs;
+    return lhs;
+}
+
+const char* keyModifiersToCptr(KeyboardModifiers m);
+
+enum struct MouseButton : u8 {
+    LEFT,
+    MIDDLE,
+    RIGHT,
+};
+
+enum struct MouseScrollDirection : u8 {
+    UP,
+    DOWN,
+};
+
+struct PlatformEvent {
+    enum struct Type : i32 {
+        NOOP,
+
+        WINDOW_CLOSE,
+        WINDOW_RESIZE,
+
+        MOUSE_PRESS,
+        MOUSE_RELEASE,
+        MOUSE_SCROLL,
+        KEY_PRESS,
+        KEY_RELEASE,
+
+        UNKNOWN
+    };
+
+    Type type = Type::NOOP;
+    union {
+        struct {
+            i32 width;
+            i32 height;
+        } resize;
+
+        struct {
+            MouseButton button;
+            i32 x;
+            i32 y;
+        } mouse;
+
+        struct {
+            MouseScrollDirection direction;
+            i32 x;
+            i32 y;
+        } scroll;
+
+         struct {
+            i32 raw;
+            i32 scancode;
+            KeyboardModifiers mods;
+        } key;
+    } data;
+
+    void logTraceEv();
+};
+
+struct Platform {
+    [[nodiscard]] static AppError init(const char* windowTitle, i32 windowWidth, i32 windowHeight);
+    [[nodiscard]] static AppError pollEvent(PlatformEvent& ev, bool block = false);
 
     static void requiredVulkanExtsCount(i32& count);
     static void requiredVulkanExts(const char** extensions);
-    static Error createVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
+    [[nodiscard]] static AppError createVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);
 };
-
-constexpr const char* Platform::errToCStr(Platform::Error err) {
-    switch (err)
-    {
-        case Platform::Error::FAILED_TO_CREATE_SURFACE: return "Failed To Create Surface";
-
-        case Platform::Error::SUCCESS: return "success";
-        case Platform::Error::SENTINEL: break;
-    }
-    return "unknown";
-}
-
-constexpr bool Platform::isOk(Platform::Error err) {
-    return err == Platform::Error::SUCCESS;
-}

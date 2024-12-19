@@ -14,7 +14,7 @@ static wl_surface* g_surface = nullptr;
 // Registry listener callbacks
 static void registry_handle_global(void* data, wl_registry* registry, uint32_t name,
                                    const char* interface, uint32_t version) {
-    if (std::strcmp(interface, "wl_compositor") == 0) {
+    if (std::strcmp(interface, "wl_compositor") == 0) { // TODO: [REPLACE_WITH_CORE_IMPL]
         g_compositor = (wl_compositor*)wl_registry_bind(registry, name, &wl_compositor_interface, 4);
     }
 }
@@ -34,7 +34,7 @@ Platform::Error Platform::init(const char* windowTitle, i32 windowWidth, i32 win
     // Connect to the Wayland display
     g_display = wl_display_connect(nullptr);
     if (!g_display) {
-        std::cerr << "Failed to connect to Wayland display.\n";
+        std::cerr << "Failed to connect to Wayland display.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }
 
@@ -44,20 +44,20 @@ Platform::Error Platform::init(const char* windowTitle, i32 windowWidth, i32 win
     wl_display_roundtrip(g_display);
 
     if (!g_compositor) {
-        std::cerr << "Failed to get wl_compositor.\n";
+        std::cerr << "Failed to get wl_compositor.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }
 
     // Create a surface
     g_surface = wl_compositor_create_surface(g_compositor);
     if (!g_surface) {
-        std::cerr << "Failed to create wl_surface.\n";
+        std::cerr << "Failed to create wl_surface.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }
 
     // In a full app, you'd use xdg_wm_base to create a window and set title
     // For this minimal example, we have a surface but no window decorations.
-    std::cout << "Wayland surface created. No shell integration for title: " << windowTitle << "\n";
+    std::cout << "Wayland surface created. No shell integration for title: " << windowTitle << "\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
 
     return Platform::Error::SUCCESS;
 }
@@ -108,7 +108,7 @@ Platform::Error Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR&
 
     VkResult result = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &outSurface);
     if (result != VK_SUCCESS) {
-        std::cerr << "Failed to create Wayland Vulkan surface.\n";
+        std::cerr << "Failed to create Wayland Vulkan surface.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }
 

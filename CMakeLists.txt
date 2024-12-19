@@ -67,6 +67,10 @@ else()
         # Create executable
         add_executable(${target_main}
             main.cpp
+
+            src/app_error.cpp
+            src/platform.cpp
+
             src/platform_x11.cpp
             src/vulkan_renderer.cpp
         )

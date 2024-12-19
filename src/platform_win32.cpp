@@ -33,7 +33,7 @@ Platform::Error Platform::init(const char* windowTitle, i32 windowWidth, i32 win
     wc.lpszClassName = g_windowClassName;
 
     if (!RegisterClassExA(&wc)) {
-        std::cerr << "Failed to register window class.\n";
+        std::cerr << "Failed to register window class.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE; // Use a generic error
     }
 
@@ -47,7 +47,7 @@ Platform::Error Platform::init(const char* windowTitle, i32 windowWidth, i32 win
                            NULL, NULL, g_hInstance, NULL);
 
     if (!g_hWnd) {
-        std::cerr << "Failed to create window.\n";
+        std::cerr << "Failed to create window.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }
 
@@ -62,7 +62,7 @@ Platform::Error Platform::start() {
     while (true) {
         BOOL res = GetMessageA(&msg, NULL, 0, 0);
         if (res == -1) {
-            std::cerr << "Error in message loop.\n";
+            std::cerr << "Error in message loop.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
             return Platform::Error::FAILED_TO_CREATE_SURFACE;
         }
         else if (res == 0) {
@@ -94,7 +94,7 @@ Platform::Error Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR&
 
     VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &outSurface);
     if (result != VK_SUCCESS) {
-        std::cerr << "Failed to create Win32 Vulkan surface.\n";
+        std::cerr << "Failed to create Win32 Vulkan surface.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }
 
