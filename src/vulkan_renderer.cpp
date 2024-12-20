@@ -79,7 +79,7 @@ core::expected<AppError> Renderer::init() {
     VkInstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
-    instanceCreateInfo.enabledExtensionCount = extensions.len();
+    instanceCreateInfo.enabledExtensionCount = u32(extensions.len());
     instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
 
     VkInstance instance = VK_NULL_HANDLE;
