@@ -170,6 +170,20 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     return APP_OK;
 }
 
+void Platform::shutdown() {
+    if (g_window) {
+        XDestroyWindow(g_display, g_window); // Destroy the X11 window
+        g_window = 0; // Reset the global window ID
+    }
+
+    if (g_display) {
+        XCloseDisplay(g_display); // Close the X11 display connection
+        g_display = nullptr; // Reset the global display pointer
+    }
+
+    g_initialized = false; // Mark the platform as uninitialized
+}
+
 void Platform::requiredVulkanExtsCount(i32& count) {
     count = 1;
 }

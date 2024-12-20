@@ -167,6 +167,8 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         return mods;
     };
 
+    // FIXME: Alt key modifier does not work. This code is buggy, fix it!
+
     switch (msg.message) {
         case WM_CLOSE:
         case WM_QUIT:
@@ -215,6 +217,20 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
 
     ev.type = EvType::UNKNOWN;
     return APP_OK;
+}
+
+void Platform::shutdown() {
+    g_initialized = false;
+
+    if (g_hwnd) {
+        DestroyWindow(g_hwnd);
+        g_hwnd = nullptr;
+    }
+
+    if (g_hInstance) {
+        UnregisterClassA(g_windowClassName, g_hInstance);
+        g_hInstance = nullptr;
+    }
 }
 
 void Platform::requiredVulkanExtsCount(i32& count) {

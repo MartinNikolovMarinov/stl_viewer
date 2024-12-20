@@ -16,6 +16,7 @@ typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
 struct Platform {
     [[nodiscard]] static AppError init(const char* windowTitle, i32 windowWidth, i32 windowHeight);
     [[nodiscard]] static AppError pollEvent(PlatformEvent& ev, bool block = false);
+    static void shutdown();
 
     static void requiredVulkanExtsCount(i32& count);
     static void requiredVulkanExts(const char** extensions);

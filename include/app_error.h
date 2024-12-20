@@ -7,6 +7,8 @@ using namespace coretypes;
 
 struct PlatformError {
     enum struct Type : i32 {
+        FAILED_TO_INITIALIZE_CORE_LOGGER,
+
         FAILED_TO_CREATE_X11_DISPLAY,
         FAILED_TO_CREATE_X11_WINDOW,
         FAILED_TO_CREATE_X11_KHR_XLIB_SURFACE,

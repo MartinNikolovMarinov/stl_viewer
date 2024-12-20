@@ -10,7 +10,7 @@ const char* keyModifiersToCptr(KeyboardModifiers m) {
 
     if (m == MODNONE) return "None";
 
-    if (m == (MODSHIFT | MODCONTROL | MODALT | MODSUPER)) return "Shift + Control + Alt + Super";
+    if (m == (MODSHIFT | MODCONTROL | MODALT | MODSUPER))  return "Shift + Control + Alt + Super";
     if (m == (MODSHIFT | MODCONTROL | MODALT))             return "Shift + Control + Alt";
     if (m == (MODSHIFT | MODCONTROL | MODSUPER))           return "Shift + Control + Super";
     if (m == (MODSHIFT | MODALT | MODSUPER))               return "Shift + Alt + Super";

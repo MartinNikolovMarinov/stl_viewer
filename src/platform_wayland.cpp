@@ -2,7 +2,6 @@
 #include <vulkan_include.h>
 
 #include <wayland-client.h>
-#include <iostream>
 #include <cstring>
 
 // Globals

@@ -42,6 +42,7 @@ elseif(WIN32)
     add_executable(${target_main}
         main.cpp
 
+        src/app.cpp
         src/app_error.cpp
         src/user_input.cpp
 
