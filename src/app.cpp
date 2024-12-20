@@ -1,5 +1,6 @@
 #include <app.h>
 #include <platform.h>
+#include <renderer.h>
 #include <user_input.h>
 
 #include <iostream> // TODO2: Do I want to use c++ iostream even just for assertions it kinda sucks.
@@ -52,8 +53,12 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
     if (auto err = Platform::init(title, w, h); !err.isOk()) {
         return core::unexpected(err);
     }
+    logInfo("Platform initialized SUCCESSFULLY");
 
-    // TODO: Initialize the renderer
+    if (auto res = Renderer::init(); res.hasErr()) {
+        return res;
+    }
+    logInfo("Renderer initialized SUCCESSFULLY");
 
     return {};
 }

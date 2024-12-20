@@ -12,7 +12,10 @@ using RendererError::FAILED_TO_GET_VULKAN_VERSION;
 #define FAILED_TO_CREATE_VULKAN_INSTANCE_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_INSTANCE));
 
-core::expected<AppError> Renderer::getVersion(char out[VERSION_BUFFER_SIZE]) {
+namespace {
+
+constexpr addr_size VERSION_BUFFER_SIZE = 255;
+core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]) {
     u32 version = 0;
     if(VkResult vres = vkEnumerateInstanceVersion(&version); vres != VK_SUCCESS) {
         return FAILED_TO_GET_VULKAN_VERSION_ERREXPR;
@@ -33,22 +36,34 @@ core::expected<AppError> Renderer::getVersion(char out[VERSION_BUFFER_SIZE]) {
     out[n] = '\0';
     out += n;
 
-
     return {};
 }
 
-core::expected<AppError> Renderer::init() {
-    // FIXME: getVersion and log it!
+core::expected<AppError> logVulkanVersion() {
+    char buff[VERSION_BUFFER_SIZE];
+    if (auto res = getVulkanVersion(buff); res.hasErr()) {
+        return res;
+    }
+    logInfo(buff);
+    return {};
+}
 
+} // namespace
+
+core::expected<AppError> Renderer::init() {
     // TODO2: Verify I do not need this:
     // #ifdef OS_MAC
     //     setenv("VK_ICD_FILENAMES", "./lib/MoltenVK/sdk-1.3.296.0/MoltenVK_icd.json", 1);
     // #endif
 
+    if (auto res = logVulkanVersion(); res.hasErr()) {
+        return res;
+    }
+
     // Initialize Vulkan Instance
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = "Vulkan Metal Example";
+    appInfo.pApplicationName = "Vulkan Example";
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -57,29 +72,27 @@ core::expected<AppError> Renderer::init() {
     // Retrieve required extensions
     i32 requiredPlatformExtCount = 0;
     Platform::requiredVulkanExtsCount(requiredPlatformExtCount);
-    std::vector<const char*> extensions (requiredPlatformExtCount + 1); // TODO: [REPLACE_WITH_CORE_IMPL]
+    core::ArrList<const char*> extensions (requiredPlatformExtCount + 1, nullptr); // TODO: use static memory?
     Platform::requiredVulkanExts(extensions.data());
     extensions[1] = VK_KHR_SURFACE_EXTENSION_NAME;
 
     VkInstanceCreateInfo instanceCreateInfo{};
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
-    instanceCreateInfo.enabledExtensionCount = extensions.size();
+    instanceCreateInfo.enabledExtensionCount = extensions.len();
     instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
 
     VkInstance instance = VK_NULL_HANDLE;
-    if (vkCreateInstance(&instanceCreateInfo, nullptr, &instance) != VK_SUCCESS) {
+    if (VkResult vres = vkCreateInstance(&instanceCreateInfo, nullptr, &instance); vres != VK_SUCCESS) {
         return FAILED_TO_CREATE_VULKAN_INSTANCE_ERREXPR;
     }
-
-    std::cout << "Vulkan instance created.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
+    logInfo("Vulkan instance created.");
 
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
         return core::unexpected(err);
     }
-
-    std::cout << "Vulkan surface created.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
+    logInfo("Vulkan surface created.");
 
     return {};
 }

@@ -1,6 +1,7 @@
 #include <platform.h>
 #include <app_error.h>
 #include <vulkan_include.h>
+#include <core_logger.h>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -247,8 +248,8 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
     createInfo.hinstance = g_hInstance;
     createInfo.hwnd = g_hwnd;
 
-    VkResult result = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &outSurface);
-    if (result != VK_SUCCESS) {
+    if (VkResult vres = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &outSurface); vres != VK_SUCCESS) {
+        logFatal("Failed to create Instance. Error Code: %d", vres);
         return createPltErr(FAILED_TO_CREATE_WIN32_KHR_SURFACE, "Failed to create Win32 Vulkan surface.");
     }
 
