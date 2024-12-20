@@ -52,18 +52,37 @@ void PlatformEvent::logTraceEv() {
                      this->data.mouse.button);
             return;
 
-        case EvType::MOUSE_SCROLL:
-            logTrace("EV_TYPE: MOUSE_SCROLL (x=%d, y=%d, direction=%s)",
-                     this->data.scroll.x,
-                     this->data.scroll.y,
-                     this->data.scroll.direction == MouseScrollDirection::UP ? "UP" : "DOWN");
-            return;
-
         case EvType::MOUSE_RELEASE:
             logTrace("EV_TYPE: MOUSE_RELEASE (x=%d, y=%d, button=%d)",
                      this->data.mouse.x,
                      this->data.mouse.y,
                      this->data.mouse.button);
+            return;
+
+        case EvType::MOUSE_SCROLL_START:
+            logTrace("EV_TYPE: MOUSE_SCROLL_START (x=%d, y=%d, direction=%s)",
+                     this->data.scroll.x,
+                     this->data.scroll.y,
+                     this->data.scroll.direction == MouseScrollDirection::UP ? "UP" : "DOWN");
+            return;
+
+        case EvType::MOUSE_SCROLL_STOP:
+            logTrace("EV_TYPE: MOUSE_SCROLL_STOP (x=%d, y=%d, direction=%s)",
+                     this->data.scroll.x,
+                     this->data.scroll.y,
+                     this->data.scroll.direction == MouseScrollDirection::UP ? "UP" : "DOWN");
+            return;
+
+        case EvType::MOUSE_MOVE:
+            logTrace("EV_TYPE: MOUSE_MOVE (x=%d, y=%d)", this->data.mouse.x, this->data.mouse.y);
+            return;
+
+        case EvType::MOUSE_ENTER:
+            logTrace("EV_TYPE: MOUSE_ENTER (x=%d, y=%d)", this->data.mouse.x, this->data.mouse.y);
+            return;
+
+        case EvType::MOUSE_LEAVE:
+            logTrace("EV_TYPE: MOUSE_LEAVE (x=%d, y=%d)", this->data.mouse.x, this->data.mouse.y);
             return;
 
         case EvType::KEY_PRESS:
@@ -78,6 +97,14 @@ void PlatformEvent::logTraceEv() {
                      this->data.key.vkcode,
                      this->data.key.scancode,
                      keyModifiersToCptr(this->data.key.mods));
+            return;
+
+        case EvType::FOCUS_GAINED:
+            logTrace("EV_TYPE: FOCUS_GAINED");
+            return;
+
+        case EvType::FOCUS_LOST:
+            logTrace("EV_TYPE: FOCUS_LOST");
             return;
 
         case EvType::NOOP:

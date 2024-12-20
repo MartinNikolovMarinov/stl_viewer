@@ -48,6 +48,10 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
                      KeyReleaseMask |     // Key release events.
                      ButtonPressMask |    // Mouse button press.
                      ButtonReleaseMask |  // Mouse button release.
+                     PointerMotionMask |  // Mouse movement events.
+                     EnterWindowMask |    // Mouse enters the window.
+                     LeaveWindowMask |    // Mouse leaves the window.
+                     FocusChangeMask |    // Window gains or loses focus.
                      StructureNotifyMask; ;// Window structure changes (resize, close, etc.).
     XSelectInput(g_display, g_window, eventMask);
 
@@ -90,48 +94,50 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         return ret;
     };
 
-    auto convertX11Buttons = [](const XEvent& x11Event, PlatformEvent& ev) {
-        ev.data.mouse.x = x11Event.xbutton.x;
-        ev.data.mouse.y = x11Event.xbutton.y;
+    XEvent xevent;
+    XNextEvent(g_display, &xevent);
 
-        switch (x11Event.xbutton.button) {
+    auto handleMouseEvent = [](const XEvent& xevent, PlatformEvent& ev, bool isPress) -> AppError {
+        switch (xevent.xbutton.button) {
             case Button1:
-                ev.type = EvType::MOUSE_PRESS;
+                ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
                 ev.data.mouse.button = MouseButton::LEFT;
                 break;
             case Button2:
-                ev.type = EvType::MOUSE_PRESS;
+                ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
                 ev.data.mouse.button = MouseButton::MIDDLE;
                 break;
             case Button3:
-                ev.type = EvType::MOUSE_PRESS;
+                ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
                 ev.data.mouse.button = MouseButton::RIGHT;
                 break;
             case Button4:
-                ev.type = EvType::MOUSE_SCROLL;
+                ev.type = isPress ? EvType::MOUSE_SCROLL_START : EvType::MOUSE_SCROLL_STOP;
                 ev.data.scroll.direction = MouseScrollDirection::UP;
                 break;
             case Button5:
-                ev.type = EvType::MOUSE_SCROLL;
+                ev.type = isPress ? EvType::MOUSE_SCROLL_START : EvType::MOUSE_SCROLL_STOP;
                 ev.data.scroll.direction = MouseScrollDirection::DOWN;
                 break;
             default: [[unlikely]]
                 logDebug("Unknown Mouse Button.");
                 ev.type = EvType::UNKNOWN;
-                break;
+                return APP_OK; // Early return
         }
+
+        ev.data.mouse.x = xevent.xbutton.x;
+        ev.data.mouse.y = xevent.xbutton.y;
+        return APP_OK;
     };
 
-    XEvent xevent;
-    XNextEvent(g_display, &xevent);
-
     switch (xevent.type) {
-        case ClientMessage:
+        case ClientMessage: {
             if (Atom(xevent.xclient.data.l[0]) == g_wmDeleteWindow) {
                 ev.type = EvType::WINDOW_CLOSE;
                 return APP_OK;
             }
             break;
+        }
 
         case ConfigureNotify:
             ev.type = EvType::WINDOW_RESIZE;
@@ -139,14 +145,11 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
             ev.data.resize.height = xevent.xconfigure.height;
             return APP_OK;
 
-        case ButtonPress: {
-            convertX11Buttons(xevent, ev);
-            return APP_OK;
-        }
+        case ButtonPress:
+            return handleMouseEvent(xevent, ev, true);
 
         case ButtonRelease:
-            convertX11Buttons(xevent, ev);
-            return APP_OK;
+            return handleMouseEvent(xevent, ev, false);
 
         case KeyPress:
             ev.type = EvType::KEY_PRESS;
@@ -162,6 +165,35 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
             ev.data.key.mods = convertX11Modifiers(xevent.xkey.state);
             return APP_OK;
 
+        case MotionNotify:
+            ev.type = EvType::MOUSE_MOVE;
+            ev.data.mouse.button = MouseButton::NONE;
+            ev.data.mouse.x = xevent.xmotion.x;
+            ev.data.mouse.y = xevent.xmotion.y;
+            return APP_OK;
+
+        case EnterNotify:
+            ev.type = EvType::MOUSE_ENTER;
+            ev.data.mouse.button = MouseButton::NONE;
+            ev.data.mouse.x = xevent.xcrossing.x;
+            ev.data.mouse.y = xevent.xcrossing.y;
+            return APP_OK;
+
+        case LeaveNotify:
+            ev.type = EvType::MOUSE_LEAVE;
+            ev.data.mouse.button = MouseButton::NONE;
+            ev.data.mouse.x = xevent.xcrossing.x;
+            ev.data.mouse.y = xevent.xcrossing.y;
+            return APP_OK;
+
+        case FocusIn:
+            ev.type = EvType::FOCUS_GAINED;
+            return APP_OK;
+
+        case FocusOut:
+            ev.type = EvType::FOCUS_LOST;
+            return APP_OK;
+
         default:
             break;
     }
@@ -171,6 +203,8 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
 }
 
 void Platform::shutdown() {
+    g_initialized = false; // Mark the platform as uninitialized
+
     if (g_window) {
         XDestroyWindow(g_display, g_window); // Destroy the X11 window
         g_window = 0; // Reset the global window ID
@@ -180,8 +214,6 @@ void Platform::shutdown() {
         XCloseDisplay(g_display); // Close the X11 display connection
         g_display = nullptr; // Reset the global display pointer
     }
-
-    g_initialized = false; // Mark the platform as uninitialized
 }
 
 void Platform::requiredVulkanExtsCount(i32& count) {

@@ -41,6 +41,7 @@ inline constexpr KeyboardModifiers& operator^=(KeyboardModifiers& lhs, KeyboardM
 const char* keyModifiersToCptr(KeyboardModifiers m);
 
 enum struct MouseButton : u8 {
+    NONE,
     LEFT,
     MIDDLE,
     RIGHT,
@@ -61,9 +62,17 @@ struct PlatformEvent {
 
         MOUSE_PRESS,
         MOUSE_RELEASE,
-        MOUSE_SCROLL,
+        MOUSE_SCROLL_START,
+        MOUSE_SCROLL_STOP,
+        MOUSE_MOVE,
+        MOUSE_ENTER,
+        MOUSE_LEAVE,
+
         KEY_PRESS,
         KEY_RELEASE,
+
+        FOCUS_GAINED,
+        FOCUS_LOST,
 
         UNKNOWN
     };
