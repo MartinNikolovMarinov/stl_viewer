@@ -10,6 +10,11 @@ struct PlatformError {
         FAILED_TO_CREATE_X11_DISPLAY,
         FAILED_TO_CREATE_X11_WINDOW,
         FAILED_TO_CREATE_X11_KHR_XLIB_SURFACE,
+
+        FAILED_TO_REGISTER_WIN32_WINDOW,
+        FAILED_TO_CREATE_WIN32_WINDOW,
+        FAILED_TO_CREATE_WIN32_KHR_SURFACE,
+        FAILED_TO_POLL_FOR_WIN32_EVENT,
     };
 
     const char* errMsg; // static memory!

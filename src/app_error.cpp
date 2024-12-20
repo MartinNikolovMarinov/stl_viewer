@@ -26,8 +26,7 @@ constexpr const char* pltErrorToCStr(const PlatformError& e) {
 }
 
 constexpr const char* rendErrorToCStr(RendererError e) {
-    switch (e)
-    {
+    switch (e) {
         case RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE: return "Failed to create Vulkan instance";
         case RendererError::FAILED_TO_GET_VULKAN_VERSION:     return "Failed to get Vulkan version";
     }
@@ -37,8 +36,7 @@ constexpr const char* rendErrorToCStr(RendererError e) {
 } // namespace
 
 const char* AppError::toCStr() {
-    switch (this->type)
-    {
+    switch (this->type) {
         case Type::OK: return "ok";
         case Type::PLATFORM_ERROR: return pltErrorToCStr(this->pltErr);
         case Type::RENDERER_ERROR: return rendErrorToCStr(this->rendErr);

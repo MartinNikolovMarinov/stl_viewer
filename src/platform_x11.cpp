@@ -4,7 +4,6 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
-#include <iostream>
 
 using PlatformError::Type::FAILED_TO_CREATE_X11_DISPLAY;
 using PlatformError::Type::FAILED_TO_CREATE_X11_WINDOW;
@@ -152,19 +151,18 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         case KeyPress:
             ev.type = EvType::KEY_PRESS;
             ev.data.key.scancode = xevent.xkey.keycode;
-            ev.data.key.raw = XLookupKeysym(&xevent.xkey, 0);
+            ev.data.key.vkcode = XLookupKeysym(&xevent.xkey, 0);
             ev.data.key.mods = convertX11Modifiers(xevent.xkey.state);
             return APP_OK;
 
         case KeyRelease:
             ev.type = EvType::KEY_RELEASE;
             ev.data.key.scancode = xevent.xkey.keycode;
-            ev.data.key.raw = XLookupKeysym(&xevent.xkey, 0);
+            ev.data.key.vkcode = XLookupKeysym(&xevent.xkey, 0);
             ev.data.key.mods = convertX11Modifiers(xevent.xkey.state);
             return APP_OK;
 
         default:
-            ev.type = EvType::UNKNOWN;
             break;
     }
 

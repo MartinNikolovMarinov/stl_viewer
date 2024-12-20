@@ -41,6 +41,10 @@ elseif(WIN32)
     # Create executable
     add_executable(${target_main}
         main.cpp
+
+        src/app_error.cpp
+        src/user_input.cpp
+
         src/platform_win32.cpp
         src/vulkan_renderer.cpp
     )
@@ -69,7 +73,7 @@ else()
             main.cpp
 
             src/app_error.cpp
-            src/platform.cpp
+            src/user_input.cpp
 
             src/platform_x11.cpp
             src/vulkan_renderer.cpp

@@ -32,6 +32,9 @@ i32 main() {
         return -1;
     }
     core::setLoggerLevel(core::LogLevel::L_TRACE);
+#if defined(OS_WIN) && OS_WIN == 1
+    core::useAnsiInLogger(false);
+#endif
 
     constexpr const char* windowTitle = "Vulkan Metal Surface Example";
     constexpr i32 windowWidth = 800, windowHeight = 600;
