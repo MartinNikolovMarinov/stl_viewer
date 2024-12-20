@@ -82,10 +82,10 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     auto convertX11Modifiers = [](u32 m) -> KeyboardModifiers {
         KeyboardModifiers ret;
 
-        if (m & ShiftMask)   ret |= KeyboardModifiers::MOD_SHIFT;
-        if (m & ControlMask) ret |= KeyboardModifiers::MOD_CONTROL;
-        if (m & Mod1Mask)    ret |= KeyboardModifiers::MOD_ALT;
-        if (m & Mod4Mask)    ret |= KeyboardModifiers::MOD_SUPER;
+        if (m & ShiftMask)   ret |= KeyboardModifiers::MODSHIFT;
+        if (m & ControlMask) ret |= KeyboardModifiers::MODCONTROL;
+        if (m & Mod1Mask)    ret |= KeyboardModifiers::MODALT;
+        if (m & Mod4Mask)    ret |= KeyboardModifiers::MODSUPER;
 
         return ret;
     };
