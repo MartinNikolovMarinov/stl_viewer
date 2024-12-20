@@ -169,6 +169,7 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     };
 
     // FIXME: Alt key modifier does not work. This code is buggy, fix it!
+    // FIXME: Resize event is not handled!
 
     switch (msg.message) {
         case WM_CLOSE:
