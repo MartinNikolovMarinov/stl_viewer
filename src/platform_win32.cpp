@@ -56,7 +56,6 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
                            CW_USEDEFAULT, CW_USEDEFAULT,
                            rect.right - rect.left, rect.bottom - rect.top,
                            NULL, NULL, g_hInstance, NULL);
-
     if (!g_hwnd) {
         return createPltErr(FAILED_TO_CREATE_WIN32_WINDOW, "Failed to create window.");
     }
@@ -107,47 +106,29 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
 
-    auto handleMousePressMsg = [](const MSG& win32Msg, PlatformEvent& ev) {
+    static bool g_isTrackingMouse = false;
+
+    auto handleMouseEvent  = [](const MSG& win32Msg, PlatformEvent& ev, bool isPress) {
         POINT pt = { GET_X_LPARAM(win32Msg.lParam), GET_Y_LPARAM(win32Msg.lParam) };
-        ScreenToClient(g_hwnd, &pt);
         ev.data.mouse.x = pt.x;
         ev.data.mouse.y = pt.y;
 
         switch (win32Msg.message) {
-            case WM_LBUTTONDOWN:
-                ev.type = EvType::MOUSE_PRESS;
-                ev.data.mouse.button = MouseButton::LEFT;
-                break;
-            case WM_LBUTTONUP:
-                ev.type = EvType::MOUSE_RELEASE;
-                ev.data.mouse.button = MouseButton::LEFT;
-                break;
-            case WM_RBUTTONDOWN:
-                ev.type = EvType::MOUSE_PRESS;
-                ev.data.mouse.button = MouseButton::RIGHT;
-                break;
-            case WM_RBUTTONUP:
-                ev.type = EvType::MOUSE_RELEASE;
-                ev.data.mouse.button = MouseButton::RIGHT;
-                break;
-            case WM_MBUTTONDOWN:
-                ev.type = EvType::MOUSE_PRESS;
-                ev.data.mouse.button = MouseButton::MIDDLE;
-                break;
-            case WM_MBUTTONUP:
-                ev.type = EvType::MOUSE_RELEASE;
-                ev.data.mouse.button = MouseButton::MIDDLE;
-                break;
+            case WM_LBUTTONDOWN: ev.data.mouse.button = MouseButton::LEFT; break;
+            case WM_LBUTTONUP:   ev.data.mouse.button = MouseButton::LEFT; break;
+            case WM_RBUTTONDOWN: ev.data.mouse.button = MouseButton::RIGHT; break;
+            case WM_RBUTTONUP:   ev.data.mouse.button = MouseButton::RIGHT; break;
+            case WM_MBUTTONDOWN: ev.data.mouse.button = MouseButton::MIDDLE; break;
+            case WM_MBUTTONUP:   ev.data.mouse.button = MouseButton::MIDDLE; break;
         }
+        ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
     };
 
     auto handleScrollMsg = [](const MSG& win32Msg, PlatformEvent& ev) -> void {
         POINT pt = { GET_X_LPARAM(win32Msg.lParam), GET_Y_LPARAM(win32Msg.lParam) };
-        // Convert screen coords to client coords
-        ScreenToClient(g_hwnd, &pt);
         ev.data.scroll.x = pt.x;
         ev.data.scroll.y = pt.y;
-        ev.type = EvType::MOUSE_SCROLL;
+        ev.type = EvType::MOUSE_SCROLL_START;
 
         short delta = GET_WHEEL_DELTA_WPARAM(win32Msg.wParam);
         if (delta > 0)      ev.data.scroll.direction = MouseScrollDirection::UP;
@@ -169,7 +150,6 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     };
 
     // FIXME: Alt key modifier does not work. This code is buggy, fix it!
-    // FIXME: Resize event is not handled!
 
     switch (msg.message) {
         case WM_CLOSE:
@@ -177,41 +157,92 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
             ev.type = EvType::WINDOW_CLOSE;
             return APP_OK;
 
-        case WM_SIZE: {
+        case WM_SIZE:
             ev.type = EvType::WINDOW_RESIZE;
             ev.data.resize.width = LOWORD(msg.lParam);
             ev.data.resize.height = HIWORD(msg.lParam);
             return APP_OK;
+
+        case WM_SETFOCUS: // this is ony for child windows
+            ev.type = EvType::FOCUS_GAINED;
+            return APP_OK;
+
+        case WM_KILLFOCUS: // this is ony for child windows
+            ev.type = EvType::FOCUS_LOST;
+            return APP_OK;
+
+        case WM_ACTIVATE: { // this is global for the entire application focus state.
+            if (LOWORD(msg.wParam) == WA_INACTIVE) {
+                ev.type = EvType::FOCUS_LOST;
+                return APP_OK;
+            }
+            else {
+                ev.type = EvType::FOCUS_LOST;
+                return APP_OK;
+            }
         }
 
-        case WM_MOUSEWHEEL:
-            handleScrollMsg(msg, ev);
+        case WM_MOUSEMOVE: {
+            POINT pt = { GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
+            ev.type = EvType::MOUSE_MOVE;
+            ev.data.mouse.x = pt.x;
+            ev.data.mouse.y = pt.y;
+
+            if (!g_isTrackingMouse) {
+                ev.type = EvType::MOUSE_ENTER; // Change event type. This is an ENTER event.
+
+                TRACKMOUSEEVENT tme = {};
+                tme.cbSize = sizeof(TRACKMOUSEEVENT);
+                tme.dwFlags = TME_LEAVE;
+                tme.hwndTrack = g_hwnd;
+                if (TrackMouseEvent(&tme)) {
+                    g_isTrackingMouse = true;
+                }
+                else {
+                    logWarn("Failed to enable mouse tracking. This might have been caused by missed a leave event");
+                }
+            }
+
+            return APP_OK;
+        }
+
+        case WM_MOUSELEAVE: {
+            g_isTrackingMouse = false;
+            ev.type = EvType::MOUSE_LEAVE;
+            ev.data.mouse.x = core::limitMin<i32>();
+            ev.data.mouse.y = core::limitMin<i32>();
+            return APP_OK;
+        }
+
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONDOWN:
+            handleMouseEvent(msg, ev, true);
             return APP_OK;
 
         case WM_LBUTTONUP:
         case WM_RBUTTONUP:
         case WM_MBUTTONUP:
-        case WM_LBUTTONDOWN:
-        case WM_RBUTTONDOWN:
-        case WM_MBUTTONDOWN:
-            handleMousePressMsg(msg, ev);
+            handleMouseEvent(msg, ev, false);
             return APP_OK;
 
-        case WM_KEYDOWN: {
+        case WM_MOUSEWHEEL:
+            handleScrollMsg(msg, ev);
+            return APP_OK;
+
+        case WM_KEYDOWN:
             ev.type = EvType::KEY_PRESS;
             ev.data.key.scancode = i32((msg.lParam >> 16) & 0xFF); // Extract scancode from lParam
             ev.data.key.vkcode = i32(msg.wParam); // Virtual-key code
             ev.data.key.mods = convertWin32Modifiers();
             return APP_OK;
-        }
 
-        case WM_KEYUP: {
+        case WM_KEYUP:
             ev.type = EvType::KEY_RELEASE;
             ev.data.key.scancode = i32((msg.lParam >> 16) & 0xFF);
             ev.data.key.vkcode = i32(msg.wParam);
             ev.data.key.mods = convertWin32Modifiers();
             return APP_OK;
-        }
 
         default:
             break;

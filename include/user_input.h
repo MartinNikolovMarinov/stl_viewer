@@ -86,14 +86,14 @@ struct PlatformEvent {
 
         struct {
             MouseButton button;
-            i32 x; // FIXME: The different OS UI systems have different coordinate systems! I need to unify the coords.
+            i32 x;
             i32 y;
         } mouse;
 
         struct {
             // TODO2: This event might need a dx for scroll speed.
             MouseScrollDirection direction;
-            i32 x; // FIXME: I need to unify the coords.
+            i32 x;
             i32 y;
         } scroll;
 
