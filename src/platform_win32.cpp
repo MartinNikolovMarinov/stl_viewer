@@ -103,7 +103,7 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         }
     }
 
-    TranslateMessage(&msg);
+    TranslateMessage(&msg); // TODO: I dont need to translate every message.
     DispatchMessage(&msg);
 
     static bool g_isTrackingMouse = false;
@@ -152,7 +152,7 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     // FIXME: Alt key modifier does not work. This code is buggy, fix it!
 
     switch (msg.message) {
-        case WM_CLOSE:
+        case WM_CLOSE: [[fallthrough]];
         case WM_QUIT:
             ev.type = EvType::WINDOW_CLOSE;
             return APP_OK;
@@ -171,15 +171,17 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
             ev.type = EvType::FOCUS_LOST;
             return APP_OK;
 
-        case WM_ACTIVATE: { // this is global for the entire application focus state.
-            if (LOWORD(msg.wParam) == WA_INACTIVE) {
-                ev.type = EvType::FOCUS_LOST;
-                return APP_OK;
-            }
-            else {
-                ev.type = EvType::FOCUS_LOST;
-                return APP_OK;
-            }
+        // Global window focus on Windows is insane.. FIXME: This still does not work..
+        case WM_NCACTIVATE: [[fallthrough]];
+        case WM_ACTIVATE: {
+            bool active = (LOWORD(msg.wParam) != WA_INACTIVE);
+            ev.type = active ? EvType::FOCUS_GAINED : EvType::FOCUS_LOST;
+            return APP_OK;
+        }
+        case WM_ACTIVATEAPP: {
+            BOOL active = BOOL(msg.wParam);
+            ev.type = active ? EvType::FOCUS_GAINED : EvType::FOCUS_LOST;
+            return APP_OK;
         }
 
         case WM_MOUSEMOVE: {
@@ -214,14 +216,14 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
             return APP_OK;
         }
 
-        case WM_LBUTTONDOWN:
-        case WM_RBUTTONDOWN:
+        case WM_LBUTTONDOWN: [[fallthrough]];
+        case WM_RBUTTONDOWN: [[fallthrough]];
         case WM_MBUTTONDOWN:
             handleMouseEvent(msg, ev, true);
             return APP_OK;
 
-        case WM_LBUTTONUP:
-        case WM_RBUTTONUP:
+        case WM_LBUTTONUP: [[fallthrough]];
+        case WM_RBUTTONUP: [[fallthrough]];
         case WM_MBUTTONUP:
             handleMouseEvent(msg, ev, false);
             return APP_OK;

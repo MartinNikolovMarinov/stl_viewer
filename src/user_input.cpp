@@ -74,7 +74,7 @@ void PlatformEvent::logTraceEv() {
             return;
 
         case EvType::MOUSE_MOVE:
-            logTrace("EV_TYPE: MOUSE_MOVE (x=%d, y=%d)", this->data.mouse.x, this->data.mouse.y);
+            // logTrace("EV_TYPE: MOUSE_MOVE (x=%d, y=%d)", this->data.mouse.x, this->data.mouse.y);
             return;
 
         case EvType::MOUSE_ENTER:
@@ -115,5 +115,5 @@ void PlatformEvent::logTraceEv() {
             break;
     }
 
-    logTrace("EV_TYPE: Unknown");
+    // logTrace("EV_TYPE: Unknown");
 }
