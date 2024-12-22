@@ -16,6 +16,18 @@ Window g_window = 0;
 Atom g_wmDeleteWindow;
 [[maybe_unused]] bool g_initialized = false; // Probably won't use this in release builds.
 
+// Initialize all callback variables to nullptr
+WindowCloseCallback windowCloseCallbackX11 = nullptr;
+WindowResizeCallback windowResizeCallbackX11 = nullptr;
+WindowFocusCallback windowFocusCallbackX11 = nullptr;
+
+KeyCallback keyCallbackX11 = nullptr;
+
+MouseClickCallback mouseClickCallbackX11 = nullptr;
+MouseMoveCallback mouseMoveCallbackX11 = nullptr;
+MouseScrollCallback mouseScrollCallbackX11 = nullptr;
+MouseEnterOrLeaveCallback mouseEnterOrLeaveCallbackX11 = nullptr;
+
 } // namespace
 
 AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeight) {
@@ -73,17 +85,14 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     return APP_OK;
 }
 
-AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
+AppError Platform::pollEvents(bool block) {
     Assert(g_initialized, "Platform Layer needs to be initialized");
 
-    using EvType = PlatformEvent::Type;
-
     if (!block && !XPending(g_display)) {
-        ev.type = EvType::NOOP;
         return APP_OK;
     }
 
-    auto convertX11Modifiers = [](u32 m) -> KeyboardModifiers {
+    auto getModifiers = [](u32 m) -> KeyboardModifiers {
         KeyboardModifiers ret;
 
         if (m & ShiftMask)   ret |= KeyboardModifiers::MODSHIFT;
@@ -97,108 +106,124 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
     XEvent xevent;
     XNextEvent(g_display, &xevent);
 
-    auto handleMouseEvent = [](const XEvent& xevent, PlatformEvent& ev, bool isPress) -> AppError {
-        switch (xevent.xbutton.button) {
-            case Button1:
-                ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
-                ev.data.mouse.button = MouseButton::LEFT;
-                break;
-            case Button2:
-                ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
-                ev.data.mouse.button = MouseButton::MIDDLE;
-                break;
-            case Button3:
-                ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
-                ev.data.mouse.button = MouseButton::RIGHT;
-                break;
-            case Button4:
-                ev.type = isPress ? EvType::MOUSE_SCROLL_START : EvType::MOUSE_SCROLL_STOP;
-                ev.data.scroll.direction = MouseScrollDirection::UP;
-                break;
-            case Button5:
-                ev.type = isPress ? EvType::MOUSE_SCROLL_START : EvType::MOUSE_SCROLL_STOP;
-                ev.data.scroll.direction = MouseScrollDirection::DOWN;
-                break;
-            default: [[unlikely]]
-                logDebug("Unknown Mouse Button.");
-                ev.type = EvType::UNKNOWN;
-                return APP_OK; // Early return
+    auto handleMouseClickEvent = [&getModifiers](XEvent& xevent, bool isPress) -> void {
+        KeyboardModifiers mods = getModifiers(xevent.xbutton.state);
+        i32 x = i32(xevent.xbutton.x);
+        i32 y = i32(xevent.xbutton.y);
+
+        if (mouseScrollCallbackX11) {
+            if (xevent.xbutton.button == Button4) {
+                mouseScrollCallbackX11(MouseScrollDirection::UP, x, y);
+                return;
+            }
+            else if (xevent.xbutton.button == Button5) {
+                mouseScrollCallbackX11(MouseScrollDirection::DOWN, x, y);
+                return;
+            }
         }
 
-        ev.data.mouse.x = xevent.xbutton.x;
-        ev.data.mouse.y = xevent.xbutton.y;
-        return APP_OK;
+        if (mouseClickCallbackX11) {
+            if (xevent.xbutton.button == Button1) {
+                mouseClickCallbackX11(isPress, MouseButton::LEFT, x, y, mods);
+                return;
+            }
+            else if (xevent.xbutton.button == Button2) {
+                mouseClickCallbackX11(isPress, MouseButton::MIDDLE, x, y, mods);
+                return;
+            }
+            else if (xevent.xbutton.button == Button3) {
+                mouseClickCallbackX11(isPress, MouseButton::RIGHT, x, y, mods);
+                return;
+            }
+            else {
+                mouseClickCallbackX11(isPress, MouseButton::NONE, x, y, mods);
+                logDebug("Unknown Mouse Button.");
+                return;
+            }
+        }
+    };
+
+    auto handleKeyEvent = [&getModifiers](XEvent& xevent, bool isPress) -> void {
+        if (keyCallbackX11) {
+            u32 vkcode = XLookupKeysym(&xevent.xkey, 0);
+            u32 scancode = xevent.xkey.keycode;
+            KeyboardModifiers mods = getModifiers(xevent.xkey.state);
+            keyCallbackX11(isPress, vkcode, scancode, mods);
+        }
     };
 
     switch (xevent.type) {
         case ClientMessage: {
             if (Atom(xevent.xclient.data.l[0]) == g_wmDeleteWindow) {
-                ev.type = EvType::WINDOW_CLOSE;
+                if (windowCloseCallbackX11) windowCloseCallbackX11();
                 return APP_OK;
             }
             break;
         }
 
         case ConfigureNotify:
-            ev.type = EvType::WINDOW_RESIZE;
-            ev.data.resize.width = xevent.xconfigure.width;
-            ev.data.resize.height = xevent.xconfigure.height;
+            if (windowResizeCallbackX11) {
+                i32 w = i32(xevent.xconfigure.width);
+                i32 h = i32(xevent.xconfigure.height);
+                windowResizeCallbackX11(w, h);
+            }
             return APP_OK;
 
         case ButtonPress:
-            return handleMouseEvent(xevent, ev, true);
+            handleMouseClickEvent(xevent, true);
+            return APP_OK;
 
         case ButtonRelease:
-            return handleMouseEvent(xevent, ev, false);
+            handleMouseClickEvent(xevent, false);
+            return APP_OK;
 
         case KeyPress:
-            ev.type = EvType::KEY_PRESS;
-            ev.data.key.scancode = xevent.xkey.keycode;
-            ev.data.key.vkcode = XLookupKeysym(&xevent.xkey, 0);
-            ev.data.key.mods = convertX11Modifiers(xevent.xkey.state);
+            handleKeyEvent(xevent, true);
             return APP_OK;
 
         case KeyRelease:
-            ev.type = EvType::KEY_RELEASE;
-            ev.data.key.scancode = xevent.xkey.keycode;
-            ev.data.key.vkcode = XLookupKeysym(&xevent.xkey, 0);
-            ev.data.key.mods = convertX11Modifiers(xevent.xkey.state);
+            handleKeyEvent(xevent, false);
             return APP_OK;
 
-        case MotionNotify:
-            ev.type = EvType::MOUSE_MOVE;
-            ev.data.mouse.button = MouseButton::NONE;
-            ev.data.mouse.x = xevent.xmotion.x;
-            ev.data.mouse.y = xevent.xmotion.y;
+        case MotionNotify: {
+            if (mouseMoveCallbackX11) {
+                i32 x = i32(xevent.xmotion.x);
+                i32 y = i32(xevent.xmotion.y);
+                mouseMoveCallbackX11(x, y);
+            }
             return APP_OK;
+        }
 
-        case EnterNotify:
-            ev.type = EvType::MOUSE_ENTER;
-            ev.data.mouse.button = MouseButton::NONE;
-            ev.data.mouse.x = xevent.xcrossing.x;
-            ev.data.mouse.y = xevent.xcrossing.y;
+        case EnterNotify: {
+            if (mouseEnterOrLeaveCallbackX11) {
+                // i32 x = xevent.xcrossing.x;
+                // i32 y = xevent.xcrossing.y;
+                mouseEnterOrLeaveCallbackX11(true);
+            }
             return APP_OK;
+        }
 
-        case LeaveNotify:
-            ev.type = EvType::MOUSE_LEAVE;
-            ev.data.mouse.button = MouseButton::NONE;
-            ev.data.mouse.x = xevent.xcrossing.x;
-            ev.data.mouse.y = xevent.xcrossing.y;
+        case LeaveNotify: {
+            if (mouseEnterOrLeaveCallbackX11) {
+                // i32 x = xevent.xcrossing.x;
+                // i32 y = xevent.xcrossing.y;
+                mouseEnterOrLeaveCallbackX11(false);
+            }
             return APP_OK;
+        }
 
         case FocusIn:
-            ev.type = EvType::FOCUS_GAINED;
+            if (windowFocusCallbackX11) windowFocusCallbackX11(true);
             return APP_OK;
 
         case FocusOut:
-            ev.type = EvType::FOCUS_LOST;
+            if (windowFocusCallbackX11) windowFocusCallbackX11(false);
             return APP_OK;
 
         default:
             break;
     }
 
-    ev.type = EvType::UNKNOWN;
     return APP_OK;
 }
 
@@ -215,6 +240,17 @@ void Platform::shutdown() {
         g_display = nullptr; // Reset the global display pointer
     }
 }
+
+void Platform::registerWindowCloseCallback(WindowCloseCallback cb) { windowCloseCallbackX11 = cb; }
+void Platform::registerWindowResizeCallback(WindowResizeCallback cb) { windowResizeCallbackX11 = cb; }
+void Platform::registerWindowFocusCallback(WindowFocusCallback cb) { windowFocusCallbackX11 = cb; }
+
+void Platform::registerKeyCallback(KeyCallback cb) { keyCallbackX11 = cb; }
+
+void Platform::registerMouseClickCallback(MouseClickCallback cb) { mouseClickCallbackX11 = cb; }
+void Platform::registerMouseMoveCallback(MouseMoveCallback cb) { mouseMoveCallbackX11 = cb; }
+void Platform::registerMouseScrollCallback(MouseScrollCallback cb) { mouseScrollCallbackX11 = cb; }
+void Platform::registerMouseEnterOrLeaveCallback(MouseEnterOrLeaveCallback cb) { mouseEnterOrLeaveCallbackX11 = cb; }
 
 void Platform::requiredVulkanExtsCount(i32& count) {
     count = 1;

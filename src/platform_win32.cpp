@@ -153,8 +153,8 @@ AppError Platform::pollEvents(bool block) {
     auto handleKeyMessage = [&getModifiers](const MSG& win32Msg, bool isPress) -> void {
         if (!keyCallbackWin32) return;
 
-        i32 vkcode = i32(win32Msg.wParam); // Virtual-key code
-        i32 scancode = i32((win32Msg.lParam >> 16) & 0xFF); // Extract scancode from lParam
+        u32 vkcode = u32(win32Msg.wParam); // Virtual-key code
+        u32 scancode = u32((win32Msg.lParam >> 16) & 0xFF); // Extract scancode from lParam
         KeyboardModifiers mods = getModifiers();
 
         keyCallbackWin32(isPress, vkcode, scancode, mods);

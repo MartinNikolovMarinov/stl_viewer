@@ -18,7 +18,7 @@ using WindowResizeCallback = void (*)(i32 w, i32 h);
 using WindowFocusCallback = void (*)(bool gain);
 // TODO: Window drag.
 
-using KeyCallback = void (*)(bool isPress, i32 vkcode, i32 scancode, KeyboardModifiers mods);
+using KeyCallback = void (*)(bool isPress, u32 vkcode, u32 scancode, KeyboardModifiers mods);
 
 using MouseClickCallback = void (*)(bool isPress, MouseButton button, i32 x, i32 y, KeyboardModifiers mods);
 using MouseMoveCallback = void (*)(i32 x, i32 y);

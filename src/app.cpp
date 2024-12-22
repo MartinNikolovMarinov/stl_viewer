@@ -39,36 +39,40 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
     }
     logInfo("Platform initialized SUCCESSFULLY");
 
-    Platform::registerWindowCloseCallback([]() {
-        logInfo("Closing Application!");
-        g_appIsRunning = false;
-    });
-    Platform::registerWindowResizeCallback([](i32 w, i32 h) {
-        logTrace("EVENT: WINDOW_RESIZE (w=%d, h=%d)", w, h);
-    });
-    Platform::registerWindowFocusCallback([](bool focus) {
-        if (focus) logTrace("EVENT: WINDOW_FOCUS_GAINED");
-        else       logTrace("EVENT: WINDOW_FOCUS_LOST");
-    });
-    Platform::registerKeyCallback([](bool isPress, i32 vkcode, i32 scancode, KeyboardModifiers mods) {
-        logTrace("EVENT: KEY_%s (vkcode=%d, scancode=%d, mods=%s)",
-                 isPress ? "PRESS" : "RELEASE", vkcode, scancode, keyModifiersToCptr(mods));
-    });
-    Platform::registerMouseClickCallback([](bool isPress, MouseButton button, i32 x, i32 y, KeyboardModifiers mods) {
-        logTrace("EVENT: MOUSE_%s (button=%d, x=%d, y=%d, mods=%s)",
-                 isPress ? "PRESS" : "RELEASE", button, x, y, keyModifiersToCptr(mods));
-    });
-    Platform::registerMouseMoveCallback([](i32 x, i32 y) {
-        // NOTE: Very noisy.
-        // logTrace("EVENT: MOUSE_MOVE (x=%d, y=%d)", x, y);
-    });
-    Platform::registerMouseScrollCallback([](MouseScrollDirection direction, i32 x, i32 y) {
-        logTrace("EVENT: MOUSE_SCROLL (direction=%d, x=%d, y=%d)", direction, x, y);
-    });
-    Platform::registerMouseEnterOrLeaveCallback([](bool enter) {
-        if (enter) logTrace("EVENT: MOUSE_ENTER");
-        else       logTrace("EVENT: MOUSE_LEAVE");
-    });
+    {
+        Platform::registerWindowCloseCallback([]() {
+            logInfo("Closing Application!");
+            g_appIsRunning = false;
+        });
+        Platform::registerWindowResizeCallback([](i32 w, i32 h) {
+            logTrace("EVENT: WINDOW_RESIZE (w=%d, h=%d)", w, h);
+        });
+        Platform::registerWindowFocusCallback([](bool focus) {
+            if (focus) logTrace("EVENT: WINDOW_FOCUS_GAINED");
+            else       logTrace("EVENT: WINDOW_FOCUS_LOST");
+        });
+        Platform::registerKeyCallback([](bool isPress, u32 vkcode, u32 scancode, KeyboardModifiers mods) {
+            logTrace("EVENT: KEY_%s (vkcode=%u, scancode=%u, mods=%s)",
+                    isPress ? "PRESS" : "RELEASE", vkcode, scancode, keyModifiersToCptr(mods));
+        });
+        Platform::registerMouseClickCallback([](bool isPress, MouseButton button, i32 x, i32 y, KeyboardModifiers mods) {
+            logTrace("EVENT: MOUSE_%s (button=%d, x=%d, y=%d, mods=%s)",
+                    isPress ? "PRESS" : "RELEASE", button, x, y, keyModifiersToCptr(mods));
+        });
+        Platform::registerMouseMoveCallback([](i32 x, i32 y) {
+            // NOTE: Very noisy.
+            // logTrace("EVENT: MOUSE_MOVE (x=%d, y=%d)", x, y);
+        });
+        Platform::registerMouseScrollCallback([](MouseScrollDirection direction, i32 x, i32 y) {
+            logTrace("EVENT: MOUSE_SCROLL (direction=%d, x=%d, y=%d)", direction, x, y);
+        });
+        Platform::registerMouseEnterOrLeaveCallback([](bool enter) {
+            if (enter) logTrace("EVENT: MOUSE_ENTER");
+            else       logTrace("EVENT: MOUSE_LEAVE");
+        });
+
+        logInfo("Registered event platform event handlers SUCCESSFULLY");
+    }
 
     if (auto res = Renderer::init(); res.hasErr()) {
         return res;
