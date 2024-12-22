@@ -13,22 +13,24 @@ using PlatformError::Type::FAILED_TO_POLL_FOR_WIN32_EVENT;
 
 namespace {
 
+LRESULT CALLBACK processWin32Messages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+// Initialize all callback variables to nullptr
+WindowCloseCallback windowCloseCallbackWin32 = nullptr;
+WindowResizeCallback windowResizeCallbackWin32 = nullptr;
+WindowFocusCallback windowFocusCallbackWin32 = nullptr;
+
+KeyCallback keyCallbackWin32 = nullptr;
+
+MouseClickCallback mouseClickCallbackWin32 = nullptr;
+MouseMoveCallback mouseMoveCallbackWin32 = nullptr;
+MouseScrollCallback mouseScrollCallbackWin32 = nullptr;
+MouseEnterOrLeaveCallback mouseEnterOrLeaveCallbackWin32 = nullptr;
+
 HINSTANCE g_hInstance = nullptr;
 HWND g_hwnd = nullptr;
-const char* g_windowClassName = "ApplicationWindowClass";
+constexpr const char* g_windowClassName = "ApplicationWindowClass";
 [[maybe_unused]] bool g_initialized = false; // Probably won't use this in release builds.
-
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    switch (message) {
-        case WM_CLOSE:
-            DestroyWindow(hWnd);
-            return 0;
-        case WM_DESTROY:
-            PostQuitMessage(0);
-            return 0;
-    }
-    return DefWindowProc(hWnd, message, wParam, lParam);
-}
 
 } // namespace
 
@@ -39,7 +41,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     WNDCLASSEXA wc = {};
     wc.cbSize = sizeof(WNDCLASSEXA);
     wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = WndProc;
+    wc.lpfnWndProc = processWin32Messages;
     wc.hInstance = g_hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.lpszClassName = g_windowClassName;
@@ -68,10 +70,8 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     return APP_OK;
 }
 
-AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
+AppError Platform::pollEvents(bool block) {
     Assert(g_initialized, "Platform Layer needs to be initialized");
-
-    using EvType = PlatformEvent::Type;
 
     MSG msg = {};
     BOOL res;
@@ -80,12 +80,10 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         res = GetMessage(&msg, NULL, 0, 0);
         if (res <= -1) {
             // Error retrieving message
-            ev.type = EvType::UNKNOWN;
             return createPltErr(FAILED_TO_POLL_FOR_WIN32_EVENT, "GetMessage failed");
         }
         else if (res == 0) {
             // WM_QUIT received
-            ev.type = EvType::WINDOW_CLOSE;
             return APP_OK;
         }
     }
@@ -94,49 +92,16 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         res = PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
         if (res == 0) {
             // No messages available
-            ev.type = EvType::NOOP;
             return APP_OK;
         }
         else if (msg.message == WM_QUIT) {
-            ev.type = EvType::WINDOW_CLOSE;
             return APP_OK;
         }
     }
 
-    TranslateMessage(&msg); // TODO: I dont need to translate every message.
-    DispatchMessage(&msg);
-
     static bool g_isTrackingMouse = false;
 
-    auto handleMouseEvent  = [](const MSG& win32Msg, PlatformEvent& ev, bool isPress) {
-        POINT pt = { GET_X_LPARAM(win32Msg.lParam), GET_Y_LPARAM(win32Msg.lParam) };
-        ev.data.mouse.x = pt.x;
-        ev.data.mouse.y = pt.y;
-
-        switch (win32Msg.message) {
-            case WM_LBUTTONDOWN: ev.data.mouse.button = MouseButton::LEFT; break;
-            case WM_LBUTTONUP:   ev.data.mouse.button = MouseButton::LEFT; break;
-            case WM_RBUTTONDOWN: ev.data.mouse.button = MouseButton::RIGHT; break;
-            case WM_RBUTTONUP:   ev.data.mouse.button = MouseButton::RIGHT; break;
-            case WM_MBUTTONDOWN: ev.data.mouse.button = MouseButton::MIDDLE; break;
-            case WM_MBUTTONUP:   ev.data.mouse.button = MouseButton::MIDDLE; break;
-        }
-        ev.type = isPress ? EvType::MOUSE_PRESS : EvType::MOUSE_RELEASE;
-    };
-
-    auto handleScrollMsg = [](const MSG& win32Msg, PlatformEvent& ev) -> void {
-        POINT pt = { GET_X_LPARAM(win32Msg.lParam), GET_Y_LPARAM(win32Msg.lParam) };
-        ev.data.scroll.x = pt.x;
-        ev.data.scroll.y = pt.y;
-        ev.type = EvType::MOUSE_SCROLL_START;
-
-        short delta = GET_WHEEL_DELTA_WPARAM(win32Msg.wParam);
-        if (delta > 0)      ev.data.scroll.direction = MouseScrollDirection::UP;
-        else if (delta < 0) ev.data.scroll.direction = MouseScrollDirection::DOWN;
-        else                ev.data.scroll.direction = MouseScrollDirection::NONE;
-    };
-
-    auto convertWin32Modifiers = []() -> KeyboardModifiers {
+    auto getModifiers = []() -> KeyboardModifiers {
         KeyboardModifiers mods = KeyboardModifiers::MODNONE;
 
         if (GetKeyState(VK_SHIFT) & 0x8000)   mods |= KeyboardModifiers::MODSHIFT;
@@ -149,49 +114,64 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
         return mods;
     };
 
-    // FIXME: Alt key modifier does not work. This code is buggy, fix it!
+    auto handleMouseMessage  = [&getModifiers](const MSG& win32Msg, bool isPress) -> void {
+        if (!mouseClickCallbackWin32) return;
+
+        POINT pt = { GET_X_LPARAM(win32Msg.lParam), GET_Y_LPARAM(win32Msg.lParam) };
+        auto x = pt.x;
+        auto y = pt.y;
+        MouseButton button = MouseButton::NONE;
+        KeyboardModifiers mods = getModifiers();
+
+        switch (win32Msg.message) {
+            case WM_LBUTTONDOWN: button = MouseButton::LEFT; break;
+            case WM_LBUTTONUP:   button = MouseButton::LEFT; break;
+            case WM_RBUTTONDOWN: button = MouseButton::RIGHT; break;
+            case WM_RBUTTONUP:   button = MouseButton::RIGHT; break;
+            case WM_MBUTTONDOWN: button = MouseButton::MIDDLE; break;
+            case WM_MBUTTONUP:   button = MouseButton::MIDDLE; break;
+        }
+
+        mouseClickCallbackWin32(isPress, button, x, y, mods);
+    };
+
+    auto handleScrollMessage = [](const MSG& win32Msg) -> void {
+        if (!mouseScrollCallbackWin32) return;
+
+        POINT pt = { GET_X_LPARAM(win32Msg.lParam), GET_Y_LPARAM(win32Msg.lParam) };
+        auto x = pt.x;
+        auto y = pt.y;
+        MouseScrollDirection direction = MouseScrollDirection::NONE;
+
+        short delta = GET_WHEEL_DELTA_WPARAM(win32Msg.wParam);
+        if (delta > 0)      direction = MouseScrollDirection::UP;
+        else if (delta < 0) direction = MouseScrollDirection::DOWN;
+
+        mouseScrollCallbackWin32(direction, x, y);
+    };
+
+    auto handleKeyMessage = [&getModifiers](const MSG& win32Msg, bool isPress) -> void {
+        if (!keyCallbackWin32) return;
+
+        i32 vkcode = i32(win32Msg.wParam); // Virtual-key code
+        i32 scancode = i32((win32Msg.lParam >> 16) & 0xFF); // Extract scancode from lParam
+        KeyboardModifiers mods = getModifiers();
+
+        keyCallbackWin32(isPress, vkcode, scancode, mods);
+    };
 
     switch (msg.message) {
         case WM_CLOSE: [[fallthrough]];
         case WM_QUIT:
-            ev.type = EvType::WINDOW_CLOSE;
-            return APP_OK;
-
-        case WM_SIZE:
-            ev.type = EvType::WINDOW_RESIZE;
-            ev.data.resize.width = LOWORD(msg.lParam);
-            ev.data.resize.height = HIWORD(msg.lParam);
-            return APP_OK;
-
-        case WM_SETFOCUS: // this is ony for child windows
-            ev.type = EvType::FOCUS_GAINED;
-            return APP_OK;
-
-        case WM_KILLFOCUS: // this is ony for child windows
-            ev.type = EvType::FOCUS_LOST;
-            return APP_OK;
-
-        // Global window focus on Windows is insane.. FIXME: This still does not work..
-        case WM_NCACTIVATE: [[fallthrough]];
-        case WM_ACTIVATE: {
-            bool active = (LOWORD(msg.wParam) != WA_INACTIVE);
-            ev.type = active ? EvType::FOCUS_GAINED : EvType::FOCUS_LOST;
-            return APP_OK;
-        }
-        case WM_ACTIVATEAPP: {
-            BOOL active = BOOL(msg.wParam);
-            ev.type = active ? EvType::FOCUS_GAINED : EvType::FOCUS_LOST;
-            return APP_OK;
-        }
+            break;
 
         case WM_MOUSEMOVE: {
             POINT pt = { GET_X_LPARAM(msg.lParam), GET_Y_LPARAM(msg.lParam) };
-            ev.type = EvType::MOUSE_MOVE;
-            ev.data.mouse.x = pt.x;
-            ev.data.mouse.y = pt.y;
-
-            if (!g_isTrackingMouse) {
-                ev.type = EvType::MOUSE_ENTER; // Change event type. This is an ENTER event.
+            if (g_isTrackingMouse) {
+                if (mouseMoveCallbackWin32) mouseMoveCallbackWin32(pt.x, pt.y);
+            }
+            else {
+                // Mouse tracking needs to be enabled again.
 
                 TRACKMOUSEEVENT tme = {};
                 tme.cbSize = sizeof(TRACKMOUSEEVENT);
@@ -203,54 +183,47 @@ AppError Platform::pollEvent(PlatformEvent& ev, bool block) {
                 else {
                     logWarn("Failed to enable mouse tracking. This might have been caused by missed a leave event");
                 }
+
+                if (mouseEnterOrLeaveCallbackWin32) mouseEnterOrLeaveCallbackWin32(true);
             }
 
             return APP_OK;
         }
 
-        case WM_MOUSELEAVE: {
+        case WM_MOUSELEAVE:
             g_isTrackingMouse = false;
-            ev.type = EvType::MOUSE_LEAVE;
-            ev.data.mouse.x = core::limitMin<i32>();
-            ev.data.mouse.y = core::limitMin<i32>();
+            if (mouseEnterOrLeaveCallbackWin32) mouseEnterOrLeaveCallbackWin32(false);
             return APP_OK;
-        }
 
         case WM_LBUTTONDOWN: [[fallthrough]];
         case WM_RBUTTONDOWN: [[fallthrough]];
         case WM_MBUTTONDOWN:
-            handleMouseEvent(msg, ev, true);
+            handleMouseMessage(msg, true);
             return APP_OK;
 
         case WM_LBUTTONUP: [[fallthrough]];
         case WM_RBUTTONUP: [[fallthrough]];
         case WM_MBUTTONUP:
-            handleMouseEvent(msg, ev, false);
+            handleMouseMessage(msg, false);
             return APP_OK;
 
         case WM_MOUSEWHEEL:
-            handleScrollMsg(msg, ev);
+            handleScrollMessage(msg);
             return APP_OK;
 
+        case WM_SYSKEYDOWN: [[fallthrough]];
         case WM_KEYDOWN:
-            ev.type = EvType::KEY_PRESS;
-            ev.data.key.scancode = i32((msg.lParam >> 16) & 0xFF); // Extract scancode from lParam
-            ev.data.key.vkcode = i32(msg.wParam); // Virtual-key code
-            ev.data.key.mods = convertWin32Modifiers();
+            handleKeyMessage(msg, true);
             return APP_OK;
 
+        case WM_SYSKEYUP: [[fallthrough]];
         case WM_KEYUP:
-            ev.type = EvType::KEY_RELEASE;
-            ev.data.key.scancode = i32((msg.lParam >> 16) & 0xFF);
-            ev.data.key.vkcode = i32(msg.wParam);
-            ev.data.key.mods = convertWin32Modifiers();
+            handleKeyMessage(msg, false);
             return APP_OK;
-
-        default:
-            break;
     }
 
-    ev.type = EvType::UNKNOWN;
+    // TranslateMessage(&msg);
+    DispatchMessage(&msg);
     return APP_OK;
 }
 
@@ -289,3 +262,48 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
 
     return APP_OK;
 }
+
+void Platform::registerWindowCloseCallback(WindowCloseCallback cb) { windowCloseCallbackWin32 = cb; }
+void Platform::registerWindowResizeCallback(WindowResizeCallback cb) { windowResizeCallbackWin32 = cb; }
+void Platform::registerWindowFocusCallback(WindowFocusCallback cb) { windowFocusCallbackWin32 = cb; }
+
+void Platform::registerKeyCallback(KeyCallback cb) { keyCallbackWin32 = cb; }
+
+void Platform::registerMouseClickCallback(MouseClickCallback cb) { mouseClickCallbackWin32 = cb; }
+void Platform::registerMouseMoveCallback(MouseMoveCallback cb) { mouseMoveCallbackWin32 = cb; }
+void Platform::registerMouseScrollCallback(MouseScrollCallback cb) { mouseScrollCallbackWin32 = cb; }
+void Platform::registerMouseEnterOrLeaveCallback(MouseEnterOrLeaveCallback cb) { mouseEnterOrLeaveCallbackWin32 = cb; }
+
+namespace {
+
+LRESULT CALLBACK processWin32Messages(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+        // case WM_NCACTIVATE: [[fallthrough]];
+        case WM_ACTIVATE: {
+            if (windowFocusCallbackWin32) {
+                bool focused = (LOWORD(wParam) != WA_INACTIVE);
+                windowFocusCallbackWin32(focused);
+            }
+            return 0;
+        }
+
+        case WM_SIZE:
+            if (windowResizeCallbackWin32) {
+                auto w = LOWORD(lParam);
+                auto h = HIWORD(lParam);
+                windowResizeCallbackWin32(i32(w), i32(h));
+            }
+            return 0;
+
+        case WM_CLOSE:
+            if (windowCloseCallbackWin32) windowCloseCallbackWin32();
+            DestroyWindow(hWnd);
+            return 0;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+    }
+    return DefWindowProc(hWnd, message, wParam, lParam);
+}
+
+} // namespace

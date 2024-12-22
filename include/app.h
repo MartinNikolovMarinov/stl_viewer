@@ -10,6 +10,7 @@ struct ApplicationInfo {
 };
 
 struct Application {
+    static bool isRunning();
     [[nodiscard]] static core::expected<AppError> init(const ApplicationInfo& appInfo);
     [[nodiscard]] static core::expected<AppError> start();
     static void shutdown();
