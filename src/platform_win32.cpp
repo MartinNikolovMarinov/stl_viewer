@@ -95,6 +95,7 @@ AppError Platform::pollEvents(bool block) {
             return APP_OK;
         }
         else if (msg.message == WM_QUIT) {
+            DispatchMessage(&msg);
             return APP_OK;
         }
     }
@@ -191,6 +192,7 @@ AppError Platform::pollEvents(bool block) {
         }
 
         case WM_MOUSELEAVE:
+            // TODO: What happens if mouse leave is missed?
             g_isTrackingMouse = false;
             if (mouseEnterOrLeaveCallbackWin32) mouseEnterOrLeaveCallbackWin32(false);
             return APP_OK;
@@ -250,6 +252,8 @@ void Platform::requiredVulkanExts(const char** extensions) {
 }
 
 AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSurface) {
+    Assert(g_initialized, "Platform Layer needs to be initialized");
+
     VkWin32SurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     createInfo.hinstance = g_hInstance;

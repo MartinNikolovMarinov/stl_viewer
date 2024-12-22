@@ -261,6 +261,8 @@ void Platform::requiredVulkanExts(const char** extensions) {
 }
 
 AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSurface) {
+    Assert(g_initialized, "Platform Layer needs to be initialized");
+
     VkXlibSurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
     createInfo.dpy = g_display;

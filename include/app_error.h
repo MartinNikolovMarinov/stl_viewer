@@ -17,6 +17,10 @@ struct PlatformError {
         FAILED_TO_CREATE_WIN32_WINDOW,
         FAILED_TO_CREATE_WIN32_KHR_SURFACE,
         FAILED_TO_POLL_FOR_WIN32_EVENT,
+
+        FAILED_TO_CREATE_OSX_WINDOW,
+        FAILED_TO_CREATE_OSX_METAL_LAYER,
+        FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE,
     };
 
     const char* errMsg; // static memory!
