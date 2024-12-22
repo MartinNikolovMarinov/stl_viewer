@@ -1,6 +1,8 @@
 #include <platform.h>
 #include <app_error.h>
 #include <vulkan_include.h>
+
+#include <core_assert.h>
 #include <core_logger.h>
 
 #include <windows.h>

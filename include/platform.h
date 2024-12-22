@@ -4,7 +4,6 @@
 //            the platforms internal definitions (like defer).
 
 #include <core_types.h>
-#include <core_assert.h>
 #include <app_error.h>
 #include <user_input.h>
 

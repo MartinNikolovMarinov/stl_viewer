@@ -1,6 +1,8 @@
 #pragma once
 
-#include <basic.h>
+#include <core_types.h>
+
+using namespace coretypes;
 
 enum struct KeyboardModifiers : u8 {
     MODNONE = 0,

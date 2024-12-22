@@ -2,6 +2,8 @@
 #include <platform.h>
 #include <vulkan_include.h>
 
+#include <core_assert.h>
+
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
