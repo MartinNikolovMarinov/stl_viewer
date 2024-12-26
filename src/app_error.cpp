@@ -35,6 +35,8 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to enumerate Vulkan Instance extension properties";
         case RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES:
             return "Failed to enumerate Vulkan Instance layer properties";
+        case RendererError::FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT:
+            return "Failed to create Vulkan instance due to missing required extension";
     }
     return "unknown";
 }
