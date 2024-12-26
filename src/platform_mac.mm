@@ -134,10 +134,17 @@ void postEmptyEvent() {
 @end
 
 // Custom NSView subclass to handle keyboard events
-@interface AppView : NSView
+@interface AppView : NSView {
+    NSTrackingArea* _trackingArea;
+}
 @end
 
 @implementation AppView
+
++ (Class)layerClass {
+    // Tells Cocoa that this view’s backing layer should be a CAMetalLayer
+    return [CAMetalLayer class];
+}
 
 // By default, NSView might refuse to become first responder.
 // Override this to allow the view to receive key events.
@@ -166,10 +173,54 @@ void postEmptyEvent() {
 - (void)flagsChanged:(NSEvent*)event {
     // TODO: to make this work, I will need a virtual keyboard with all currently pressed buttons.
 }
-@end
 
-ApplicationDelegate* appDelegate = nil;
-WindowDelegate* windowDelegate = nil;
+// Called when the system thinks the tracking areas need updating
+- (void)updateTrackingAreas {
+    [super updateTrackingAreas];
+
+    // Remove the old tracking area if it exists
+    if (_trackingArea != nil) {
+        [self removeTrackingArea:_trackingArea];
+        _trackingArea = nil;
+    }
+
+    // Create new tracking area covering the entire view
+    // NSTrackingInVisibleRect makes the tracking area automatically update
+    // if the view is resized or moved, so we don't have to recalc the rect.
+    NSTrackingAreaOptions options =
+        (NSTrackingMouseEnteredAndExited |
+         NSTrackingActiveAlways |
+         NSTrackingInVisibleRect);
+
+    _trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
+                                                 options:options
+                                                   owner:self
+                                                userInfo:nil];
+    [self addTrackingArea:_trackingArea];
+}
+
+// These get called when the mouse enters or leaves the tracking area
+- (void)mouseEntered:(NSEvent*)event {
+    if (mouseEnterOrLeaveCallbackMacOS) {
+        NSPoint location = [event locationInWindow];
+        NSRect frame = [self frame];
+        // i32 x = (i32)location.x;
+        // i32 y = (i32)(frame.size.height - location.y);
+        mouseEnterOrLeaveCallbackMacOS(true);
+    }
+}
+
+- (void)mouseExited:(NSEvent*)event {
+    if (mouseEnterOrLeaveCallbackMacOS) {
+        NSPoint location = [event locationInWindow];
+        NSRect frame = [self frame];
+        // i32 x = (i32)location.x;
+        // i32 y = (i32)(frame.size.height - location.y);
+        mouseEnterOrLeaveCallbackMacOS(false);
+    }
+}
+
+@end // AppView
 
 AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeight) {
     @autoreleasepool {
@@ -183,7 +234,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
         [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 
         // Set up the application delegate
-        appDelegate = [[ApplicationDelegate alloc] init];
+        ApplicationDelegate* appDelegate = [[ApplicationDelegate alloc] init];
         [app setDelegate:appDelegate];
 
         // Create window
@@ -208,13 +259,20 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
         [window makeKeyAndOrderFront:nil];
 
         // Attach window delegate
-        windowDelegate = [[WindowDelegate alloc] init];
+        WindowDelegate* windowDelegate = [[WindowDelegate alloc] init];
         [window setDelegate:windowDelegate];
 
         // Create content view
         NSRect contentRect = [[window contentView] frame];
         AppView* contentView = [[AppView alloc] initWithFrame:contentRect];
+        [contentView setWantsLayer:YES];
         [window setContentView:contentView];
+
+        // Store a pointer to the Metal layer
+        metalLayer = (CAMetalLayer*)[contentView layer];
+        // metalLayer.device = MTLCreateSystemDefaultDevice();
+        // metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        // metalLayer.framebufferOnly = YES;
 
         // Make content view first responder to receive key events
         [window makeFirstResponder:contentView];
@@ -342,10 +400,9 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& surfac
     metalSurfaceInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
     metalSurfaceInfo.pLayer = metalLayer;
 
-    // FIXME: Fix the metal layer
-    // if (vkCreateMetalSurfaceEXT(instance, &metalSurfaceInfo, nullptr, &surface) != VK_SUCCESS) {
-    //     return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE, "Failed to create Metal Vulkan surface.");
-    // }
+    if (vkCreateMetalSurfaceEXT(instance, &metalSurfaceInfo, nullptr, &surface) != VK_SUCCESS) {
+        return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE, "Failed to create Metal Vulkan surface.");
+    }
 
     return APP_OK;
 }

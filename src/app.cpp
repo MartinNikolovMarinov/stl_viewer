@@ -67,7 +67,6 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
             logTrace("EVENT: MOUSE_SCROLL (direction=%d, x=%d, y=%d)", direction, x, y);
         });
         Platform::registerMouseEnterOrLeaveCallback([](bool enter) {
-            // FIXME: Does not work for MACOS
             if (enter) logTrace("EVENT: MOUSE_ENTER");
             else       logTrace("EVENT: MOUSE_LEAVE");
         });
