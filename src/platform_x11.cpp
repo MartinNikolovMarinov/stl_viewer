@@ -95,7 +95,7 @@ AppError Platform::pollEvents(bool block) {
     }
 
     auto getModifiers = [](u32 m) -> KeyboardModifiers {
-        KeyboardModifiers ret;
+        KeyboardModifiers ret = KeyboardModifiers::MODNONE;
 
         if (m & ShiftMask)   ret |= KeyboardModifiers::MODSHIFT;
         if (m & ControlMask) ret |= KeyboardModifiers::MODCONTROL;

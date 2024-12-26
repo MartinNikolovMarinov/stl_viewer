@@ -4,6 +4,7 @@
 #include <app_error.h>
 
 struct ApplicationInfo {
+    const char* appName;
     const char* windowTitle;
     i32 initWindowWidth;
     i32 initWindowHeight;

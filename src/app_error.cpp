@@ -27,8 +27,14 @@ constexpr const char* pltErrorToCStr(const PlatformError& e) {
 
 constexpr const char* rendErrorToCStr(RendererError e) {
     switch (e) {
-        case RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE: return "Failed to create Vulkan instance";
-        case RendererError::FAILED_TO_GET_VULKAN_VERSION:     return "Failed to get Vulkan version";
+        case RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE:
+            return "Failed to create Vulkan instance";
+        case RendererError::FAILED_TO_GET_VULKAN_VERSION:
+            return "Failed to get Vulkan version";
+        case RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_EXTENSION_PROPERTIES:
+            return "Failed to enumerate Vulkan Instance extension properties";
+        case RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES:
+            return "Failed to enumerate Vulkan Instance layer properties";
     }
     return "unknown";
 }

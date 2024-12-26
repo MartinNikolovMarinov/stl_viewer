@@ -25,10 +25,10 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
         return core::unexpected(createPltErr(FAILED_TO_INITIALIZE_CORE_LOGGER,
                                 "Failed to initialize core logger"));
     }
-    core::setLoggerLevel(core::LogLevel::L_TRACE);
-    #if defined(OS_WIN) && OS_WIN == 1
+    core::setLoggerLevel(core::LogLevel::L_DEBUG);
+#if defined(OS_WIN) && OS_WIN == 1
     core::useAnsiInLogger(false);
-    #endif
+#endif
 
     const char* title = appInfo.windowTitle;
     i32 w = appInfo.initWindowHeight;
@@ -74,7 +74,9 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
         logInfo("Registered event platform event handlers SUCCESSFULLY");
     }
 
-    if (auto res = Renderer::init(); res.hasErr()) {
+    RendererInitInfo rendererInfo = {};
+    rendererInfo.appName = appInfo.appName;
+    if (auto res = Renderer::init(rendererInfo); res.hasErr()) {
         return res;
     }
     logInfo("Renderer initialized SUCCESSFULLY");
@@ -96,6 +98,7 @@ core::expected<AppError> Application::start() {
 void Application::shutdown() {
     // TODO2: I probably need to handle termination signals at some point ? At least interupts like SIGINT (ctrl-C)
     Platform::shutdown();
+    Renderer::shutdown();
 }
 
 namespace {

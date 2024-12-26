@@ -46,6 +46,7 @@ log_info("Arch:                      ${CMAKE_SYSTEM_PROCESSOR}")
 log_info("C++ Version:               ${CMAKE_CXX_STANDARD}")
 log_info("Compiler:                  ${CMAKE_CXX_COMPILER_ID}")
 log_info("Debug:                     ${STLV_DEBUG}")
+log_info("---------------------------------------------")
 
 # ---------------------------------------- End Options -----------------------------------------------------------------
 
@@ -57,7 +58,7 @@ set(stlv_src
     src/app_error.cpp
     src/app.cpp
     src/user_input.cpp
-    src/vulkan_renderer.cpp # TODO: make an option for the renderer type
+    src/vulkan_renderer.cpp
 )
 
 if(OS STREQUAL "linux")
@@ -85,6 +86,9 @@ target_link_libraries(${target_main} PUBLIC
 )
 target_include_directories(${target_main} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+target_compile_definitions(${target_main} PUBLIC
+    "STLV_DEBUG=$<BOOL:${STLV_DEBUG}>"
 )
 
 if(OS STREQUAL "linux")

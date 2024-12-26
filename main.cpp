@@ -1,12 +1,11 @@
 #include <app.h>
 
-#include "./sandbox.h"
-
 i32 main() {
-    ApplicationInfo appInfo;
+    ApplicationInfo appInfo = {};
     appInfo.windowTitle = "Example Application";
-    appInfo.initWindowHeight = 800;
-    appInfo.initWindowWidth = 600;
+    appInfo.appName = "STL Viewer";
+    appInfo.initWindowHeight = 1280;
+    appInfo.initWindowWidth = 720;
 
     if (auto res = Application::init(appInfo); res.hasErr()) {
         logFatal(res.err().toCStr());
