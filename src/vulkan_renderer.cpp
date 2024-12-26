@@ -7,6 +7,7 @@ using RendererError::FAILED_TO_GET_VULKAN_VERSION;
 using RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_EXTENSION_PROPERTIES;
 using RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES;
 using RendererError::FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT;
+using RendererError::FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER;
 
 #define FAILED_TO_GET_VULKAN_VERSION_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_GET_VULKAN_VERSION));
@@ -18,6 +19,8 @@ using RendererError::FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT;
     core::unexpected(createRendErr(FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES));
 #define FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT));
+#define FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER));
 
 namespace {
 
@@ -35,6 +38,7 @@ LayerPropsList g_allSupportedInstLayers;
 
 VkInstance g_instance = VK_NULL_HANDLE;
 VkSurfaceKHR g_surface = VK_NULL_HANDLE;
+VkDebugUtilsMessengerEXT g_debugMessenger = VK_NULL_HANDLE;
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -48,7 +52,17 @@ core::expected<LayerPropsList*, AppError> getAllSupportedInstanceLayers(bool use
 void                                      logInstLayersList(const LayerPropsList& list);
 bool                                      checkSupportForLayer(const char* name);
 
+VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
+                                             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                                             const VkAllocationCallbacks* pAllocator,
+                                             VkDebugUtilsMessengerEXT* pDebugMessenger);
+void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                          VkDebugUtilsMessengerEXT debugMessenger,
+                                          const VkAllocationCallbacks* pAllocator);
+
 core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName);
+VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
+core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
 
 } // namespace
 
@@ -95,6 +109,18 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfo("Vulkan instance created.");
     }
 
+    // Create Debug Messenger
+    if constexpr (VALIDATION_LAYERS_ENABLED) {
+        VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+        auto res = vulkanCreateDebugMessenger(instance);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        debugMessenger = res.value();
+        logInfo("Vulkan Debug Messenger created.");
+        g_debugMessenger = debugMessenger;
+    }
+
     // Create KHR Surface
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     {
@@ -111,13 +137,18 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
 }
 
 void Renderer::shutdown() {
-    if (g_surface) {
+    if (g_surface != VK_NULL_HANDLE) {
         logInfo("Destroying Vulkan KHR surface");
         vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
         g_surface = VK_NULL_HANDLE;
     }
 
-    if (g_instance) {
+    if (g_debugMessenger != VK_NULL_HANDLE) {
+        wrap_vkDestroyDebugUtilsMessengerEXT(g_instance, g_debugMessenger, nullptr);
+        g_debugMessenger = VK_NULL_HANDLE;
+    }
+
+    if (g_instance != VK_NULL_HANDLE) {
         logInfo("Destroying Vulkan instance");
         vkDestroyInstance(g_instance, nullptr);
         g_instance = VK_NULL_HANDLE;
@@ -189,6 +220,10 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
             instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
             instanceCreateInfo.ppEnabledLayerNames = layerNames;
             logInfo("Enabling VK_LAYER_KHRONOS_validation layer.");
+
+            // The following code is required to enable the validation layers during instance creation:
+            VkDebugUtilsMessengerCreateInfoEXT debugMessageInfo = defaultDebugMessengerInfo();
+            instanceCreateInfo.pNext = reinterpret_cast<VkDebugUtilsMessengerCreateInfoEXT*>(&debugMessageInfo);
         }
         else {
             logWarn("VK_LAYER_KHRONOS_validation is not supported");
@@ -201,6 +236,51 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
     }
 
     return ret;
+}
+
+VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{};
+
+    debugMessengerCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+    debugMessengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                                               // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+
+    debugMessengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+    debugMessengerCreateInfo.pfnUserCallback = [](
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        [[maybe_unused]] void* pUserData
+    ) -> VkBool32 {
+        // TODO: Create an appropriate logging schema for these.
+        logInfo("Validation layer: %s ", pCallbackData->pMessage);
+        logInfo("Severity: %llu ", u64(messageSeverity));
+        logInfo("Type: %d ", messageType);
+        logInfo("\n");
+        return VK_FALSE;
+    };
+
+    return debugMessengerCreateInfo;
+}
+
+core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance) {
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = defaultDebugMessengerInfo();
+    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+    if (VkResult vres = wrap_vkCreateDebugUtilsMessengerEXT(instance,
+                                                            &debugMessengerCreateInfo,
+                                                            nullptr,
+                                                            &debugMessenger);
+        vres != VK_SUCCESS
+    ) {
+        return FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER_ERREXPR;
+    }
+
+    return debugMessenger;
 }
 
 core::expected<ExtPropsList*, AppError> getAllSupportedExtensions(bool useCache) {
@@ -283,7 +363,7 @@ bool checkSupportForLayer(const char* name) {
     }
 
     const LayerPropsList& layers = *res.value();
-    for (addr_size i = 0; layers.len(); i++) {
+    for (addr_size i = 0; i < layers.len(); i++) {
         VkLayerProperties p = layers[i];
         if (core::memcmp(p.layerName, name, core::cstrLen(name)) == 0) {
             return true;
@@ -324,6 +404,37 @@ core::expected<AppError> logVulkanVersion() {
     }
     logInfo(buff);
     return {};
+}
+
+VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
+                                             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                                             const VkAllocationCallbacks* pAllocator,
+                                             VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    static PFN_vkCreateDebugUtilsMessengerEXT func = nullptr;
+
+    if (func == nullptr) {
+        func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func == nullptr) {
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        }
+    }
+
+    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+}
+
+void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                          VkDebugUtilsMessengerEXT debugMessenger,
+                                          const VkAllocationCallbacks* pAllocator) {
+    static PFN_vkDestroyDebugUtilsMessengerEXT func = nullptr;
+
+    if (func == nullptr) {
+        func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func == nullptr) {
+            return;
+        }
+    }
+
+    func(instance, debugMessenger, pAllocator);
 }
 
 } // namespace
