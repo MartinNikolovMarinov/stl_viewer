@@ -41,21 +41,17 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
 
     {
         Platform::registerWindowCloseCallback([]() {
-            // FIXME: Does not work for MACOS
             logInfo("Closing Application!");
             g_appIsRunning = false;
         });
         Platform::registerWindowResizeCallback([](i32 w, i32 h) {
-            // FIXME: Does not work for MACOS
             logTrace("EVENT: WINDOW_RESIZE (w=%d, h=%d)", w, h);
         });
         Platform::registerWindowFocusCallback([](bool focus) {
-            // FIXME: Does not work for MACOS
             if (focus) logTrace("EVENT: WINDOW_FOCUS_GAINED");
             else       logTrace("EVENT: WINDOW_FOCUS_LOST");
         });
         Platform::registerKeyCallback([](bool isPress, u32 vkcode, u32 scancode, KeyboardModifiers mods) {
-            // FIXME: Does not work for MACOS
             logTrace("EVENT: KEY_%s (vkcode=%u, scancode=%u, mods=%s)",
                     isPress ? "PRESS" : "RELEASE", vkcode, scancode, keyModifiersToCptr(mods));
         });

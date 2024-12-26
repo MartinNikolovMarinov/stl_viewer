@@ -10,6 +10,7 @@ namespace {
 NSApplication* app = nullptr;
 NSWindow* window = nullptr;
 CAMetalLayer* metalLayer = nullptr;
+bool g_isCocoaAppRunning = false;
 
 // Callbacks
 WindowCloseCallback windowCloseCallbackMacOS = nullptr;
@@ -35,94 +36,210 @@ KeyboardModifiers getModifiersOSX(NSEvent* event) {
     return mods;
 }
 
+void postEmptyEvent() {
+    NSEvent* dummyEvent = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
+                                             location:NSMakePoint(0, 0)
+                                        modifierFlags:0
+                                            timestamp:0
+                                         windowNumber:0
+                                              context:nil
+                                              subtype:0
+                                                data1:0
+                                                data2:0];
+    [NSApp postEvent:dummyEvent atStart:YES];
+}
+
 } // namespace
 
-@interface KeyHandlingView : NSView
+
+// Application Delegate
+@interface ApplicationDelegate : NSObject <NSApplicationDelegate>
 @end
 
-@implementation KeyHandlingView
+@implementation ApplicationDelegate
+// - (void)applicationDidResignActive:(NSNotification*)notification {
+// }
+
+// - (void)applicationDidBecomeActive:(NSNotification*)notification {
+// }
+
+- (void)applicationDidFinishLaunching:(NSNotification *)notification {
+    // NSLog(@"[ApplicationDelegate] DidFinishLaunching");
+
+    // Register to observe for keyboard layout changes.
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(selectedKeyboardInputSourceChanged:)
+                                                 name:NSTextInputContextKeyboardSelectionDidChangeNotification
+                                               object:nil];
+}
+
+- (void)applicationWillTerminate:(NSNotification *)notification {
+    // NSLog(@"[ApplicationDelegate] WillTerminate");
+
+    // Unregister for keyboard layout change events.
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:NSTextInputContextKeyboardSelectionDidChangeNotification
+                                                  object:nil];
+}
+
+- (void)applicationDidHide:(NSNotification *)notification {
+    // TODO: Handle keyboard layout changes here. Might need to rebuild scancode tables here.
+}
+@end
+
+// Window Delegate
+@interface WindowDelegate : NSObject <NSWindowDelegate>
+@end
+
+@implementation WindowDelegate
+- (void)windowDidResize:(NSNotification*)notification {
+    if (windowResizeCallbackMacOS) {
+        NSRect frame = [window frame];
+        windowResizeCallbackMacOS((i32)frame.size.width, (i32)frame.size.height);
+    }
+}
+
+- (void)windowDidResignKey:(NSNotification*)notification {
+    if (windowFocusCallbackMacOS) {
+        windowFocusCallbackMacOS(false); // Window lost focus
+    }
+}
+
+- (void)windowDidBecomeKey:(NSNotification*)notification {
+    if (windowFocusCallbackMacOS) {
+        windowFocusCallbackMacOS(true); // Window gained focus
+    }
+}
+
+- (BOOL)windowShouldClose:(NSWindow*)sender {
+    if (windowCloseCallbackMacOS) {
+        windowCloseCallbackMacOS();
+    }
+
+    // This is necessary when the event polling is in blocking mode. This triggers a dummy event to wakeup the thread.
+    g_isCocoaAppRunning = false;
+    postEmptyEvent();
+
+    return NO; // Allow the window to close
+}
+
+// - (void)windowDidMove:(NSNotification *)notification {
+// }
+
+// - (void)windowDidMiniaturize:(NSNotification *)notification {
+// }
+
+// - (void)windowDidDeminiaturize:(NSNotification *)notification {
+// }
+@end
+
+// Custom NSView subclass to handle keyboard events
+@interface AppView : NSView
+@end
+
+@implementation AppView
+
+// By default, NSView might refuse to become first responder.
+// Override this to allow the view to receive key events.
 - (BOOL)acceptsFirstResponder {
     return YES;
 }
 
 - (void)keyDown:(NSEvent*)event {
     if (keyCallbackMacOS) {
-        keyCallbackMacOS(true, (u32)[event keyCode], (u32)[event keyCode], getModifiersOSX(event));
+        int vkcode = [event keyCode];
+        int scancode = 0; // TODO: Map to my own scancodes.
+        KeyboardModifiers mods = getModifiersOSX(event);
+        keyCallbackMacOS(true, vkcode, scancode, mods);
     }
 }
 
 - (void)keyUp:(NSEvent*)event {
     if (keyCallbackMacOS) {
-        keyCallbackMacOS(false, (u32)[event keyCode], (u32)[event keyCode], getModifiersOSX(event));
+        int vkcode = [event keyCode];
+        int scancode = 0; // TODO: Map to my own scancodes.
+        KeyboardModifiers mods = getModifiersOSX(event);
+        keyCallbackMacOS(false, vkcode, scancode, mods);
     }
 }
-@end
 
-@interface AppDelegate : NSObject <NSApplicationDelegate>
-@end
-
-@implementation AppDelegate
-- (void)applicationDidFinishLaunching:(NSNotification*)notification {
-    // App is ready
-    [NSApp activateIgnoringOtherApps:YES];
-}
-
-- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
-    return YES;
-}
-
-- (void)applicationWillTerminate:(NSNotification*)notification {
-    if (windowCloseCallbackMacOS) {
-        windowCloseCallbackMacOS();
-    }
+- (void)flagsChanged:(NSEvent*)event {
+    // TODO: to make this work, I will need a virtual keyboard with all currently pressed buttons.
 }
 @end
+
+ApplicationDelegate* appDelegate = nil;
+WindowDelegate* windowDelegate = nil;
 
 AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeight) {
     @autoreleasepool {
         app = [NSApplication sharedApplication];
-        AppDelegate* delegate = [[AppDelegate alloc] init];
-        [app setDelegate:delegate];
 
+        // Set the application type to Regular GUI Application
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+
+        // Disable press-and-hold accent
+        NSDictionary* defaults = @{@"ApplePressAndHoldEnabled": @NO};
+        [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
+
+        // Set up the application delegate
+        appDelegate = [[ApplicationDelegate alloc] init];
+        [app setDelegate:appDelegate];
+
+        // Create window
         NSRect frame = NSMakeRect(0, 0, windowWidth, windowHeight);
         window = [[NSWindow alloc]
                   initWithContentRect:frame
-                            styleMask:(NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable)
+                            styleMask:(NSWindowStyleMaskTitled |
+                                       NSWindowStyleMaskClosable |
+                                       NSWindowStyleMaskResizable |
+                                       NSWindowStyleMaskMiniaturizable)
                               backing:NSBackingStoreBuffered
                                 defer:NO];
         if (!window) {
-            return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_WINDOW, "Failed to create OSX window.");
+            return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_WINDOW,
+                                "Failed to create OSX window.");
         }
+
+        // Set window title, center, make key/front
         NSString* nsTitle = [NSString stringWithUTF8String:windowTitle];
         [window setTitle:nsTitle];
         [window center];
-
-        KeyHandlingView* keyView = [[KeyHandlingView alloc] initWithFrame:frame];
-        [window setContentView:keyView];
-        [window makeFirstResponder:keyView];
         [window makeKeyAndOrderFront:nil];
 
-        metalLayer = [CAMetalLayer layer];
-        if (!metalLayer) {
-            return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_METAL_LAYER, "Failed to create Metal layer.");
-        }
-        [keyView setLayer:metalLayer];
-        [keyView setWantsLayer:YES];
+        // Attach window delegate
+        windowDelegate = [[WindowDelegate alloc] init];
+        [window setDelegate:windowDelegate];
 
+        // Create content view
+        NSRect contentRect = [[window contentView] frame];
+        AppView* contentView = [[AppView alloc] initWithFrame:contentRect];
+        [window setContentView:contentView];
+
+        // Make content view first responder to receive key events
+        [window makeFirstResponder:contentView];
+
+        // Finish launching
+        [NSApp finishLaunching]; // If you need it explicitly
+
+        // Bring app to the front
         [NSApp activateIgnoringOtherApps:YES];
+
+        // Mark Cocoa app running
+        g_isCocoaAppRunning = true;
+
+        return APP_OK;
     }
-    return APP_OK;
 }
 
 AppError Platform::pollEvents(bool block) {
     @autoreleasepool {
-        NSEvent* event;
-        while ((event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                           untilDate:block ? [NSDate distantFuture] : [NSDate date]
-                                              inMode:NSDefaultRunLoopMode
-                                             dequeue:YES])) {
-            [NSApp sendEvent:event];
-            [NSApp updateWindows];
+        while (g_isCocoaAppRunning) {
+            NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
+                                                untilDate:block ? [NSDate distantFuture] : [NSDate date]
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:YES];
+            if (!event) break;
 
             switch ([event type]) {
                 case NSEventTypeMouseMoved: [[fallthrough]];
@@ -130,50 +247,70 @@ AppError Platform::pollEvents(bool block) {
                 case NSEventTypeRightMouseDragged: {
                     if (mouseMoveCallbackMacOS) {
                         NSPoint location = [event locationInWindow];
-                        mouseMoveCallbackMacOS(i32(location.x), i32(location.y));
+                        NSRect frame = [window contentView].frame;
+                        // Cocoa's coordinate system is flipped; we adjust Y accordingly.
+                        i32 x = (i32)location.x;
+                        i32 y = (i32)(frame.size.height - location.y);
+                        mouseMoveCallbackMacOS(x, y);
                     }
                     break;
                 }
 
                 case NSEventTypeScrollWheel: {
                     if (mouseScrollCallbackMacOS) {
-                        MouseScrollDirection direction = MouseScrollDirection::NONE;
+                        CGFloat deltaX = [event scrollingDeltaX];
                         CGFloat deltaY = [event scrollingDeltaY];
+                        MouseScrollDirection direction = MouseScrollDirection::NONE;
+
                         if (deltaY > 0) direction = MouseScrollDirection::UP;
-                        if (deltaY < 0) direction = MouseScrollDirection::DOWN;
+                        else if (deltaY < 0) direction = MouseScrollDirection::DOWN;
+
                         NSPoint location = [event locationInWindow];
-                        mouseScrollCallbackMacOS(direction, i32(location.x), i32(location.y));
+                        i32 x = (i32)location.x;
+                        i32 y = (i32)location.y;
+
+                        mouseScrollCallbackMacOS(direction, x, y);
                     }
                     break;
                 }
 
-                case NSEventTypeLeftMouseDown:  [[fallthrough]];
-                case NSEventTypeLeftMouseUp:    [[fallthrough]];
+                case NSEventTypeLeftMouseDown: [[fallthrough]];
+                case NSEventTypeLeftMouseUp: [[fallthrough]];
                 case NSEventTypeRightMouseDown: [[fallthrough]];
-                case NSEventTypeRightMouseUp:   [[fallthrough]];
+                case NSEventTypeRightMouseUp: [[fallthrough]];
                 case NSEventTypeOtherMouseDown: [[fallthrough]];
                 case NSEventTypeOtherMouseUp: {
                     if (mouseClickCallbackMacOS) {
                         bool isPress = ([event type] == NSEventTypeLeftMouseDown ||
                                         [event type] == NSEventTypeRightMouseDown ||
                                         [event type] == NSEventTypeOtherMouseDown);
+
                         MouseButton button = MouseButton::NONE;
                         switch ([event buttonNumber]) {
                             case 0: button = MouseButton::LEFT; break;
                             case 1: button = MouseButton::RIGHT; break;
                             case 2: button = MouseButton::MIDDLE; break;
                         }
+
                         NSPoint location = [event locationInWindow];
+                        NSRect frame = [window contentView].frame;
+                        i32 x = (i32)location.x;
+                        i32 y = (i32)(frame.size.height - location.y);
+
                         KeyboardModifiers mods = getModifiersOSX(event);
-                        mouseClickCallbackMacOS(isPress, button, i32(location.x), i32(location.y), mods);
+                        mouseClickCallbackMacOS(isPress, button, x, y, mods);
                     }
                     break;
                 }
+
                 default:
                     break;
             }
+
+            [NSApp sendEvent:event];
         }
     }
+
     return APP_OK;
 }
 
@@ -187,6 +324,8 @@ void Platform::shutdown() {
             [app terminate:nil];
             app = nullptr;
         }
+
+        g_isCocoaAppRunning = false;
     }
 }
 
@@ -203,9 +342,10 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& surfac
     metalSurfaceInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
     metalSurfaceInfo.pLayer = metalLayer;
 
-    if (vkCreateMetalSurfaceEXT(instance, &metalSurfaceInfo, nullptr, &surface) != VK_SUCCESS) {
-        return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE, "Failed to create Metal Vulkan surface.");
-    }
+    // FIXME: Fix the metal layer
+    // if (vkCreateMetalSurfaceEXT(instance, &metalSurfaceInfo, nullptr, &surface) != VK_SUCCESS) {
+    //     return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE, "Failed to create Metal Vulkan surface.");
+    // }
 
     return APP_OK;
 }

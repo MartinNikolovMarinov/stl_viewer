@@ -1,5 +1,7 @@
 #include <app.h>
 
+#include "./sandbox.h"
+
 i32 main() {
     ApplicationInfo appInfo;
     appInfo.windowTitle = "Example Application";
