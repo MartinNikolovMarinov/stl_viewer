@@ -1,3 +1,4 @@
+#include <app_logger.h>
 #include <renderer.h>
 #include <vulkan_include.h>
 #include <platform.h>
@@ -72,6 +73,8 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     //     setenv("VK_ICD_FILENAMES", "./lib/MoltenVK/sdk-1.3.296.0/MoltenVK_icd.json", 1);
     // #endif
 
+    core::addLoggerTag(appLogTagsToCStr(VULKAN_VALIDATION_TAG));
+
     if (auto res = logVulkanVersion(); res.hasErr()) {
         return res;
     }
@@ -83,7 +86,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         Assert(res.value() != nullptr, "Failed sanity check");
-        logInfo("Listing all Supported Instance Extensions");
+        logInfoTagged(RENDERER_TAG, "Listing all Supported Instance Extensions");
         logExtPropsList(*res.value());
     }
 
@@ -94,7 +97,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         Assert(res.value() != nullptr, "Failed sanity check");
-        logInfo("Listing all Supported Instance Layers");
+        logInfoTagged(RENDERER_TAG, "Listing all Supported Instance Layers");
         logInstLayersList(*res.value());
     }
 
@@ -106,7 +109,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         instance = res.value();
-        logInfo("Vulkan instance created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan instance created.");
     }
 
     // Create Debug Messenger
@@ -117,7 +120,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         debugMessenger = res.value();
-        logInfo("Vulkan Debug Messenger created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan Debug Messenger created.");
         g_debugMessenger = debugMessenger;
     }
 
@@ -127,7 +130,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
             return core::unexpected(err);
         }
-        logInfo("Vulkan surface created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan surface created.");
     }
 
     g_instance = instance;
@@ -138,7 +141,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
 
 void Renderer::shutdown() {
     if (g_surface != VK_NULL_HANDLE) {
-        logInfo("Destroying Vulkan KHR surface");
+        logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");
         vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
         g_surface = VK_NULL_HANDLE;
     }
@@ -149,7 +152,7 @@ void Renderer::shutdown() {
     }
 
     if (g_instance != VK_NULL_HANDLE) {
-        logInfo("Destroying Vulkan instance");
+        logInfoTagged(RENDERER_TAG, "Destroying Vulkan instance");
         vkDestroyInstance(g_instance, nullptr);
         g_instance = VK_NULL_HANDLE;
     }
@@ -184,7 +187,7 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
 
             for (addr_size i = 0; i < extensions.len(); i++) {
                 if (!checkSupportForExtension(extensions[i])) {
-                    logFatal("Missing required extension: %s", extensions[i]);
+                    logFatalTagged(RENDERER_TAG, "Missing required extension: %s", extensions[i]);
                     return FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT_ERREXPR;
                 }
             }
@@ -194,10 +197,10 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
         if constexpr (VALIDATION_LAYERS_ENABLED) {
             if (checkSupportForExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
                 extensions.push(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-                logInfo("Enabling optional extension: %s", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                logInfoTagged(RENDERER_TAG, "Enabling optional extension: %s", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             }
             else {
-                logWarn("Optional extension %s is not supported", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                logWarnTagged(RENDERER_TAG, "Optional extension %s is not supported", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             }
         }
     }
@@ -219,14 +222,14 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
             layerNames[0] = "VK_LAYER_KHRONOS_validation";
             instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
             instanceCreateInfo.ppEnabledLayerNames = layerNames;
-            logInfo("Enabling VK_LAYER_KHRONOS_validation layer.");
+            logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer.");
 
-            // The following code is required to enable the validation layers during instance creation:
+            // The following code is required to enable the debug utils extension during instance creation
             VkDebugUtilsMessengerCreateInfoEXT debugMessageInfo = defaultDebugMessengerInfo();
             instanceCreateInfo.pNext = reinterpret_cast<VkDebugUtilsMessengerCreateInfoEXT*>(&debugMessageInfo);
         }
         else {
-            logWarn("VK_LAYER_KHRONOS_validation is not supported");
+            logWarnTagged(RENDERER_TAG, "VK_LAYER_KHRONOS_validation is not supported");
         }
     }
 
@@ -257,11 +260,41 @@ VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         [[maybe_unused]] void* pUserData
     ) -> VkBool32 {
-        // TODO: Create an appropriate logging schema for these.
-        logInfo("Validation layer: %s ", pCallbackData->pMessage);
-        logInfo("Severity: %llu ", u64(messageSeverity));
-        logInfo("Type: %d ", messageType);
-        logInfo("\n");
+        static constexpr addr_size DEBUG_MESSAGE_BUFFER_SIZE = 1024;
+        char buffer[DEBUG_MESSAGE_BUFFER_SIZE];
+        char* ptr = buffer;
+
+        // Write message type to the buffer
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
+            ptr = core::memcopy(ptr, "[GENERAL] ", core::cstrLen("[GENERAL] "));
+        }
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+            ptr = core::memcopy(ptr, "[VALIDATION] ", core::cstrLen("[VALIDATION] "));
+        }
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+            ptr = core::memcopy(ptr, "[PERFORMANCE] ", core::cstrLen("[PERFORMANCE] "));
+        }
+
+        // Write callback message to the buffer
+        ptr = core::memcopy(ptr, pCallbackData->pMessage, core::cstrLen(pCallbackData->pMessage));
+
+        // Null-terminate the buffer
+        *ptr = '\0';
+
+        // Log the message with the appropriate logger
+        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+            logErrTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+            logWarnTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+            logInfoTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+            logDebugTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+
         return VK_FALSE;
     };
 
@@ -305,7 +338,7 @@ core::expected<ExtPropsList*, AppError> getAllSupportedExtensions(bool useCache)
 }
 
 void logExtPropsList(const ExtPropsList& list) {
-    logInfo("Extensions (%llu)", list.len());
+    logInfoTagged(RENDERER_TAG, "Extensions (%llu)", list.len());
     for (addr_size i = 0; i < list.len(); i++) {
         logInfo("\t%s v%u", list[i].extensionName, list[i].specVersion);
     }
@@ -314,7 +347,7 @@ void logExtPropsList(const ExtPropsList& list) {
 bool checkSupportForExtension(const char* extensionName) {
     auto res = getAllSupportedExtensions();
     if (res.hasErr()) {
-        logWarn("Query for all supported extensions failed, reason: %s", res.err().toCStr());
+        logWarnTagged(RENDERER_TAG, "Query for all supported extensions failed, reason: %s", res.err().toCStr());
         return false;
     }
 
@@ -348,17 +381,17 @@ core::expected<LayerPropsList*, AppError> getAllSupportedInstanceLayers(bool use
 }
 
 void logInstLayersList(const LayerPropsList& list) {
-    logInfo("Layers (%llu)", list.len());
+    logInfoTagged(RENDERER_TAG, "Layers (%llu)", list.len());
     for (addr_size i = 0; i < list.len(); i++) {
-        logInfo("\tname: %s, description: %s, spec version: %u, impl version: %u",
-                list[i].layerName, list[i].description, list[i].specVersion, list[i].implementationVersion);
+        logInfoTagged(RENDERER_TAG, "\tname: %s, description: %s, spec version: %u, impl version: %u",
+                      list[i].layerName, list[i].description, list[i].specVersion, list[i].implementationVersion);
     }
 }
 
 bool checkSupportForLayer(const char* name) {
     auto res = getAllSupportedInstanceLayers();
     if (res.hasErr()) {
-        logWarn("Query for all supported layers failed, reason: %s", res.err().toCStr());
+        logWarnTagged(RENDERER_TAG, "Query for all supported layers failed, reason: %s", res.err().toCStr());
         return false;
     }
 
