@@ -59,6 +59,7 @@ set(stlv_src
     src/app.cpp
     src/user_input.cpp
     src/vulkan_renderer.cpp
+    src/vulkan_device_picker.cpp
 )
 
 if(OS STREQUAL "linux")

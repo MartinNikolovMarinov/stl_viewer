@@ -1,7 +1,8 @@
 #include <app_logger.h>
-#include <renderer.h>
-#include <vulkan_include.h>
 #include <platform.h>
+#include <renderer.h>
+#include <vulkan_device_picker.h>
+#include <vulkan_include.h>
 
 using RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE;
 using RendererError::FAILED_TO_GET_VULKAN_VERSION;
@@ -9,6 +10,8 @@ using RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_EXTENSION_PROPERTIES;
 using RendererError::FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES;
 using RendererError::FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT;
 using RendererError::FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER;
+using RendererError::FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT;
+using RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES;
 
 #define FAILED_TO_GET_VULKAN_VERSION_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_GET_VULKAN_VERSION));
@@ -22,11 +25,16 @@ using RendererError::FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER;
     core::unexpected(createRendErr(FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT));
 #define FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER));
+#define FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT));
+#define FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES));
 
 namespace {
 
 using ExtPropsList = core::ArrList<VkExtensionProperties>;
 using LayerPropsList = core::ArrList<VkLayerProperties>;
+using GPUDeviceList = core::ArrList<GPUDevice>;
 
 #if STLV_DEBUG
 constexpr bool VALIDATION_LAYERS_ENABLED = true;
@@ -36,10 +44,12 @@ constexpr bool VALIDATION_LAYERS_ENABLED = false;
 
 ExtPropsList g_allSupportedInstExts;
 LayerPropsList g_allSupportedInstLayers;
+GPUDeviceList g_allSupportedGPUs;
 
 VkInstance g_instance = VK_NULL_HANDLE;
 VkSurfaceKHR g_surface = VK_NULL_HANDLE;
 VkDebugUtilsMessengerEXT g_debugMessenger = VK_NULL_HANDLE;
+const GPUDevice* g_selectedGPU = nullptr;
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -52,6 +62,9 @@ bool                                    checkSupportForExtension(const char* ext
 core::expected<LayerPropsList*, AppError> getAllSupportedInstanceLayers(bool useCache = true);
 void                                      logInstLayersList(const LayerPropsList& list);
 bool                                      checkSupportForLayer(const char* name);
+
+core::expected<GPUDeviceList*, AppError> getAllSupportedPhysicalDevices(VkInstance instance, bool useCache = true);
+void                                     logPhysicalDevicesList(const GPUDeviceList& list);
 
 VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
                                              const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
@@ -124,6 +137,28 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         g_debugMessenger = debugMessenger;
     }
 
+    // Pick a Physical Device
+    {
+        auto res = getAllSupportedPhysicalDevices(instance);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        Assert(res.value() != nullptr, "Failed sanity check");
+
+        logSectionTitleInfoTagged(RENDERER_TAG, "BEGIN Physical Devices");
+        defer { logSectionTitleInfoTagged(RENDERER_TAG, "END Physical Devices"); };
+
+        // Log all gpu devices
+        logPhysicalDevicesList(*res.value());
+
+        // Select a GPU and log it
+        g_selectedGPU = pickDevice({res.value()->data(), res.value()->len()});
+        if (g_selectedGPU == nullptr) {
+            return FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES_ERREXPR;
+        }
+        logInfoTagged(RENDERER_TAG, "Selected GPU: %s", g_selectedGPU->props.deviceName);
+    }
+
     // Create KHR Surface
     VkSurfaceKHR surface = VK_NULL_HANDLE;
     {
@@ -159,6 +194,7 @@ void Renderer::shutdown() {
 
     g_allSupportedInstExts.free();
     g_allSupportedInstLayers.free();
+    g_allSupportedGPUs.free();
 }
 
 namespace {
@@ -404,6 +440,65 @@ bool checkSupportForLayer(const char* name) {
     }
 
     return false;
+}
+
+core::expected<GPUDeviceList*, AppError> getAllSupportedPhysicalDevices(VkInstance instance, bool useCache) {
+    if (useCache && !g_allSupportedGPUs.empty()) {
+        return &g_allSupportedGPUs;
+    }
+
+    u32 physDeviceCount;
+    if (VkResult vres = vkEnumeratePhysicalDevices(instance, &physDeviceCount, nullptr); vres != VK_SUCCESS) {
+        return FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT_ERREXPR;
+    }
+
+    auto physDeviceList = core::ArrList<VkPhysicalDevice>(physDeviceCount, VkPhysicalDevice{});
+    if (VkResult vres = vkEnumeratePhysicalDevices(instance, &physDeviceCount, physDeviceList.data()); vres != VK_SUCCESS) {
+        return FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT_ERREXPR;
+    }
+
+    auto gpus = GPUDeviceList(physDeviceCount, GPUDevice{});
+    for (addr_size i = 0; i < physDeviceList.len(); i++) {
+        auto pd = physDeviceList[i];
+
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(pd, &props);
+
+        VkPhysicalDeviceFeatures features;
+        vkGetPhysicalDeviceFeatures(pd, &features);
+
+        gpus[i].device = pd;
+        gpus[i].props = props;
+        gpus[i].features = features;
+    }
+
+    g_allSupportedGPUs = std::move(gpus);
+    return &g_allSupportedGPUs;
+}
+
+void logPhysicalDevicesList(const GPUDeviceList& list) {
+    logInfoTagged(RENDERER_TAG, "Physical Devices (%llu)", list.len());
+    for (addr_size i = 0; i < list.len(); i++) {
+        auto& gpu = list[i];
+        auto& props = gpu.props;
+        // auto& features = gpu.features; // TODO2: log relevant features
+
+        logInfoTagged(RENDERER_TAG, "");
+        logInfoTagged(RENDERER_TAG, "\tDevice Name: %s", props.deviceName);
+        logInfoTagged(RENDERER_TAG, "\tAPI Version: %u.%u.%u",
+                      VK_VERSION_MAJOR(props.apiVersion),
+                      VK_VERSION_MINOR(props.apiVersion),
+                      VK_VERSION_PATCH(props.apiVersion));
+        logInfoTagged(RENDERER_TAG, "\tDriver Version: %u",
+                      props.driverVersion);
+        logInfoTagged(RENDERER_TAG, "\tVendor ID: %u, Device ID: %u",
+                      props.vendorID, props.deviceID);
+        logInfoTagged(RENDERER_TAG, "\tDevice Type: %s",
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "Integrated GPU" :
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" :
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "Virtual GPU" :
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "CPU" : "Other");
+    }
 }
 
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]) {

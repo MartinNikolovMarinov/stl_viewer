@@ -39,6 +39,10 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to create Vulkan instance due to missing required extension";
         case RendererError::FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER:
             return "Failed to create Vulkan Debug Messenger";
+        case RendererError::FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT:
+            return "Failed to find GPUs with Vulkan support";
+        case RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES:
+            return "Failed to find GPU with support for required features.";
     }
     return "unknown";
 }
