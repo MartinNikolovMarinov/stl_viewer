@@ -13,6 +13,8 @@ struct GPUDevice {
 struct PickedGPUDevice {
     const GPUDevice* gpu;
     i32 graphicsQueueIdx;
+    i32 presentQueueIdx;
 };
 
-core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevice> gpus);
+[[nodiscard]]
+core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevice> gpus, VkSurfaceKHR surface);

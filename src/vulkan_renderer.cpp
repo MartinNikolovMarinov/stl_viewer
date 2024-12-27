@@ -60,6 +60,7 @@ VkDebugUtilsMessengerEXT g_debugMessenger = VK_NULL_HANDLE;
 const GPUDevice* g_selectedGPU = nullptr;
 VkDevice g_device = VK_NULL_HANDLE;
 VulkanQueue g_graphicsQueue = {};
+VulkanQueue g_presentQueue = {};
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -149,6 +150,15 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         g_debugMessenger = debugMessenger;
     }
 
+    // Create KHR Surface
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    {
+        if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
+            return core::unexpected(err);
+        }
+        logInfoTagged(RENDERER_TAG, "Vulkan Surface created");
+    }
+
     // Log all supported Physical Devices
     {
         auto res = getAllSupportedPhysicalDevices(instance);
@@ -164,7 +174,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     PickedGPUDevice pickedDevice;
     {
         GPUDeviceList* all = core::Unpack(getAllSupportedPhysicalDevices(instance)); // This won't fail since it is cached.
-        auto res = pickDevice({all->data(), all->len()});
+        auto res = pickDevice({all->data(), all->len()}, surface);
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
@@ -185,20 +195,19 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     }
 
     VulkanQueue graphicsQueue;
-    graphicsQueue.idx = pickedDevice.graphicsQueueIdx;
     {
         // Retrieve the graphics queue from the new logical device
+        graphicsQueue.idx = pickedDevice.graphicsQueueIdx;
         vkGetDeviceQueue(logicalDevice, u32(graphicsQueue.idx), 0, &graphicsQueue.queue);
         logInfoTagged(RENDERER_TAG, "Graphics Queue set");
     }
 
-    // Create KHR Surface
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    VulkanQueue presentQueue;
     {
-        if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
-            return core::unexpected(err);
-        }
-        logInfoTagged(RENDERER_TAG, "Vulkan Surface created");
+        // Retrieve the graphics queue from the new logical device
+        presentQueue.idx = pickedDevice.presentQueueIdx;
+        vkGetDeviceQueue(logicalDevice, u32(presentQueue.idx), 0, &presentQueue.queue);
+        logInfoTagged(RENDERER_TAG, "Present Queue set");
     }
 
     g_instance = instance;
@@ -206,6 +215,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_selectedGPU = pickedDevice.gpu;
     g_device = logicalDevice;
     g_graphicsQueue = graphicsQueue;
+    g_presentQueue = presentQueue;
 
     return {};
 }
@@ -216,6 +226,7 @@ void Renderer::shutdown() {
         vkDestroyDevice(g_device, nullptr);
         g_device = VK_NULL_HANDLE;
         g_graphicsQueue = {};
+        g_presentQueue = {};
     }
 
     if (g_surface != VK_NULL_HANDLE) {
@@ -321,23 +332,37 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
 }
 
 core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked) {
-    // Create a logical device with one graphics queue
-    float queuePriority = 1.0f;
-    VkDeviceQueueCreateInfo queueCreateInfo = {};
-    queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    queueCreateInfo.queueFamilyIndex = u32(picked.graphicsQueueIdx);
-    queueCreateInfo.queueCount       = 1;
-    queueCreateInfo.pQueuePriorities = &queuePriority;
+    constexpr float queuePriority = 1.0f;
+    constexpr addr_size MAX_QUEUES = 5;
+
+    // Extract unique indices
+    core::ArrStatic<i32, MAX_QUEUES> uniqueIndices;
+    {
+        auto uniqueIdxFn = [](i32 v, addr_size, i32 el) { return v == el; };
+        core::pushUnique(uniqueIndices, picked.graphicsQueueIdx, uniqueIdxFn);
+        core::pushUnique(uniqueIndices, picked.presentQueueIdx, uniqueIdxFn);
+    }
+
+    core::ArrStatic<VkDeviceQueueCreateInfo, MAX_QUEUES> queueInfos;
+    for (addr_size i = 0; i < uniqueIndices.len(); i++) {
+        i32 idx = uniqueIndices[i];
+        VkDeviceQueueCreateInfo queueCreateInfo = {};
+        queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = u32(idx);
+        queueCreateInfo.queueCount       = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueInfos.push(queueCreateInfo);
+    }
 
     // Enable any device features you want here
-    VkPhysicalDeviceFeatures deviceFeatures = {};
+    VkPhysicalDeviceFeatures deviceFeatures {};
     // For example:
     // deviceFeatures.samplerAnisotropy = VK_TRUE;
 
-    VkDeviceCreateInfo deviceCreateInfo = {};
+    VkDeviceCreateInfo deviceCreateInfo {};
     deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    deviceCreateInfo.pQueueCreateInfos       = &queueCreateInfo;
-    deviceCreateInfo.queueCreateInfoCount    = 1;
+    deviceCreateInfo.pQueueCreateInfos       = queueInfos.data();
+    deviceCreateInfo.queueCreateInfoCount    = queueInfos.len();
     deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
 
     // If you need device-specific extensions (like swapchain):
