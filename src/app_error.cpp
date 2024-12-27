@@ -43,6 +43,8 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to find GPUs with Vulkan support";
         case RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES:
             return "Failed to find GPU with support for required features.";
+        case RendererError::FAILED_TO_CREATE_LOGICAL_DEVICE:
+            return "Failed to create Vulkan logical device";
     }
     return "unknown";
 }

@@ -44,12 +44,14 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
 
     registerEventHandlers();
 
+    logSectionTitleInfoTagged(APP_TAG, "BEGIN Renderer Initialization");
     RendererInitInfo rendererInfo = {};
     rendererInfo.appName = appInfo.appName;
     if (auto res = Renderer::init(rendererInfo); res.hasErr()) {
         return res;
     }
     logInfo("Renderer initialized SUCCESSFULLY");
+    logSectionTitleInfoTagged(APP_TAG, "END Renderer Initialization");
 
     return {};
 }

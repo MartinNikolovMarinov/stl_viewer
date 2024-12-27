@@ -12,6 +12,7 @@ using RendererError::FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT;
 using RendererError::FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER;
 using RendererError::FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT;
 using RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES;
+using RendererError::FAILED_TO_CREATE_LOGICAL_DEVICE;
 
 #define FAILED_TO_GET_VULKAN_VERSION_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_GET_VULKAN_VERSION));
@@ -29,12 +30,19 @@ using RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES;
     core::unexpected(createRendErr(FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT));
 #define FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES));
+#define FAILED_TO_CREATE_LOGICAL_DEVICE_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_CREATE_LOGICAL_DEVICE));
 
 namespace {
 
 using ExtPropsList = core::ArrList<VkExtensionProperties>;
 using LayerPropsList = core::ArrList<VkLayerProperties>;
 using GPUDeviceList = core::ArrList<GPUDevice>;
+
+struct VulkanQueue {
+    VkQueue queue = VK_NULL_HANDLE;
+    i32 idx = -1;
+};
 
 #if STLV_DEBUG
 constexpr bool VALIDATION_LAYERS_ENABLED = true;
@@ -50,6 +58,8 @@ VkInstance g_instance = VK_NULL_HANDLE;
 VkSurfaceKHR g_surface = VK_NULL_HANDLE;
 VkDebugUtilsMessengerEXT g_debugMessenger = VK_NULL_HANDLE;
 const GPUDevice* g_selectedGPU = nullptr;
+VkDevice g_device = VK_NULL_HANDLE;
+VulkanQueue g_graphicsQueue = {};
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -76,6 +86,8 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 
 core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName);
 VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
+core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked);
+
 core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
 
 } // namespace
@@ -122,7 +134,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         instance = res.value();
-        logInfoTagged(RENDERER_TAG, "Vulkan instance created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan Instance created.");
     }
 
     // Create Debug Messenger
@@ -137,26 +149,47 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         g_debugMessenger = debugMessenger;
     }
 
-    // Pick a Physical Device
+    // Log all supported Physical Devices
     {
         auto res = getAllSupportedPhysicalDevices(instance);
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
         Assert(res.value() != nullptr, "Failed sanity check");
-
-        logSectionTitleInfoTagged(RENDERER_TAG, "BEGIN Physical Devices");
-        defer { logSectionTitleInfoTagged(RENDERER_TAG, "END Physical Devices"); };
-
-        // Log all gpu devices
+        logInfoTagged(RENDERER_TAG, "BEGIN Supported Physical Devices");
         logPhysicalDevicesList(*res.value());
+    }
 
-        // Select a GPU and log it
-        g_selectedGPU = pickDevice({res.value()->data(), res.value()->len()});
-        if (g_selectedGPU == nullptr) {
-            return FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES_ERREXPR;
+    // Pick a suitable GPU
+    PickedGPUDevice pickedDevice;
+    {
+        GPUDeviceList* all = core::Unpack(getAllSupportedPhysicalDevices(instance)); // This won't fail since it is cached.
+        auto res = pickDevice({all->data(), all->len()});
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
         }
-        logInfoTagged(RENDERER_TAG, "Selected GPU: %s", g_selectedGPU->props.deviceName);
+        pickedDevice = res.value();
+        Assert(pickedDevice.gpu != nullptr, "Failed sanity check");
+        logInfoTagged(RENDERER_TAG, "Selected GPU: %s", pickedDevice.gpu->props.deviceName);
+    }
+
+    // Create logical Device
+    VkDevice logicalDevice;
+    {
+        auto res = vulkanCreateLogicalDevice(pickedDevice);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        logicalDevice = res.value();
+        logInfoTagged(RENDERER_TAG, "Logical Device created");
+    }
+
+    VulkanQueue graphicsQueue;
+    graphicsQueue.idx = pickedDevice.graphicsQueueIdx;
+    {
+        // Retrieve the graphics queue from the new logical device
+        vkGetDeviceQueue(logicalDevice, u32(graphicsQueue.idx), 0, &graphicsQueue.queue);
+        logInfoTagged(RENDERER_TAG, "Graphics Queue set");
     }
 
     // Create KHR Surface
@@ -165,16 +198,26 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
             return core::unexpected(err);
         }
-        logInfoTagged(RENDERER_TAG, "Vulkan surface created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan Surface created");
     }
 
     g_instance = instance;
     g_surface = surface;
+    g_selectedGPU = pickedDevice.gpu;
+    g_device = logicalDevice;
+    g_graphicsQueue = graphicsQueue;
 
     return {};
 }
 
 void Renderer::shutdown() {
+    if (g_device != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying logical device");
+        vkDestroyDevice(g_device, nullptr);
+        g_device = VK_NULL_HANDLE;
+        g_graphicsQueue = {};
+    }
+
     if (g_surface != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");
         vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
@@ -277,6 +320,38 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
     return ret;
 }
 
+core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked) {
+    // Create a logical device with one graphics queue
+    float queuePriority = 1.0f;
+    VkDeviceQueueCreateInfo queueCreateInfo = {};
+    queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = u32(picked.graphicsQueueIdx);
+    queueCreateInfo.queueCount       = 1;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+
+    // Enable any device features you want here
+    VkPhysicalDeviceFeatures deviceFeatures = {};
+    // For example:
+    // deviceFeatures.samplerAnisotropy = VK_TRUE;
+
+    VkDeviceCreateInfo deviceCreateInfo = {};
+    deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.pQueueCreateInfos       = &queueCreateInfo;
+    deviceCreateInfo.queueCreateInfoCount    = 1;
+    deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
+
+    // If you need device-specific extensions (like swapchain):
+    // deviceCreateInfo.enabledExtensionCount   = ...
+    // deviceCreateInfo.ppEnabledExtensionNames = ...
+
+    VkDevice logicalDevice = VK_NULL_HANDLE;
+    if (vkCreateDevice(picked.gpu->device, &deviceCreateInfo, nullptr, &logicalDevice) != VK_SUCCESS) {
+        return FAILED_TO_CREATE_LOGICAL_DEVICE_ERREXPR;
+    }
+
+    return logicalDevice;
+}
+
 VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{};
 
@@ -376,7 +451,7 @@ core::expected<ExtPropsList*, AppError> getAllSupportedExtensions(bool useCache)
 void logExtPropsList(const ExtPropsList& list) {
     logInfoTagged(RENDERER_TAG, "Extensions (%llu)", list.len());
     for (addr_size i = 0; i < list.len(); i++) {
-        logInfo("\t%s v%u", list[i].extensionName, list[i].specVersion);
+        logInfoTagged(RENDERER_TAG, "\t%s v%u", list[i].extensionName, list[i].specVersion);
     }
 }
 
