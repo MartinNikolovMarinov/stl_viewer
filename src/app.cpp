@@ -78,7 +78,7 @@ void Application::shutdown() {
 namespace {
 
 core::expected<AppError> initCoreContext() {
-    core::initProgramCtx(assertHandler, nullptr);
+    core::initProgramCtx(assertHandler);
 
     // Logger setup
     i32 tagIndicesToIgnore[] = {
