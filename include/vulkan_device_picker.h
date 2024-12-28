@@ -10,6 +10,11 @@ struct GPUDevice {
     VkPhysicalDeviceFeatures features;
 };
 
+struct PickDeviceInfo {
+    VkSurfaceKHR surface;
+    core::Memory<const char*> requiredExtensions;
+};
+
 struct PickedGPUDevice {
     const GPUDevice* gpu;
     i32 graphicsQueueIdx;
@@ -17,4 +22,4 @@ struct PickedGPUDevice {
 };
 
 [[nodiscard]]
-core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevice> gpus, VkSurfaceKHR surface);
+core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevice> gpus, const PickDeviceInfo& info);

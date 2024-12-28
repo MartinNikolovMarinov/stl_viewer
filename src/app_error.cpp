@@ -47,6 +47,8 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to create Vulkan logical device";
         case RendererError::FAILED_TO_QUERY_FOR_PRESENT_QUEUE_SUPPORT:
             return "Failed to query for Preset Queue support";
+        case RendererError::FAILED_TO_ENUMERATE_VULKAN_DEVICE_EXTENSION_PROPERTIES:
+            return "Failed to enumerate Vulkan Device Extension properties";
     }
     return "unknown";
 }

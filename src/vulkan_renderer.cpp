@@ -50,6 +50,11 @@ constexpr bool VALIDATION_LAYERS_ENABLED = true;
 constexpr bool VALIDATION_LAYERS_ENABLED = false;
 #endif
 
+const char* requiredDeviceExtensions[] = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+constexpr addr_size requiredDeviceExtensionsLen = sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
+
 ExtPropsList g_allSupportedInstExts;
 LayerPropsList g_allSupportedInstLayers;
 GPUDeviceList g_allSupportedGPUs;
@@ -66,13 +71,13 @@ constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
 core::expected<AppError> logVulkanVersion();
 
-core::expected<ExtPropsList*, AppError> getAllSupportedExtensions(bool useCache = true);
-void                                    logExtPropsList(const ExtPropsList& list);
-bool                                    checkSupportForExtension(const char* extensionName);
+core::expected<ExtPropsList*, AppError> getAllSupportedInstExtensions(bool useCache = true);
+void                                    logInstExtPropsList(const ExtPropsList& list);
+bool                                    checkSupportForInstExtension(const char* extensionName);
 
-core::expected<LayerPropsList*, AppError> getAllSupportedInstanceLayers(bool useCache = true);
+core::expected<LayerPropsList*, AppError> getAllSupportedInstLayers(bool useCache = true);
 void                                      logInstLayersList(const LayerPropsList& list);
-bool                                      checkSupportForLayer(const char* name);
+bool                                      checkSupportForInstLayer(const char* name);
 
 core::expected<GPUDeviceList*, AppError> getAllSupportedPhysicalDevices(VkInstance instance, bool useCache = true);
 void                                     logPhysicalDevicesList(const GPUDeviceList& list);
@@ -87,7 +92,7 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 
 core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName);
 VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
-core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked);
+core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked, core::Memory<const char*> deviceExts);
 
 core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
 
@@ -105,20 +110,20 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         return res;
     }
 
-    // Query and log all supported extensions
+    // Query and log all supported Instance extensions
     {
-        auto res = getAllSupportedExtensions();
+        auto res = getAllSupportedInstExtensions();
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
         Assert(res.value() != nullptr, "Failed sanity check");
         logInfoTagged(RENDERER_TAG, "Listing all Supported Instance Extensions");
-        logExtPropsList(*res.value());
+        logInstExtPropsList(*res.value());
     }
 
     // Query and log all supported layers
     if constexpr (VALIDATION_LAYERS_ENABLED) {
-        auto res = getAllSupportedInstanceLayers();
+        auto res = getAllSupportedInstLayers();
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
@@ -173,12 +178,18 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     // Pick a suitable GPU
     PickedGPUDevice pickedDevice;
     {
+        PickDeviceInfo info {};
+        info.surface = surface;
+        info.requiredExtensions = { requiredDeviceExtensions, requiredDeviceExtensionsLen };
+
         GPUDeviceList* all = core::Unpack(getAllSupportedPhysicalDevices(instance)); // This won't fail since it is cached.
-        auto res = pickDevice({all->data(), all->len()}, surface);
+
+        auto res = pickDevice({all->data(), all->len()}, info);
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
-        pickedDevice = res.value();
+
+        pickedDevice = std::move(res.value());
         Assert(pickedDevice.gpu != nullptr, "Failed sanity check");
         logInfoTagged(RENDERER_TAG, "Selected GPU: %s", pickedDevice.gpu->props.deviceName);
     }
@@ -186,7 +197,8 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     // Create logical Device
     VkDevice logicalDevice;
     {
-        auto res = vulkanCreateLogicalDevice(pickedDevice);
+        core::Memory<const char*> deviceExts = { requiredDeviceExtensions, requiredDeviceExtensionsLen };
+        auto res = vulkanCreateLogicalDevice(pickedDevice, deviceExts);
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
@@ -194,17 +206,17 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfoTagged(RENDERER_TAG, "Logical Device created");
     }
 
+    // Retrieve the graphics queue from the new logical device
     VulkanQueue graphicsQueue;
     {
-        // Retrieve the graphics queue from the new logical device
         graphicsQueue.idx = pickedDevice.graphicsQueueIdx;
         vkGetDeviceQueue(logicalDevice, u32(graphicsQueue.idx), 0, &graphicsQueue.queue);
         logInfoTagged(RENDERER_TAG, "Graphics Queue set");
     }
 
+    // Retrieve the graphics queue from the new logical device
     VulkanQueue presentQueue;
     {
-        // Retrieve the graphics queue from the new logical device
         presentQueue.idx = pickedDevice.presentQueueIdx;
         vkGetDeviceQueue(logicalDevice, u32(presentQueue.idx), 0, &presentQueue.queue);
         logInfoTagged(RENDERER_TAG, "Present Queue set");
@@ -276,7 +288,7 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
             extensions.push(VK_KHR_SURFACE_EXTENSION_NAME);
 
             for (addr_size i = 0; i < extensions.len(); i++) {
-                if (!checkSupportForExtension(extensions[i])) {
+                if (!checkSupportForInstExtension(extensions[i])) {
                     logFatalTagged(RENDERER_TAG, "Missing required extension: %s", extensions[i]);
                     return FAILED_TO_CREATE_INSTANCE_MISSING_REQUIRED_EXT_ERREXPR;
                 }
@@ -285,7 +297,7 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
 
         // Check optional extensions
         if constexpr (VALIDATION_LAYERS_ENABLED) {
-            if (checkSupportForExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+            if (checkSupportForInstExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
                 extensions.push(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
                 logInfoTagged(RENDERER_TAG, "Enabling optional extension: %s", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
             }
@@ -307,7 +319,7 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
     // Setup Validation Layers
     if constexpr (VALIDATION_LAYERS_ENABLED) {
         const char* layerNames[1];
-        bool supported = checkSupportForLayer("VK_LAYER_KHRONOS_validation");
+        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation");
         if (supported) {
             layerNames[0] = "VK_LAYER_KHRONOS_validation";
             instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
@@ -331,7 +343,7 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
     return ret;
 }
 
-core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked) {
+core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked, core::Memory<const char*> deviceExts) {
     constexpr float queuePriority = 1.0f;
     constexpr addr_size MAX_QUEUES = 5;
 
@@ -366,8 +378,8 @@ core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevi
     deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
 
     // If you need device-specific extensions (like swapchain):
-    // deviceCreateInfo.enabledExtensionCount   = ...
-    // deviceCreateInfo.ppEnabledExtensionNames = ...
+    deviceCreateInfo.enabledExtensionCount   = deviceExts.len();
+    deviceCreateInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkDevice logicalDevice = VK_NULL_HANDLE;
     if (vkCreateDevice(picked.gpu->device, &deviceCreateInfo, nullptr, &logicalDevice) != VK_SUCCESS) {
@@ -452,7 +464,7 @@ core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(Vk
     return debugMessenger;
 }
 
-core::expected<ExtPropsList*, AppError> getAllSupportedExtensions(bool useCache) {
+core::expected<ExtPropsList*, AppError> getAllSupportedInstExtensions(bool useCache) {
     if (useCache && !g_allSupportedInstExts.empty()) {
         return &g_allSupportedInstExts;
     }
@@ -473,15 +485,15 @@ core::expected<ExtPropsList*, AppError> getAllSupportedExtensions(bool useCache)
     return &g_allSupportedInstExts;
 }
 
-void logExtPropsList(const ExtPropsList& list) {
+void logInstExtPropsList(const ExtPropsList& list) {
     logInfoTagged(RENDERER_TAG, "Extensions (%llu)", list.len());
     for (addr_size i = 0; i < list.len(); i++) {
         logInfoTagged(RENDERER_TAG, "\t%s v%u", list[i].extensionName, list[i].specVersion);
     }
 }
 
-bool checkSupportForExtension(const char* extensionName) {
-    auto res = getAllSupportedExtensions();
+bool checkSupportForInstExtension(const char* extensionName) {
+    auto res = getAllSupportedInstExtensions();
     if (res.hasErr()) {
         logWarnTagged(RENDERER_TAG, "Query for all supported extensions failed, reason: %s", res.err().toCStr());
         return false;
@@ -497,7 +509,7 @@ bool checkSupportForExtension(const char* extensionName) {
     return false;
 }
 
-core::expected<LayerPropsList*, AppError> getAllSupportedInstanceLayers(bool useCache) {
+core::expected<LayerPropsList*, AppError> getAllSupportedInstLayers(bool useCache) {
     if (useCache && !g_allSupportedInstLayers.empty()) {
         return &g_allSupportedInstLayers;
     }
@@ -524,8 +536,8 @@ void logInstLayersList(const LayerPropsList& list) {
     }
 }
 
-bool checkSupportForLayer(const char* name) {
-    auto res = getAllSupportedInstanceLayers();
+bool checkSupportForInstLayer(const char* name) {
+    auto res = getAllSupportedInstLayers();
     if (res.hasErr()) {
         logWarnTagged(RENDERER_TAG, "Query for all supported layers failed, reason: %s", res.err().toCStr());
         return false;
