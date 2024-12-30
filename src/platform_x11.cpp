@@ -238,6 +238,7 @@ void Platform::shutdown() {
     }
 
     if (g_display) {
+        // FIXME: Why does this trigger a segmentation fault?? Even Crazier is that this happens only for GCC!
         XCloseDisplay(g_display); // Close the X11 display connection
         g_display = nullptr; // Reset the global display pointer
     }

@@ -341,7 +341,7 @@ core::expected<SwapchainFeatureDetails, AppError> getSwapchainFeatures(VkPhysica
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES));
     }
 
-    details.presentModes = core::ArrList<VkPresentModeKHR>(formatCount, VkPresentModeKHR{});
+    details.presentModes = core::ArrList<VkPresentModeKHR>(presentModeCount, VkPresentModeKHR{});
     if (
         VkResult vres = vkGetPhysicalDeviceSurfacePresentModesKHR(device,
                                                                   info.surface,

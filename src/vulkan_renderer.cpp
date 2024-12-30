@@ -267,6 +267,8 @@ void Renderer::shutdown() {
         g_surface = VK_NULL_HANDLE;
     }
 
+    Platform::shutdown(); // FIXME: Why does this fix the issue?
+
     if (g_debugMessenger != VK_NULL_HANDLE) {
         wrap_vkDestroyDebugUtilsMessengerEXT(g_instance, g_debugMessenger, nullptr);
         g_debugMessenger = VK_NULL_HANDLE;
