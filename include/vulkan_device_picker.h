@@ -19,6 +19,9 @@ struct PickedGPUDevice {
     const GPUDevice* gpu;
     i32 graphicsQueueIdx;
     i32 presentQueueIdx;
+    VkSurfaceFormatKHR surfaceFormat;
+    VkPresentModeKHR presentMode;
+    VkExtent2D extent;
 };
 
 [[nodiscard]]

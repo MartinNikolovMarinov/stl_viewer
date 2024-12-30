@@ -40,6 +40,8 @@ struct Platform {
     [[nodiscard]] static AppError pollEvents(bool block = false);
     static void shutdown();
 
+    static bool getFrameBufferSize(u32& width, u32& height);
+
     static void requiredVulkanExtsCount(i32& count);
     static void requiredVulkanExts(const char** extensions);
     [[nodiscard]] static AppError createVulkanSurface(VkInstance instance, VkSurfaceKHR& surface);

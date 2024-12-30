@@ -11,14 +11,14 @@ static wl_compositor* g_compositor = nullptr;
 static wl_surface* g_surface = nullptr;
 
 // Registry listener callbacks
-static void registry_handle_global(void* data, wl_registry* registry, uint32_t name,
-                                   const char* interface, uint32_t version) {
+static void registry_handle_global(void* data, wl_registry* registry, u32 name,
+                                   const char* interface, u32 version) {
     if (std::strcmp(interface, "wl_compositor") == 0) { // TODO: [REPLACE_WITH_CORE_IMPL]
         g_compositor = (wl_compositor*)wl_registry_bind(registry, name, &wl_compositor_interface, 4);
     }
 }
 
-static void registry_handle_global_remove(void* data, wl_registry* registry, uint32_t name) {
+static void registry_handle_global_remove(void* data, wl_registry* registry, u32 name) {
     // Not needed for this minimal example
 }
 

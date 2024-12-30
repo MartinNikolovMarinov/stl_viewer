@@ -278,3 +278,22 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
 
     return APP_OK;
 }
+
+bool Platform::getFrameBufferSize(u32& width, u32& height) {
+    Assert(g_initialized, "Platform Layer needs to be initialized");
+
+    XWindowAttributes attrs;
+    if (!XGetWindowAttributes(g_display, g_window, &attrs)) {
+        // Should not happen ever!
+        width = 0;
+        height = 0;
+        logErr("Call to XGetWindowAttributes failed."
+               "Typically this is due to issues like an invalid Display pointer or Window.");
+        return false;
+    }
+
+    // Calculate the frame buffer size (physical pixel dimensions)
+    width = u32(attrs.width);
+    height = u32(attrs.height);
+    return true;
+}

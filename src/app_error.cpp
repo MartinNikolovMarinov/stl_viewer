@@ -49,6 +49,12 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to query for Preset Queue support";
         case RendererError::FAILED_TO_ENUMERATE_VULKAN_DEVICE_EXTENSION_PROPERTIES:
             return "Failed to enumerate Vulkan Device Extension properties";
+        case RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES:
+            return "Failed to get physical device surface capabilities";
+        case RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_FORMATS:
+            return "Failed to get physical device surface formats";
+        case RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES:
+            return "Failed to get physical device surface present modes";
     }
     return "unknown";
 }
