@@ -3,6 +3,7 @@
 #include <renderer.h>
 #include <vulkan_device_picker.h>
 #include <vulkan_include.h>
+#include <vulkan_swapchain.h>
 
 using RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE;
 using RendererError::FAILED_TO_GET_VULKAN_VERSION;
@@ -66,6 +67,7 @@ const GPUDevice* g_selectedGPU = nullptr;
 VkDevice g_device = VK_NULL_HANDLE;
 VulkanQueue g_graphicsQueue = {};
 VulkanQueue g_presentQueue = {};
+Swapchain g_swapchain = {};
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -222,17 +224,35 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfoTagged(RENDERER_TAG, "Present Queue set");
     }
 
+    // Create Swapchain
+    Swapchain swapchain;
+    {
+        auto res = Swapchain::create(pickedDevice, logicalDevice, surface);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        swapchain = res.value();
+        logInfoTagged(RENDERER_TAG, "Swapchain created");
+    }
+
     g_instance = instance;
     g_surface = surface;
     g_selectedGPU = pickedDevice.gpu;
     g_device = logicalDevice;
     g_graphicsQueue = graphicsQueue;
     g_presentQueue = presentQueue;
+    g_swapchain = swapchain;
 
     return {};
 }
 
 void Renderer::shutdown() {
+    if (g_swapchain.swapchain != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying swapchain");
+        vkDestroySwapchainKHR(g_device, g_swapchain.swapchain, nullptr);
+        g_swapchain = {};
+    }
+
     if (g_device != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying logical device");
         vkDestroyDevice(g_device, nullptr);
@@ -382,7 +402,10 @@ core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevi
     deviceCreateInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkDevice logicalDevice = VK_NULL_HANDLE;
-    if (vkCreateDevice(picked.gpu->device, &deviceCreateInfo, nullptr, &logicalDevice) != VK_SUCCESS) {
+    if (
+        VkResult vres = vkCreateDevice(picked.gpu->device, &deviceCreateInfo, nullptr, &logicalDevice);
+        vres != VK_SUCCESS
+    ) {
         return FAILED_TO_CREATE_LOGICAL_DEVICE_ERREXPR;
     }
 

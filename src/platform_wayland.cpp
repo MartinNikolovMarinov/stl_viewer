@@ -105,8 +105,8 @@ Platform::Error Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR&
     createInfo.display = g_display;
     createInfo.surface = g_surface;
 
-    VkResult result = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &outSurface);
-    if (result != VK_SUCCESS) {
+    VkResult vres = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &outSurface);
+    if (vres != VK_SUCCESS) {
         std::cerr << "Failed to create Wayland Vulkan surface.\n"; // TODO: [REPLACE_WITH_CORE_IMPL]
         return Platform::Error::FAILED_TO_CREATE_SURFACE;
     }

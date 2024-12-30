@@ -16,12 +16,19 @@ struct PickDeviceInfo {
 };
 
 struct PickedGPUDevice {
+    // Device
     const GPUDevice* gpu;
+
+    // Graphics queue
     i32 graphicsQueueIdx;
     i32 presentQueueIdx;
+
+    // Swapchain
     VkSurfaceFormatKHR surfaceFormat;
     VkPresentModeKHR presentMode;
     VkExtent2D extent;
+    VkSurfaceTransformFlagBitsKHR currentTransform;
+    u32 imageCount;
 };
 
 [[nodiscard]]

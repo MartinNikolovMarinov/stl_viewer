@@ -60,6 +60,7 @@ set(stlv_src
     src/user_input.cpp
     src/vulkan_renderer.cpp
     src/vulkan_device_picker.cpp
+    src/vulkan_swapchain.cpp
 )
 
 if(OS STREQUAL "linux")

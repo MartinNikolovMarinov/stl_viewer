@@ -270,8 +270,8 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
     createInfo.dpy = g_display;
     createInfo.window = g_window;
 
-    VkResult result = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &outSurface);
-    if (result != VK_SUCCESS) {
+    VkResult vres = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &outSurface);
+    if (vres != VK_SUCCESS) {
         // This could technically be a render error as well.
         return createPltErr(FAILED_TO_CREATE_X11_KHR_XLIB_SURFACE, "Failed to create Xlib Vulkan surface.");
     }

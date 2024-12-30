@@ -69,8 +69,11 @@ core::expected<AppError> Application::start() {
 
 void Application::shutdown() {
     // TODO2: I probably need to handle termination signals at some point ? At least interupts like SIGINT (ctrl-C)
-    Platform::shutdown();
     Renderer::shutdown();
+    logInfo("Renderer::shutdown finished successfully");
+
+    Platform::shutdown();
+    logInfo("Platform::shutdown finished successfully");
 
     core::destroyProgramCtx();
 }

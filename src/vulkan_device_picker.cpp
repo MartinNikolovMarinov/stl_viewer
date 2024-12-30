@@ -30,7 +30,9 @@ u32                                                            getDeviceSutabili
                                                                                         QueueFamilyIndices& outIndices,
                                                                                         VkSurfaceFormatKHR& outSurfaceFormat,
                                                                                         VkPresentModeKHR& outPresentMode,
-                                                                                        VkExtent2D& outExtent);
+                                                                                        VkExtent2D& outExtent,
+                                                                                        u32& imageCount,
+                                                                                        VkSurfaceTransformFlagBitsKHR& currentTransform);
 core::ArrList<VkQueueFamilyProperties>                         getVkQueueFamilyPropsForDevice(VkPhysicalDevice device);
 core::expected<QueueFamilyIndices, AppError>                   findQueueIndices(VkPhysicalDevice device, const PickDeviceInfo& info);
 core::expected<core::ArrList<VkExtensionProperties>, AppError> getAllSupportedExtensionsForDevice(VkPhysicalDevice device);
@@ -55,8 +57,17 @@ core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevic
         VkSurfaceFormatKHR surfaceFormat{};
         VkPresentModeKHR presentMode{};
         VkExtent2D extent{};
+        u32 imageCount = 0;
+        VkSurfaceTransformFlagBitsKHR currentTransform;
 
-        u32 currScore = getDeviceSutabilityScore(gpus[i], info, queueFamilies, surfaceFormat, presentMode, extent);
+        u32 currScore = getDeviceSutabilityScore(gpus[i],
+                                                 info,
+                                                 queueFamilies,
+                                                 surfaceFormat,
+                                                 presentMode,
+                                                 extent,
+                                                 imageCount,
+                                                 currentTransform);
 
         if (currScore > maxScore) {
             prefferedIdx = i32(i);
@@ -68,6 +79,8 @@ core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevic
             pickedDevice.surfaceFormat = std::move(surfaceFormat);
             pickedDevice.presentMode = std::move(presentMode);
             pickedDevice.extent = std::move(extent);
+            pickedDevice.imageCount = imageCount;
+            pickedDevice.currentTransform = currentTransform;
         }
     }
 
@@ -100,7 +113,9 @@ u32 getDeviceSutabilityScore(
     QueueFamilyIndices& outIndices,
     VkSurfaceFormatKHR& outSurfaceFormat,
     VkPresentModeKHR& outPresentMode,
-    VkExtent2D& outExtent
+    VkExtent2D& outExtent,
+    u32& outImageCount,
+    VkSurfaceTransformFlagBitsKHR& outCurrentTransform
 ) {
     const auto& device = gpu.device;
     const auto& props = gpu.props;
@@ -170,7 +185,16 @@ u32 getDeviceSutabilityScore(
         if (presentModes.empty()) return 0; // No supported present modes
 
         outPresentMode = pickSwapPresentMode(presentModes, score);
+
         outExtent = pickSwapExtent(capabilities);
+
+        outImageCount = capabilities.minImageCount + 1;
+        if (capabilities.maxImageCount > 0 && outImageCount > capabilities.maxImageCount) {
+            outImageCount = capabilities.maxImageCount;
+        }
+
+        outCurrentTransform = capabilities.currentTransform;
+
         if (!pickSurfaceFormat(formats, outSurfaceFormat)) {
             return 0; // No suttable surface format
         }
@@ -358,7 +382,7 @@ VkPresentModeKHR pickSwapPresentMode(const core::ArrList<VkPresentModeKHR>& pres
     // NOTE: From the Vulkan Tutorial
     //
     // The presentation mode is arguably the most important setting for the swap chain, because it represents the actual
-    // conditions for showing images to the screen. There are 4 commonly used modes in Vulcan:
+    // conditions for showing images to the screen. There are 4 commonly used modes in Vulkan:
     // * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted by your application are transferred to the screen right away,
     //   which may result in tearing.
     // * VK_PRESENT_MODE_FIFO_KHR: The swap chain is a queue where the display takes an image from the front of the
