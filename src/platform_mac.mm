@@ -387,6 +387,20 @@ void Platform::shutdown() {
     }
 }
 
+bool Platform::getFrameBufferSize(u32& width, u32& height) {
+    @autoreleasepool {
+        // Get the content view's frame
+        NSRect contentRect = [[window contentView] frame];
+        // Convert to backing to account for scale factor (e.g., Retina displays) I am not sure this is needed !
+        NSRect fbRect = [[window contentView] convertRectToBacking:contentRect];
+
+        width = u32(fbRect.size.width);
+        height = u32(fbRect.size.height);
+
+        return true;
+    }
+}
+
 void Platform::requiredVulkanExtsCount(i32& count) {
     count = 1;
 }

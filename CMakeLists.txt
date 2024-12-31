@@ -52,6 +52,8 @@ log_info("---------------------------------------------")
 
 # ---------------------------------------- Begin Declare Source Files --------------------------------------------------
 
+set(sandbox_src) # TODO: add a build option for this
+
 set(stlv_src
     main.cpp
 
@@ -68,21 +70,27 @@ if(OS STREQUAL "linux")
     set(stlv_src ${stlv_src}
         src/platform_x11.cpp
     )
+
+    set(sandbox_src ${sandbox_src} tools/sandbox/sandbox.cpp)
 elseif(OS STREQUAL "darwin")
     set(stlv_src ${stlv_src}
         src/platform_mac.mm
     )
+
+    set(sandbox_src ${sandbox_src} tools/sandbox/sandbox.mm)
 elseif(OS STREQUAL "windows")
     set(stlv_src ${stlv_src}
         src/platform_win32.cpp
     )
+
+    set(sandbox_src ${sandbox_src} tools/sandbox/sandbox.cpp)
 endif()
 
 # ---------------------------------------- End Declare Source Files ----------------------------------------------------
 
 # ---------------------------------------- Begin Create Executable -----------------------------------------------------
 
-add_executable(${target_main} ${stlv_src})
+add_executable(${target_main} ${stlv_src} ${sandbox_src})
 target_link_libraries(${target_main} PUBLIC
     core # link with corelib
 )
@@ -120,10 +128,12 @@ elseif(OS STREQUAL "darwin")
         ${MOLTENVK_DIR}/include
     )
 
+    find_library(METAL Metal REQUIRED)
     target_link_libraries(${target_main} PRIVATE
         ${MOLTENVK_LIB}
         "-framework Cocoa"
         "-framework QuartzCore"
+        ${METAL}
     )
 
     # Update rpaths to point to the directory where libMoltenVK.dylib is located
