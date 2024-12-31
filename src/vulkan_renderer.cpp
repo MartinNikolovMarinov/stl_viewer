@@ -394,11 +394,11 @@ core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevi
     VkDeviceCreateInfo deviceCreateInfo {};
     deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     deviceCreateInfo.pQueueCreateInfos       = queueInfos.data();
-    deviceCreateInfo.queueCreateInfoCount    = queueInfos.len();
+    deviceCreateInfo.queueCreateInfoCount    = u32(queueInfos.len());
     deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
 
     // If you need device-specific extensions (like swapchain):
-    deviceCreateInfo.enabledExtensionCount   = deviceExts.len();
+    deviceCreateInfo.enabledExtensionCount   = u32(deviceExts.len());
     deviceCreateInfo.ppEnabledExtensionNames = deviceExts.data();
 
     VkDevice logicalDevice = VK_NULL_HANDLE;

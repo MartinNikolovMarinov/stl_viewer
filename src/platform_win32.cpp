@@ -269,6 +269,22 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
     return APP_OK;
 }
 
+bool Platform::getFrameBufferSize(u32& width, u32& height) {
+    Assert(g_initialized, "Platform Layer needs to be initialized");
+
+    RECT area;
+    if (!GetClientRect(g_hwnd, &area)) {
+        width = 0;
+        height = 0;
+        logErr("Failed to get client rectangle for the window.");
+        return false;
+    }
+
+    width = u32(area.right);
+    height = u32(area.bottom);
+    return true;
+}
+
 void Platform::registerWindowCloseCallback(WindowCloseCallback cb) { windowCloseCallbackWin32 = cb; }
 void Platform::registerWindowResizeCallback(WindowResizeCallback cb) { windowResizeCallbackWin32 = cb; }
 void Platform::registerWindowFocusCallback(WindowFocusCallback cb) { windowFocusCallbackWin32 = cb; }

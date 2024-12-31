@@ -234,7 +234,7 @@ core::expected<QueueFamilyIndices, AppError> QueueFamilyIndices::create(
 
     auto findPresentQueue = [&err, &device, &surface](const VkQueueFamilyProperties&, addr_size i) {
         VkBool32 presentSupport = VK_FALSE;
-        if (VkResult vres = vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+        if (VkResult vres = vkGetPhysicalDeviceSurfaceSupportKHR(device, u32(i), surface, &presentSupport);
             vres != VK_SUCCESS) {
             err = createRendErr(RendererError::FAILED_TO_QUERY_FOR_PRESENT_QUEUE_SUPPORT);
             return true; // return true for early exit

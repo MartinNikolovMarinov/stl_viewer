@@ -84,13 +84,14 @@ core::expected<AppError> initCoreContext() {
     core::initProgramCtx(assertHandler);
 
     // Logger setup
-    i32 tagIndicesToIgnore[] = {
+    i32* tagIndicesToIgnore = nullptr;
+    // i32 tagIndicesToIgnore[] = {
         // APP_TAG,
         // INPUT_EVENTS_TAG,
         // RENDERER_TAG,
-    };
-    constexpr addr_size tagsToIgnoreSize = sizeof(tagIndicesToIgnore) > 0 ?
-                                           (sizeof(tagIndicesToIgnore) / sizeof(tagIndicesToIgnore[0])) : 0;
+    // };
+    addr_size tagsToIgnoreSize = tagIndicesToIgnore != nullptr ?
+                                 (sizeof(tagIndicesToIgnore) / sizeof(tagIndicesToIgnore[0])) : 0;
     core::LoggerCreateInfo loggerCreateInfo = {};
     loggerCreateInfo.tagIndicesToIgnore = { tagIndicesToIgnore, tagsToIgnoreSize };
     if (!core::initLogger(loggerCreateInfo)) {

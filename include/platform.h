@@ -15,7 +15,6 @@ typedef struct VkSurfaceKHR_T* VkSurfaceKHR;
 using WindowCloseCallback = void (*)();
 using WindowResizeCallback = void (*)(i32 w, i32 h);
 using WindowFocusCallback = void (*)(bool gain);
-// TODO: Window drag.
 
 using KeyCallback = void (*)(bool isPress, u32 vkcode, u32 scancode, KeyboardModifiers mods);
 

@@ -63,7 +63,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     // Creates a basic top-level window.
     g_window = XCreateSimpleWindow(g_display,
                                     root, // Parent window is the root
-                                    10, 10, // The x and y coordinates of the window’s position on the screen. TODO: Manage these through config parameters.
+                                    10, 10, // The x and y coordinates of the window’s position on the screen.
                                     windowWidth, windowHeight, // Initial width and height
                                     1, // Border width in pixels.
                                     BlackPixel(g_display, screen), // Border color.
