@@ -100,9 +100,9 @@ core::expected<AppError> initCoreContext() {
     core::setLoggerLevel(core::LogLevel::L_DEBUG);
     core::useAnsiInLogger(USE_ANSI_LOGGING);
     // Set logger tags
-    core::addLoggerTag(appLogTagsToCStr(APP_TAG));
-    core::addLoggerTag(appLogTagsToCStr(INPUT_EVENTS_TAG));
-    core::addLoggerTag(appLogTagsToCStr(RENDERER_TAG));
+    core::setLoggerTag(APP_TAG, appLogTagsToCStr(APP_TAG));
+    core::setLoggerTag(INPUT_EVENTS_TAG, appLogTagsToCStr(INPUT_EVENTS_TAG));
+    core::setLoggerTag(RENDERER_TAG, appLogTagsToCStr(RENDERER_TAG));
 
     return {};
 }

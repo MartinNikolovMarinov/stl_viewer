@@ -106,7 +106,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     //     setenv("VK_ICD_FILENAMES", "./lib/MoltenVK/sdk-1.3.296.0/MoltenVK_icd.json", 1);
     // #endif
 
-    core::addLoggerTag(appLogTagsToCStr(VULKAN_VALIDATION_TAG));
+    core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
 
     if (auto res = logVulkanVersion(); res.hasErr()) {
         return res;
@@ -253,6 +253,12 @@ void Renderer::shutdown() {
         g_swapchain = {};
     }
 
+    if (g_surface != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");
+        vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
+        g_surface = VK_NULL_HANDLE;
+    }
+
     if (g_device != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying logical device");
         vkDestroyDevice(g_device, nullptr);
@@ -260,14 +266,6 @@ void Renderer::shutdown() {
         g_graphicsQueue = {};
         g_presentQueue = {};
     }
-
-    if (g_surface != VK_NULL_HANDLE) {
-        logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");
-        vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
-        g_surface = VK_NULL_HANDLE;
-    }
-
-    Platform::shutdown(); // FIXME: Why does this fix the issue?
 
     if (g_debugMessenger != VK_NULL_HANDLE) {
         wrap_vkDestroyDebugUtilsMessengerEXT(g_instance, g_debugMessenger, nullptr);

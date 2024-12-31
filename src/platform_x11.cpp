@@ -1,3 +1,4 @@
+#include <app_logger.h>
 #include <core_logger.h>
 #include <platform.h>
 #include <vulkan_include.h>
@@ -30,14 +31,29 @@ MouseMoveCallback mouseMoveCallbackX11 = nullptr;
 MouseScrollCallback mouseScrollCallbackX11 = nullptr;
 MouseEnterOrLeaveCallback mouseEnterOrLeaveCallbackX11 = nullptr;
 
+i32 handleXError(Display* display, XErrorEvent* errorEvent);
+
 } // namespace
 
 AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeight) {
+    core::setLoggerTag(X11_PLATFORM_TAG, appLogTagsToCStr(X11_PLATFORM_TAG));
+
+    // From the Vulkan Specification:
+    // Some implementations may require threads to implement some presentation modes so applications must call
+    // XInitThreads() before calling any other Xlib functions.
+    XInitThreads();
+
+    XSetErrorHandler(handleXError);
+
     // Open a connection to the X server, which manages the display (i.e., the screen).
     g_display = XOpenDisplay(nullptr);
     if (!g_display) {
         return createPltErr(FAILED_TO_CREATE_X11_DISPLAY, "Failed to open X display");
     }
+
+    // If there is a suspected synchronization problem uncomment to make Xlib work synchronously. This degrades
+    // performance significantly according to documentation.
+    // XSynchronize(g_display, True)
 
     i32 screen = DefaultScreen(g_display); // TODO2: [MULTI_MONITOR] This won't work great on a multi-monitor setup.
     // The root window is the main top-level window managed by the X server for that screen. New windows are often
@@ -84,6 +100,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     XFlush(g_display);
 
     g_initialized = true;
+    logInfoTagged(X11_PLATFORM_TAG, "Platform X11 initialized");
     return APP_OK;
 }
 
@@ -139,7 +156,7 @@ AppError Platform::pollEvents(bool block) {
             }
             else {
                 mouseClickCallbackX11(isPress, MouseButton::NONE, x, y, mods);
-                logDebug("Unknown Mouse Button.");
+                logDebugTagged(X11_PLATFORM_TAG, "Unknown Mouse Button.");
                 return;
             }
         }
@@ -155,8 +172,19 @@ AppError Platform::pollEvents(bool block) {
     };
 
     switch (xevent.type) {
+        case DestroyNotify: {
+            XDestroyWindowEvent* e = reinterpret_cast<XDestroyWindowEvent*>(&xevent);
+            if(e->window == g_window) {
+                XSync(g_display, true);
+                if (windowCloseCallbackX11) windowCloseCallbackX11();
+                return APP_OK;
+            }
+
+            break;
+        }
         case ClientMessage: {
             if (Atom(xevent.xclient.data.l[0]) == g_wmDeleteWindow) {
+                XSync(g_display, true);
                 if (windowCloseCallbackX11) windowCloseCallbackX11();
                 return APP_OK;
             }
@@ -233,14 +261,14 @@ void Platform::shutdown() {
     g_initialized = false; // Mark the platform as uninitialized
 
     if (g_window) {
-        XDestroyWindow(g_display, g_window); // Destroy the X11 window
-        g_window = 0; // Reset the global window ID
+        XDestroyWindow(g_display, g_window);
+        g_window = 0;
     }
 
     if (g_display) {
-        // FIXME: Why does this trigger a segmentation fault?? Even Crazier is that this happens only for GCC!
-        XCloseDisplay(g_display); // Close the X11 display connection
-        g_display = nullptr; // Reset the global display pointer
+        // FIXME: Why does XCloseDisplay trigger a segmentation fault?? Even Crazier is that this happens only for GCC!
+        // XCloseDisplay(g_display);
+        g_display = nullptr;
     }
 }
 
@@ -288,7 +316,7 @@ bool Platform::getFrameBufferSize(u32& width, u32& height) {
         // Should not happen ever!
         width = 0;
         height = 0;
-        logErr("Call to XGetWindowAttributes failed."
+        logErrTagged(X11_PLATFORM_TAG, "Call to XGetWindowAttributes failed."
                "Typically this is due to issues like an invalid Display pointer or Window.");
         return false;
     }
@@ -298,3 +326,20 @@ bool Platform::getFrameBufferSize(u32& width, u32& height) {
     height = u32(attrs.height);
     return true;
 }
+
+namespace {
+
+i32 handleXError(Display* display, XErrorEvent* errorEvent) {
+    constexpr i32 ERROR_TEXT_MAX_SIZE = 512;
+    char errorText[ERROR_TEXT_MAX_SIZE] = {};
+    XGetErrorText(display, errorEvent->error_code, errorText, sizeof(errorText));
+
+    logErrTagged(X11_PLATFORM_TAG,
+                "Xlib Error: \n\tRequest Code: %d\n\tMinor Code: %d\n\tResource ID: %llu",
+                i32(errorEvent->request_code), i32(errorEvent->minor_code), errorEvent->resourceid);
+
+    // Return 0 to continue execution; return non-zero to terminate
+    return 0;
+}
+
+} // namespace
