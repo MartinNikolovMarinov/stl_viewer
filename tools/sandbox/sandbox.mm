@@ -36,14 +36,22 @@ int runSandbox() {
 
         const char* instanceExtensions[] = {
             VK_EXT_METAL_SURFACE_EXTENSION_NAME,
-            VK_KHR_SURFACE_EXTENSION_NAME
+            VK_KHR_SURFACE_EXTENSION_NAME,
+            VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
+        };
+
+        const char* instanceLayers[] = {
+            "VK_LAYER_LUNARG_api_dump"
         };
 
         VkInstanceCreateInfo instanceCreateInfo = {};
         instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         instanceCreateInfo.pApplicationInfo = &appInfo;
+        instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR; // Enable portability
         instanceCreateInfo.enabledExtensionCount = sizeof(instanceExtensions) / sizeof(instanceExtensions[0]);
         instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions;
+        instanceCreateInfo.enabledLayerCount = sizeof(instanceLayers) / sizeof(instanceLayers[0]);
+        instanceCreateInfo.ppEnabledLayerNames = instanceLayers;
 
         if (vkCreateInstance(&instanceCreateInfo, NULL, &instance) != VK_SUCCESS) {
             NSLog(@"Failed to create Vulkan instance");

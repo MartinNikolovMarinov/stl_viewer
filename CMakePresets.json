@@ -8,7 +8,8 @@
 			"binaryDir": "${sourceDir}/build",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Release",
-				"STLV_DEBUG": "OFF"
+				"STLV_DEBUG": "OFF",
+				"USE_EXTERNAL_VULKAN_SDK": "ON"
 			}
 		},
 		{
@@ -18,7 +19,8 @@
 			"binaryDir": "${sourceDir}/build",
 			"cacheVariables": {
 				"CMAKE_BUILD_TYPE": "Debug",
-				"STLV_DEBUG": "ON"
+				"STLV_DEBUG": "ON",
+				"USE_EXTERNAL_VULKAN_SDK": "ON"
 			}
 		}
 	]

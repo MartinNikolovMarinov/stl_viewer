@@ -36,6 +36,7 @@ endif()
 
 option(CORE_LIBRARY_SHARED "Build core as a shared library." OFF)
 option(CORE_ASSERT_ENABLED "Enable asserts." OFF)
+option(USE_EXTERNAL_VULKAN_SDK "Use external Vulkan SDK." ON) # NOTE: This is only relevant for MacOS for now.
 
 # Print Selected Options:
 
@@ -46,6 +47,7 @@ log_info("Arch:                      ${CMAKE_SYSTEM_PROCESSOR}")
 log_info("C++ Version:               ${CMAKE_CXX_STANDARD}")
 log_info("Compiler:                  ${CMAKE_CXX_COMPILER_ID}")
 log_info("Debug:                     ${STLV_DEBUG}")
+log_info("Use External Vulkan SDK:   ${USE_EXTERNAL_VULKAN_SDK}")
 log_info("---------------------------------------------")
 
 # ---------------------------------------- End Options -----------------------------------------------------------------
@@ -120,26 +122,33 @@ if(OS STREQUAL "linux")
 
 elseif(OS STREQUAL "darwin")
 
-    # Link to MoltenVK from lib
-    set(MOLTENVK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/MoltenVK/sdk-1.3.296.0)
-    set(MOLTENVK_LIB ${MOLTENVK_DIR}/libMoltenVK.dylib)
+    if(USE_EXTERNAL_VULKAN_SDK)
+        find_package(Vulkan REQUIRED)
+        target_include_directories(${target_main} PRIVATE ${Vulkan_INCLUDE_DIRS})
+        target_link_libraries(${target_main} PRIVATE ${Vulkan_LIBRARIES})
+    else()
+        # Link to MoltenVK from lib
+        set(MOLTENVK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/MoltenVK/sdk-1.3.296.0)
+        set(MOLTENVK_LIB ${MOLTENVK_DIR}/libMoltenVK.dylib)
 
-    target_include_directories(${target_main} PRIVATE
-        ${MOLTENVK_DIR}/include
-    )
+        target_include_directories(${target_main} PRIVATE
+            ${MOLTENVK_DIR}/include
+        )
+
+        # Update rpaths to point to the directory where libMoltenVK.dylib is located
+        set_target_properties(${target_main} PROPERTIES
+            BUILD_RPATH "@executable_path/../lib/MoltenVK/sdk-1.3.296.0"
+            INSTALL_RPATH "@executable_path/../lib/MoltenVK/sdk-1.3.296.0"
+        )
+
+        target_link_libraries(${target_main} PRIVATE ${MOLTENVK_LIB})
+    endif()
 
     find_library(METAL Metal REQUIRED)
     target_link_libraries(${target_main} PRIVATE
-        ${MOLTENVK_LIB}
         "-framework Cocoa"
         "-framework QuartzCore"
         ${METAL}
-    )
-
-    # Update rpaths to point to the directory where libMoltenVK.dylib is located
-    set_target_properties(${target_main} PROPERTIES
-        BUILD_RPATH "@executable_path/../lib/MoltenVK/sdk-1.3.296.0"
-        INSTALL_RPATH "@executable_path/../lib/MoltenVK/sdk-1.3.296.0"
     )
 
 elseif(OS STREQUAL "windows")
