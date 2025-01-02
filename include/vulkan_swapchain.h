@@ -8,6 +8,9 @@ struct PickedGPUDevice;
 
 struct Swapchain {
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    core::ArrList<VkImage> images;
+    VkFormat imageFormat;
+    VkExtent2D extent;
 
     static core::expected<Swapchain, AppError> create(const PickedGPUDevice& pickedDevice,
                                                       VkDevice logicalDevice,

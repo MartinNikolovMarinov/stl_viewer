@@ -265,8 +265,12 @@ void Platform::shutdown() {
         g_window = 0;
     }
 
+    // Flush all X events and discard them.
+    XSync(g_display, True);
+
     if (g_display) {
-        // FIXME: Why does XCloseDisplay trigger a segmentation fault?? Even Crazier is that this happens only for GCC!
+        // TODO2: Figure out why XCloseDisplay triggers a segmentation fault?
+        //        Even Crazier is that this happens only for GCC!
         // XCloseDisplay(g_display);
         g_display = nullptr;
     }

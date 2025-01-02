@@ -226,7 +226,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
-        swapchain = res.value();
+        swapchain = std::move(res.value());
         logInfoTagged(RENDERER_TAG, "Swapchain created");
     }
 
@@ -236,12 +236,20 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_device = logicalDevice;
     g_graphicsQueue = graphicsQueue;
     g_presentQueue = presentQueue;
-    g_swapchain = swapchain;
+    g_swapchain = std::move(swapchain);
 
     return {};
 }
 
 void Renderer::shutdown() {
+    if (g_device != VK_NULL_HANDLE) {
+        // Wait until all pending GPU work completes.
+        VkResult vres = vkDeviceWaitIdle(g_device);
+        if (vres != VK_SUCCESS) {
+            logWarnTagged(RENDERER_TAG, "Failed to wait idle the logical device.");
+        }
+    }
+
     if (g_swapchain.swapchain != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying swapchain");
         vkDestroySwapchainKHR(g_device, g_swapchain.swapchain, nullptr);
@@ -338,12 +346,12 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
 
     // Setup Validation Layers
     if constexpr (VALIDATION_LAYERS_ENABLED) {
-        const char* layerNames[2];
-        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation") &&
-                         checkSupportForInstLayer("VK_LAYER_LUNARG_api_dump");
+        const char* layerNames[1];
+        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation");
+                        //  checkSupportForInstLayer("VK_LAYER_LUNARG_api_dump");
         if (supported) {
             layerNames[0] = "VK_LAYER_KHRONOS_validation";
-            layerNames[1] = "VK_LAYER_LUNARG_api_dump";
+            // layerNames[1] = "VK_LAYER_LUNARG_api_dump";
             instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
             instanceCreateInfo.ppEnabledLayerNames = layerNames;
             logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer.");

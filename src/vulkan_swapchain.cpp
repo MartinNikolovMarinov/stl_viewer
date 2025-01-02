@@ -53,5 +53,28 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
         return core::unexpected(createRendErr(RendererError::FAILED_TO_CREATE_SWAPCHAIN));
     }
 
+    u32 finalImageCount = 0;
+    if (
+        VkResult vres = vkGetSwapchainImagesKHR(logicalDevice, ret.swapchain, &finalImageCount, nullptr);
+        vres != VK_SUCCESS
+    ) {
+        ret.swapchain = VK_NULL_HANDLE;
+        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES));
+    }
+
+    ret.images = core::ArrList<VkImage>(finalImageCount);
+
+    if (
+        VkResult vres = vkGetSwapchainImagesKHR(logicalDevice, ret.swapchain, &finalImageCount, ret.images.data());
+        vres != VK_SUCCESS
+    ) {
+        ret.images.clear();
+        ret.swapchain = VK_NULL_HANDLE;
+        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES));
+    }
+
+    ret.extent = imageExtent;
+    ret.imageFormat = surfaceFormat.format;
+
     return ret;
 }
