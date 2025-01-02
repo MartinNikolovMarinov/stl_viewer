@@ -49,7 +49,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     wc.lpszClassName = g_windowClassName;
 
     if (!RegisterClassExA(&wc)) {
-        return createPltErr(FAILED_TO_REGISTER_WIN32_WINDOW, "Failed to register window class.");
+        return createPltErr(FAILED_TO_REGISTER_WIN32_WINDOW, "Failed to register window class");
     }
 
     DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX);
@@ -61,7 +61,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
                            rect.right - rect.left, rect.bottom - rect.top,
                            NULL, NULL, g_hInstance, NULL);
     if (!g_hwnd) {
-        return createPltErr(FAILED_TO_CREATE_WIN32_WINDOW, "Failed to create window.");
+        return createPltErr(FAILED_TO_CREATE_WIN32_WINDOW, "Failed to create window");
     }
 
     ShowWindow(g_hwnd, SW_SHOW);
@@ -263,7 +263,7 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
 
     if (VkResult vres = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &outSurface); vres != VK_SUCCESS) {
         logFatal("Failed to create Instance. Error Code: %d", vres);
-        return createPltErr(FAILED_TO_CREATE_WIN32_KHR_SURFACE, "Failed to create Win32 Vulkan surface.");
+        return createPltErr(FAILED_TO_CREATE_WIN32_KHR_SURFACE, "Failed to create Win32 Vulkan surface");
     }
 
     return APP_OK;
@@ -276,7 +276,7 @@ bool Platform::getFrameBufferSize(u32& width, u32& height) {
     if (!GetClientRect(g_hwnd, &area)) {
         width = 0;
         height = 0;
-        logErr("Failed to get client rectangle for the window.");
+        logErr("Failed to get client rectangle for the window");
         return false;
     }
 

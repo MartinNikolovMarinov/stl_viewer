@@ -137,7 +137,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         instance = res.value();
-        logInfoTagged(RENDERER_TAG, "Vulkan Instance created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan Instance created");
     }
 
     // Create Debug Messenger
@@ -148,7 +148,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
             return core::unexpected(res.err());
         }
         debugMessenger = res.value();
-        logInfoTagged(RENDERER_TAG, "Vulkan Debug Messenger created.");
+        logInfoTagged(RENDERER_TAG, "Vulkan Debug Messenger created");
         g_debugMessenger = debugMessenger;
     }
 
@@ -246,7 +246,14 @@ void Renderer::shutdown() {
         // Wait until all pending GPU work completes.
         VkResult vres = vkDeviceWaitIdle(g_device);
         if (vres != VK_SUCCESS) {
-            logWarnTagged(RENDERER_TAG, "Failed to wait idle the logical device.");
+            logWarnTagged(RENDERER_TAG, "Failed to wait idle the logical device");
+        }
+    }
+
+    if (!g_swapchain.imageViews.empty()) {
+        logInfoTagged(RENDERER_TAG, "Destroying swapchain image views");
+        for (addr_size i = 0; i < g_swapchain.imageViews.len(); i++) {
+            vkDestroyImageView(g_device, g_swapchain.imageViews[i], nullptr);
         }
     }
 
@@ -354,7 +361,7 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
             // layerNames[1] = "VK_LAYER_LUNARG_api_dump";
             instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
             instanceCreateInfo.ppEnabledLayerNames = layerNames;
-            logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer.");
+            logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer");
 
             // The following code is required to enable the debug utils extension during instance creation
             VkDebugUtilsMessengerCreateInfoEXT debugMessageInfo = defaultDebugMessengerInfo();

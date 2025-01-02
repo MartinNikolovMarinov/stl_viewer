@@ -156,7 +156,7 @@ AppError Platform::pollEvents(bool block) {
             }
             else {
                 mouseClickCallbackX11(isPress, MouseButton::NONE, x, y, mods);
-                logDebugTagged(X11_PLATFORM_TAG, "Unknown Mouse Button.");
+                logDebugTagged(X11_PLATFORM_TAG, "Unknown Mouse Button");
                 return;
             }
         }
@@ -306,7 +306,7 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
     VkResult vres = vkCreateXlibSurfaceKHR(instance, &createInfo, nullptr, &outSurface);
     if (vres != VK_SUCCESS) {
         // This could technically be a render error as well.
-        return createPltErr(FAILED_TO_CREATE_X11_KHR_XLIB_SURFACE, "Failed to create Xlib Vulkan surface.");
+        return createPltErr(FAILED_TO_CREATE_X11_KHR_XLIB_SURFACE, "Failed to create Xlib Vulkan surface");
     }
 
     return APP_OK;
@@ -320,8 +320,8 @@ bool Platform::getFrameBufferSize(u32& width, u32& height) {
         // Should not happen ever!
         width = 0;
         height = 0;
-        logErrTagged(X11_PLATFORM_TAG, "Call to XGetWindowAttributes failed."
-               "Typically this is due to issues like an invalid Display pointer or Window.");
+        logErrTagged(X11_PLATFORM_TAG, "Call to XGetWindowAttributes failed"
+               "Typically this is due to issues like an invalid Display pointer or Window");
         return false;
     }
 

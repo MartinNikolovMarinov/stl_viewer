@@ -42,7 +42,7 @@ constexpr const char* rendErrorToCStr(RendererError e) {
         case RendererError::FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT:
             return "Failed to find GPUs with Vulkan support";
         case RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES:
-            return "Failed to find GPU with support for required features.";
+            return "Failed to find GPU with support for required features";
         case RendererError::FAILED_TO_CREATE_LOGICAL_DEVICE:
             return "Failed to create Vulkan logical device";
         case RendererError::FAILED_TO_QUERY_FOR_PRESENT_QUEUE_SUPPORT:
@@ -59,6 +59,8 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to create Swapchain";
         case RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES:
             return "Failed to get Swapchain Images";
+        case RendererError::FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW:
+            return "Failed to create Swapchain Image View";
     }
     return "unknown";
 }

@@ -249,7 +249,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
                                 defer:NO];
         if (!window) {
             return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_WINDOW,
-                                "Failed to create OSX window.");
+                                "Failed to create OSX window");
         }
 
         // Set window title, center, make key/front
@@ -413,7 +413,7 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& surfac
     metalSurfaceInfo.pLayer = metalLayer;
 
     if (vkCreateMetalSurfaceEXT(instance, &metalSurfaceInfo, nullptr, &surface) != VK_SUCCESS) {
-        return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE, "Failed to create Metal Vulkan surface.");
+        return createPltErr(PlatformError::Type::FAILED_TO_CREATE_OSX_KHR_XLIB_SURFACE, "Failed to create Metal Vulkan surface");
     }
 
     return APP_OK;

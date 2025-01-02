@@ -10,7 +10,7 @@ int runSandbox() {
     VkResult result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
     if (result != VK_SUCCESS || layerCount == 0) {
-        std::cerr << "Failed to enumerate Vulkan layers or no layers available." << std::endl;
+        std::cerr << "Failed to enumerate Vulkan layers or no layers available" << std::endl;
         return -1;
     }
 
@@ -19,7 +19,7 @@ int runSandbox() {
     result = vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
 
     if (result != VK_SUCCESS) {
-        std::cerr << "Failed to retrieve Vulkan layer properties." << std::endl;
+        std::cerr << "Failed to retrieve Vulkan layer properties" << std::endl;
         return -1;
     }
 
@@ -29,8 +29,8 @@ int runSandbox() {
         std::cout << "-----------------------------------" << std::endl;
         std::cout << "Layer Name: " << layer.layerName << std::endl;
         std::cout << "Description: " << layer.description << std::endl;
-        std::cout << "Version: " << VK_VERSION_MAJOR(layer.specVersion) << "."
-                  << VK_VERSION_MINOR(layer.specVersion) << "."
+        std::cout << "Version: " << VK_VERSION_MAJOR(layer.specVersion) << ""
+                  << VK_VERSION_MINOR(layer.specVersion) << ""
                   << VK_VERSION_PATCH(layer.specVersion) << std::endl;
         std::cout << "Implementation Version: " << layer.implementationVersion << std::endl;
     }

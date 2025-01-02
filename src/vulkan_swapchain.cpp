@@ -49,7 +49,6 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
         VkResult vres = vkCreateSwapchainKHR(logicalDevice, &swapchainCreateInfo, nullptr, &ret.swapchain);
         vres != VK_SUCCESS
     ) {
-        ret.swapchain = VK_NULL_HANDLE;
         return core::unexpected(createRendErr(RendererError::FAILED_TO_CREATE_SWAPCHAIN));
     }
 
@@ -58,7 +57,6 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
         VkResult vres = vkGetSwapchainImagesKHR(logicalDevice, ret.swapchain, &finalImageCount, nullptr);
         vres != VK_SUCCESS
     ) {
-        ret.swapchain = VK_NULL_HANDLE;
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES));
     }
 
@@ -68,9 +66,35 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
         VkResult vres = vkGetSwapchainImagesKHR(logicalDevice, ret.swapchain, &finalImageCount, ret.images.data());
         vres != VK_SUCCESS
     ) {
-        ret.images.clear();
-        ret.swapchain = VK_NULL_HANDLE;
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES));
+    }
+
+    ret.imageViews = core::ArrList<VkImageView>(finalImageCount);
+
+    for (size_t i = 0; i < ret.images.len(); i++) {
+        VkImageViewCreateInfo imageViewCreateInfo{};
+        imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewCreateInfo.image = ret.images[i];
+        imageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewCreateInfo.format = surfaceFormat.format;
+
+        imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+        imageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        imageViewCreateInfo.subresourceRange.levelCount = 1;
+        imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewCreateInfo.subresourceRange.layerCount = 1;
+
+        if (
+            VkResult vres = vkCreateImageView(logicalDevice, &imageViewCreateInfo, nullptr, &ret.imageViews[i]);
+            vres != VK_SUCCESS
+        ) {
+            return core::unexpected(createRendErr(RendererError::FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW));
+        }
     }
 
     ret.extent = imageExtent;
