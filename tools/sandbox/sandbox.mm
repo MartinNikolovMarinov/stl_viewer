@@ -47,7 +47,7 @@ int runSandbox() {
         VkInstanceCreateInfo instanceCreateInfo = {};
         instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         instanceCreateInfo.pApplicationInfo = &appInfo;
-        instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR; // Enable portability
+        instanceCreateInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
         instanceCreateInfo.enabledExtensionCount = sizeof(instanceExtensions) / sizeof(instanceExtensions[0]);
         instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions;
         instanceCreateInfo.enabledLayerCount = sizeof(instanceLayers) / sizeof(instanceLayers[0]);
@@ -93,6 +93,27 @@ int runSandbox() {
         VkPhysicalDevice physicalDevices[deviceCount];
         vkEnumeratePhysicalDevices(instance, &deviceCount, physicalDevices);
         VkPhysicalDevice physicalDevice = physicalDevices[0];
+
+        // Query surface capabilities
+        VkSurfaceCapabilitiesKHR surfaceCapabilities;
+        if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities) != VK_SUCCESS) {
+            NSLog(@"Failed to query surface capabilities");
+            vkDestroySurfaceKHR(instance, surface, NULL);
+            vkDestroyInstance(instance, NULL);
+            return -1;
+        }
+
+        NSLog(@"Surface capabilities:");
+        NSLog(@"minImageCount: %u", surfaceCapabilities.minImageCount);
+        NSLog(@"maxImageCount: %u", surfaceCapabilities.maxImageCount);
+        NSLog(@"currentExtent: (%u, %u)", surfaceCapabilities.currentExtent.width, surfaceCapabilities.currentExtent.height);
+        NSLog(@"minImageExtent: (%u, %u)", surfaceCapabilities.minImageExtent.width, surfaceCapabilities.minImageExtent.height);
+        NSLog(@"maxImageExtent: (%u, %u)", surfaceCapabilities.maxImageExtent.width, surfaceCapabilities.maxImageExtent.height);
+        NSLog(@"maxImageArrayLayers: %u", surfaceCapabilities.maxImageArrayLayers);
+        NSLog(@"supportedTransforms: %u", surfaceCapabilities.supportedTransforms);
+        NSLog(@"currentTransform: %u", surfaceCapabilities.currentTransform);
+        NSLog(@"supportedCompositeAlpha: %u", surfaceCapabilities.supportedCompositeAlpha);
+        NSLog(@"supportedUsageFlags: %u", surfaceCapabilities.supportedUsageFlags);
 
         // Logical device creation
         float queuePriority = 1.0f;
@@ -145,7 +166,7 @@ int runSandbox() {
             return -1;
         }
 
-        [app run]; // Start the main event loop
+        // [app run]; // Start the main event loop
 
         // Clean up resources
         vkDestroySwapchainKHR(device, swapchain, NULL);

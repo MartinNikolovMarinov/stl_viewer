@@ -268,11 +268,9 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
         [contentView setWantsLayer:YES];
         [window setContentView:contentView];
 
-        // Store a pointer to the Metal layer
-        metalLayer = (CAMetalLayer*)[contentView layer];
-        // metalLayer.device = MTLCreateSystemDefaultDevice();
-        // metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-        // metalLayer.framebufferOnly = YES;
+        // Create the Metal layer
+        metalLayer = [CAMetalLayer layer];
+        contentView.layer = metalLayer;
 
         // Make content view first responder to receive key events
         [window makeFirstResponder:contentView];

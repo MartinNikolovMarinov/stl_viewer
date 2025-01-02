@@ -104,6 +104,9 @@ target_compile_definitions(${target_main} PUBLIC
 )
 
 if(OS STREQUAL "linux")
+    if(!USE_EXTERNAL_VULKAN_SDK)
+        log_fatal("Can't package executable with vulkan SDK on Linux (for now). Use external SDK.")
+    endif()
 
     find_package(X11 REQUIRED)
     find_package(Vulkan REQUIRED)  # Link with Vulkan from system
@@ -152,6 +155,9 @@ elseif(OS STREQUAL "darwin")
     )
 
 elseif(OS STREQUAL "windows")
+    if(!USE_EXTERNAL_VULKAN_SDK)
+        log_fatal("Can't package executable with vulkan SDK on Windows (for now). Use external SDK.")
+    endif()
 
     # Link with Vulkan from system
     find_package(Vulkan REQUIRED)

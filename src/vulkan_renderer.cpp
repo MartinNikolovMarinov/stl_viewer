@@ -101,11 +101,6 @@ core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(Vk
 } // namespace
 
 core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
-    // TODO2: Verify I do not need this:
-    // #ifdef OS_MAC
-    //     setenv("VK_ICD_FILENAMES", "./lib/MoltenVK/sdk-1.3.296.0/MoltenVK_icd.json", 1);
-    // #endif
-
     core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
 
     if (auto res = logVulkanVersion(); res.hasErr()) {
@@ -327,10 +322,15 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
         }
     }
 
-    // TODO2: MacOS should require VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR , but it seems to work fine without
-    //        it for now. Verify that this extension is not needed.
+    VkFlags flags = 0;
+#if defined(OS_MAC) && OS_MAC == 1
+    // Enable portability extension for MacOS.
+    extensions.push(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+    flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
     VkInstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.flags = flags;
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
     instanceCreateInfo.enabledExtensionCount = u32(extensions.len());
@@ -338,10 +338,12 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
 
     // Setup Validation Layers
     if constexpr (VALIDATION_LAYERS_ENABLED) {
-        const char* layerNames[1];
-        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation");
+        const char* layerNames[2];
+        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation") &&
+                         checkSupportForInstLayer("VK_LAYER_LUNARG_api_dump");
         if (supported) {
             layerNames[0] = "VK_LAYER_KHRONOS_validation";
+            layerNames[1] = "VK_LAYER_LUNARG_api_dump";
             instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
             instanceCreateInfo.ppEnabledLayerNames = layerNames;
             logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer.");

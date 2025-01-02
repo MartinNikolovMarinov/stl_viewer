@@ -84,14 +84,18 @@ core::expected<AppError> initCoreContext() {
     core::initProgramCtx(assertHandler);
 
     // Logger setup
+    i32* tagIndicesToIgnore = nullptr;
+    addr_size tagsToIgnoreSize = 0;
     // i32 tagIndicesToIgnore[] = {
-        // APP_TAG,
-        // INPUT_EVENTS_TAG,
-        // RENDERER_TAG,
+    //     APP_TAG, // Default
+    //     INPUT_EVENTS_TAG,
+    //     RENDERER_TAG,
+    //     // VULKAN_VALIDATION_TAG,
+    //     X11_PLATFORM_TAG,
     // };
     // addr_size tagsToIgnoreSize = sizeof(tagIndicesToIgnore) / sizeof(tagIndicesToIgnore[0]);
     core::LoggerCreateInfo loggerCreateInfo = {};
-    loggerCreateInfo.tagIndicesToIgnore = { nullptr, 0 };
+    loggerCreateInfo.tagIndicesToIgnore = { tagIndicesToIgnore, tagsToIgnoreSize };
     if (!core::initLogger(loggerCreateInfo)) {
         return core::unexpected(createPltErr(FAILED_TO_INITIALIZE_CORE_LOGGER,
                                 "Failed to initialize core logger"));
