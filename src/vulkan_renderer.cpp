@@ -260,26 +260,8 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
 }
 
 void Renderer::shutdown() {
-    if (g_device != VK_NULL_HANDLE) {
-        // Wait until all pending GPU work completes.
-        VkResult vres = vkDeviceWaitIdle(g_device);
-        if (vres != VK_SUCCESS) {
-            logWarnTagged(RENDERER_TAG, "Failed to wait idle the logical device");
-        }
-    }
-
-    if (!g_swapchain.imageViews.empty()) {
-        logInfoTagged(RENDERER_TAG, "Destroying swapchain image views");
-        for (addr_size i = 0; i < g_swapchain.imageViews.len(); i++) {
-            vkDestroyImageView(g_device, g_swapchain.imageViews[i], nullptr);
-        }
-    }
-
-    if (g_swapchain.swapchain != VK_NULL_HANDLE) {
-        logInfoTagged(RENDERER_TAG, "Destroying swapchain");
-        vkDestroySwapchainKHR(g_device, g_swapchain.swapchain, nullptr);
-        g_swapchain = {};
-    }
+    Swapchain::destroy(g_device, g_swapchain);
+    RenderPipeline::destroy(g_device, g_renderPipeline);
 
     if (g_surface != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");

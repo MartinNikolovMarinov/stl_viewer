@@ -1,6 +1,6 @@
-#include <vulkan_swapchain.h>
-
+#include <app_logger.h>
 #include <vulkan_device_picker.h>
+#include <vulkan_swapchain.h>
 
 core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pickedDevice,
                                                       VkDevice logicalDevice,
@@ -60,7 +60,7 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES));
     }
 
-    ret.images = core::ArrList<VkImage>(finalImageCount);
+    ret.images = core::ArrList<VkImage>(finalImageCount, VkImage{});
 
     if (
         VkResult vres = vkGetSwapchainImagesKHR(logicalDevice, ret.swapchain, &finalImageCount, ret.images.data());
@@ -69,7 +69,7 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES));
     }
 
-    ret.imageViews = core::ArrList<VkImageView>(finalImageCount);
+    ret.imageViews = core::ArrList<VkImageView>(finalImageCount, VkImageView{});
 
     for (size_t i = 0; i < ret.images.len(); i++) {
         VkImageViewCreateInfo imageViewCreateInfo{};
@@ -101,4 +101,31 @@ core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pic
     ret.imageFormat = surfaceFormat.format;
 
     return ret;
+}
+
+void Swapchain::destroy(VkDevice logicalDevice, Swapchain& swapchain) {
+    defer { swapchain = {}; };
+
+    if (logicalDevice == VK_NULL_HANDLE) {
+        // This is probably a bug.
+        logErrTagged(RENDERER_TAG, "Trying to destroy a swapchain with logical device equal to null.");
+        return;
+    }
+
+    if (VkResult vres = vkDeviceWaitIdle(logicalDevice); vres != VK_SUCCESS) {
+        logWarnTagged(RENDERER_TAG, "Failed to wait idle the logical device");
+        return;
+    }
+
+    if (!swapchain.imageViews.empty()) {
+        logInfoTagged(RENDERER_TAG, "Destroying swapchain image views");
+        for (addr_size i = 0; i < swapchain.imageViews.len(); i++) {
+            vkDestroyImageView(logicalDevice, swapchain.imageViews[i], nullptr);
+        }
+    }
+
+    if (swapchain.swapchain != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying swapchain");
+        vkDestroySwapchainKHR(logicalDevice, swapchain.swapchain, nullptr);
+    }
 }

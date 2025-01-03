@@ -16,4 +16,6 @@ struct Swapchain {
     static core::expected<Swapchain, AppError> create(const PickedGPUDevice& pickedDevice,
                                                       VkDevice logicalDevice,
                                                       VkSurfaceKHR surface);
+
+    static void destroy(VkDevice logicalDevice, Swapchain& swapchain);
 };

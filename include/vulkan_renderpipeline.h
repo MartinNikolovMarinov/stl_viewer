@@ -12,6 +12,7 @@ struct RenderPipeline {
     };
 
     [[nodiscard]] static core::expected<RenderPipeline, AppError> create(CreateInfo&& info);
+    static void destroy(VkDevice logicalDevice, RenderPipeline& renderPipeline);
 
     core::ArrList<u8> fragShaderBytes;
     core::ArrList<u8> vertShaderBytes;

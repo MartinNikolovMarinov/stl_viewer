@@ -92,3 +92,7 @@ core::expected<RenderPipeline, AppError> RenderPipeline::create(CreateInfo&& inf
 
     return ret;
 }
+
+void RenderPipeline::destroy(VkDevice, RenderPipeline& renderPipeline) {
+    defer { renderPipeline = {}; };
+}
