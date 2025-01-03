@@ -61,6 +61,8 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to get Swapchain Images";
         case RendererError::FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW:
             return "Failed to create Swapchain Image View";
+        case RendererError::FAILED_TO_CREATE_VULKAN_SHADER_MODULE:
+            return "Failed to create vulkan Shader Module";
     }
     return "unknown";
 }

@@ -68,7 +68,7 @@ if [[ ${#shader_array[@]} -gt 0 ]]; then
         fi
 
         # Compile the shader
-        glslc "$shaderFile" -o "$out_filepath.spv"
+        glslc "$shaderFile" -o "$out_filepath.spirv"
         check_exit_code "failed to compile shader $shaderFile"
 
         # Save the modification time

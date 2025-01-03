@@ -5,5 +5,14 @@
 #include <vulkan_include.h>
 
 struct RenderPipeline {
-    // TODO: Implement
+    struct CreateInfo {
+        VkDevice logicalDevice;
+        core::StrView vertShaderPath;
+        core::StrView fragShaderPath;
+    };
+
+    [[nodiscard]] static core::expected<RenderPipeline, AppError> create(CreateInfo&& info);
+
+    core::ArrList<u8> fragShaderBytes;
+    core::ArrList<u8> vertShaderBytes;
 };

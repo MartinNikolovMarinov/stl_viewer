@@ -8,6 +8,7 @@ using namespace coretypes;
 struct PlatformError {
     enum struct Type : i32 {
         FAILED_TO_INITIALIZE_CORE_LOGGER,
+        FAILED_TO_LOAD_SHADER,
 
         FAILED_TO_CREATE_X11_DISPLAY,
         FAILED_TO_CREATE_X11_WINDOW,
@@ -27,6 +28,7 @@ struct PlatformError {
     Type type;
 };
 
+// TODO2: Unify the naming convension a bit better. Right now every error is named adhoc.
 enum struct RendererError : i32 {
     FAILED_TO_CREATE_VULKAN_INSTANCE,
     FAILED_TO_GET_VULKAN_VERSION,
@@ -45,6 +47,7 @@ enum struct RendererError : i32 {
     FAILED_TO_CREATE_SWAPCHAIN,
     FAILED_TO_GET_SWAPCHAIN_IMAGES,
     FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW,
+    FAILED_TO_CREATE_VULKAN_SHADER_MODULE,
 };
 
 struct AppError {

@@ -69,6 +69,7 @@ VkDevice g_device = VK_NULL_HANDLE;
 VulkanQueue g_graphicsQueue = {};
 VulkanQueue g_presentQueue = {};
 Swapchain g_swapchain = {};
+RenderPipeline g_renderPipeline = {};
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -231,6 +232,21 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfoTagged(RENDERER_TAG, "Swapchain created");
     }
 
+    // Create Rendering Pipeline
+    RenderPipeline renderPipeline;
+    {
+        RenderPipeline::CreateInfo pipelineCreateInfo;
+        pipelineCreateInfo.logicalDevice = logicalDevice;
+        pipelineCreateInfo.fragShaderPath = core::sv(STLV_ASSETS "/shaders/shader.frag.spirv");
+        pipelineCreateInfo.vertShaderPath = core::sv(STLV_ASSETS "/shaders/shader.vert.spirv");
+        auto res = RenderPipeline::create(std::move(pipelineCreateInfo));
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        renderPipeline = std::move(res.value());
+        logInfoTagged(RENDERER_TAG, "Render Pipeline created");
+    }
+
     g_instance = instance;
     g_surface = surface;
     g_selectedGPU = pickedDevice.gpu;
@@ -238,6 +254,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_graphicsQueue = graphicsQueue;
     g_presentQueue = presentQueue;
     g_swapchain = std::move(swapchain);
+    g_renderPipeline = std::move(renderPipeline);
 
     return {};
 }
