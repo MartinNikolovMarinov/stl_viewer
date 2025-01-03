@@ -175,13 +175,28 @@ endif()
 set(SHADER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_shaders.sh)
 
 # Add a custom command to run the script
-add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/shaders_built
-    COMMAND ${CMAKE_COMMAND} -E env "PATH=$ENV{PATH}" bash ${SHADER_SCRIPT}
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMENT "Running shader compilation script..."
-    VERBATIM
-)
+if(OS STREQUAL "windows")
+    # On Windows convert the path with cygpath --unix.
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/shaders_built"
+        COMMAND bash -c "bash $(cygpath --unix \"${SHADER_SCRIPT}\")"
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        COMMENT "Running shader compilation script..."
+        VERBATIM
+    )
+
+    # This magic line suppresses MSB8065 warning for this target -
+    # I do not want this target to be incrementally build. I want to run it every time.
+    set_source_files_properties("${CMAKE_BINARY_DIR}/shaders_built" PROPERTIES SYMBOLIC 1)
+else()
+    add_custom_command(
+        OUTPUT ${CMAKE_BINARY_DIR}/shaders_built
+        COMMAND ${CMAKE_COMMAND} -E env "PATH=$ENV{PATH}" bash ${SHADER_SCRIPT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Running shader compilation script..."
+        VERBATIM
+    )
+endif()
 
 # Define a custom target that depends on the custom command
 add_custom_target(
