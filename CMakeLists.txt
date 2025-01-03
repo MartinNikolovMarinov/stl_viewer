@@ -65,6 +65,7 @@ set(stlv_src
     src/vulkan_renderer.cpp
     src/vulkan_device_picker.cpp
     src/vulkan_swapchain.cpp
+    src/vulkan_renderpipeline.cpp
 )
 
 if(OS STREQUAL "linux")
@@ -101,6 +102,7 @@ target_include_directories(${target_main} PUBLIC
 )
 target_compile_definitions(${target_main} PUBLIC
     "STLV_DEBUG=$<BOOL:${STLV_DEBUG}>"
+    STLV_ASSETS="${CMAKE_BINARY_DIR}/assets"
 )
 
 if(OS STREQUAL "linux")
@@ -167,3 +169,27 @@ elseif(OS STREQUAL "windows")
 endif()
 
 # ---------------------------------------- END Create Executable -------------------------------------------------------
+
+# ---------------------------------------- BEGIN Compile Shaders Custom Target -----------------------------------------
+
+set(SHADER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_shaders.sh)
+
+# Add a custom command to run the script
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/shaders_built
+    COMMAND ${CMAKE_COMMAND} -E env "PATH=$ENV{PATH}" bash ${SHADER_SCRIPT}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Running shader compilation script..."
+    VERBATIM
+)
+
+# Define a custom target that depends on the custom command
+add_custom_target(
+    CompileShaders ALL
+    DEPENDS ${CMAKE_BINARY_DIR}/shaders_built
+)
+
+# Add a dependency to ensure the pre-build step runs before main target
+add_dependencies(${target_main} CompileShaders)
+
+# ---------------------------------------- END Compile Shaders Custom Target -------------------------------------------

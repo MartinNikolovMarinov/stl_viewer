@@ -4,6 +4,7 @@
 #include <vulkan_device_picker.h>
 #include <vulkan_include.h>
 #include <vulkan_swapchain.h>
+#include <vulkan_renderpipeline.h>
 
 using RendererError::FAILED_TO_CREATE_VULKAN_INSTANCE;
 using RendererError::FAILED_TO_GET_VULKAN_VERSION;
