@@ -59,9 +59,10 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
 core::expected<AppError> Application::start() {
     g_appIsRunning = true;
     while (Application::isRunning()) {
-        if (auto err = Platform::pollEvents(true); !err.isOk()) {
+        if (auto err = Platform::pollEvents(false); !err.isOk()) {
             return core::unexpected(err);
         }
+        Renderer::drawFrame();
     }
 
     return {};

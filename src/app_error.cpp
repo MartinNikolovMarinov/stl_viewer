@@ -75,6 +75,10 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to create Vulkan Command Pool";
         case RendererError::FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER:
             return "Failed to allocate Vulkan Command Buffer";
+        case RendererError::FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE:
+            return "Failed to allocate Vulkan Semaphore";
+        case RendererError::FAILED_TO_ALLOCATE_VULKAN_FENCE:
+            return "Failed to allocate Vulkan Fence";
     }
     return "unknown";
 }

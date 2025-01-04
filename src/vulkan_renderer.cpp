@@ -18,6 +18,8 @@ using RendererError::FAILED_TO_CREATE_LOGICAL_DEVICE;
 using RendererError::FAILED_TO_CREATE_VULKAN_FRAME_BUFFER;
 using RendererError::FAILED_TO_CREATE_VULKAN_COMMAND_POOL;
 using RendererError::FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER;
+using RendererError::FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE;
+using RendererError::FAILED_TO_ALLOCATE_VULKAN_FENCE;
 
 #define FAILED_TO_GET_VULKAN_VERSION_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_GET_VULKAN_VERSION));
@@ -43,6 +45,10 @@ using RendererError::FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER;
     core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_COMMAND_POOL));
 #define FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER));
+#define FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE));
+#define FAILED_TO_ALLOCATE_VULKAN_FENCE_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_ALLOCATE_VULKAN_FENCE));
 
 namespace {
 
@@ -86,6 +92,9 @@ FrameBufferList g_swapchainFrameBuffers;
 RenderPipeline g_renderPipeline = {};
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
 VkCommandBuffer g_cmdBuf = VK_NULL_HANDLE;
+VkSemaphore g_imageAvailableSemaphore = VK_NULL_HANDLE;
+VkSemaphore g_renderFinishedSemaphore = VK_NULL_HANDLE;
+VkFence g_inFlightFence = VK_NULL_HANDLE;
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -121,7 +130,13 @@ core::expected<VkCommandBuffer, AppError> createCommandBuffer(VkDevice logicalDe
 
 core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
 
-void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx);
+core::expected<VkSemaphore, AppError> createSemaphore(VkDevice logicalDevice);
+core::expected<VkFence, AppError> createFence(VkDevice logicalDevice);
+
+void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
+                         const RenderPipeline& renderPipeline,
+                         const FrameBufferList& frameBuffers,
+                         const Swapchain& swapchain);
 
 } // namespace
 
@@ -272,6 +287,17 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfoTagged(RENDERER_TAG, "Render Pipeline created");
     }
 
+    // Create Frame Buffers
+    FrameBufferList frameBuffers;
+    {
+        auto res = createFrameBuffers(logicalDevice, swapchain, renderPipeline);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        frameBuffers = std::move(res.value());
+        logInfoTagged(RENDERER_TAG, "Frame Buffers created");
+    }
+
     // Create Command Pool
     VkCommandPool commandPool = VK_NULL_HANDLE;
     {
@@ -294,6 +320,30 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfoTagged(RENDERER_TAG, "Command Buffer created");
     }
 
+    // Create Synchronization Objects
+    VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
+    VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
+    VkFence inFlightFence = VK_NULL_HANDLE;
+    {
+        {
+            auto res = createSemaphore(logicalDevice);
+            if (res.hasErr()) return core::unexpected(res.err());
+            imageAvailableSemaphore = res.value();
+        }
+        {
+            auto res = createSemaphore(logicalDevice);
+            if (res.hasErr()) return core::unexpected(res.err());
+            renderFinishedSemaphore = res.value();
+        }
+        {
+            auto res = createFence(logicalDevice);
+            if (res.hasErr()) return core::unexpected(res.err());
+            inFlightFence = res.value();
+        }
+
+        logInfoTagged(RENDERER_TAG, "Synchronization Objects created");
+    }
+
     g_instance = instance;
     g_surface = surface;
     g_selectedGPU = pickedDevice.gpu;
@@ -302,13 +352,97 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_presentQueue = presentQueue;
     g_swapchain = std::move(swapchain);
     g_renderPipeline = std::move(renderPipeline);
+    g_swapchainFrameBuffers = std::move(frameBuffers);
     g_commandPool = commandPool;
     g_cmdBuf = cmdBuf;
+    g_imageAvailableSemaphore = imageAvailableSemaphore;
+    g_renderFinishedSemaphore = renderFinishedSemaphore;
+    g_inFlightFence = inFlightFence;
 
     return {};
 }
 
+void Renderer::drawFrame() {
+    Assert(vkWaitForFences(g_device, 1, &g_inFlightFence, VK_TRUE, core::limitMax<u64>()) == VK_SUCCESS);
+    vkResetFences(g_device, 1, &g_inFlightFence);
+
+    u32 imageIdx;
+    // TODO: Needs different error handling!
+    vkAcquireNextImageKHR(g_device,
+                          g_swapchain.swapchain,
+                          core::limitMax<u64>(),
+                          g_imageAvailableSemaphore,
+                          VK_NULL_HANDLE,
+                          &imageIdx);
+
+    Assert(vkResetCommandBuffer(g_cmdBuf, 0) == VK_SUCCESS);
+    recordCommandBuffer(g_cmdBuf, imageIdx, g_renderPipeline, g_swapchainFrameBuffers, g_swapchain);
+
+    // Submit to the command buffer to the Graphics Queue
+    {
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &g_cmdBuf;
+
+        VkSemaphore waitSemaphores[] = { g_imageAvailableSemaphore };
+        constexpr addr_size waitSemaphoresLen = sizeof(waitSemaphores) / sizeof(waitSemaphores[0]);
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = waitSemaphoresLen;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+
+        VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphore };
+        constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
+        submitInfo.signalSemaphoreCount = signalSemaphoresLen;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        Assert(vkQueueSubmit(g_graphicsQueue.queue, 1, &submitInfo, g_inFlightFence) == VK_SUCCESS);
+    }
+
+    // Present
+    {
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphore };
+        constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
+
+        presentInfo.waitSemaphoreCount = signalSemaphoresLen;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+
+        VkSwapchainKHR swapchains[] = { g_swapchain.swapchain };
+        constexpr addr_size swapchainsLen = sizeof(swapchains) / sizeof(swapchains[0]);
+        presentInfo.swapchainCount = swapchainsLen;
+        presentInfo.pSwapchains = swapchains;
+        presentInfo.pImageIndices = &imageIdx;
+        presentInfo.pResults = nullptr;
+
+        // TODO: Needs different error handling!
+        vkQueuePresentKHR(g_presentQueue.queue, &presentInfo);
+    }
+}
+
 void Renderer::shutdown() {
+    if (VkResult vres = vkDeviceWaitIdle(g_device); vres != VK_SUCCESS) {
+        logErrTagged(RENDERER_TAG, "Failed to wait idle the logical device");
+    }
+
+    if (g_imageAvailableSemaphore) {
+        logInfoTagged(RENDERER_TAG, "Destroying Image Available Semaphore");
+        vkDestroySemaphore(g_device, g_imageAvailableSemaphore, nullptr);
+    }
+
+    if (g_renderFinishedSemaphore) {
+        logInfoTagged(RENDERER_TAG, "Destroying Render Finished Semaphore");
+        vkDestroySemaphore(g_device, g_renderFinishedSemaphore, nullptr);
+    }
+
+    if (g_inFlightFence) {
+        logInfoTagged(RENDERER_TAG, "Destroying In Flight Fence");
+        vkDestroyFence(g_device, g_inFlightFence, nullptr);
+    }
+
     if (g_commandPool != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying Command Pool");
         vkDestroyCommandPool(g_device, g_commandPool, nullptr);
@@ -557,6 +691,31 @@ core::expected<VkCommandBuffer, AppError> createCommandBuffer(VkDevice logicalDe
     return cmdBuffer;
 }
 
+core::expected<VkSemaphore, AppError> createSemaphore(VkDevice logicalDevice) {
+    VkSemaphoreCreateInfo semaphoreCreateInfo{};
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkSemaphore ret = VK_NULL_HANDLE;
+    if (VkResult vres = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &ret); vres != VK_SUCCESS) {
+        return FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE_ERREXPR;
+    }
+
+    return ret;
+}
+
+core::expected<VkFence, AppError> createFence(VkDevice logicalDevice) {
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    VkFence ret = VK_NULL_HANDLE;
+    if (VkResult vres = vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &ret); vres != VK_SUCCESS) {
+        return FAILED_TO_ALLOCATE_VULKAN_FENCE_ERREXPR;
+    }
+
+    return ret;
+}
+
 VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{};
 
@@ -674,7 +833,7 @@ void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
         scissor.extent = swapchain.extent;
         vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+        vkCmdDraw(cmdBuffer, 6, 1, 0, 0);
     }
 
     Assert(vkEndCommandBuffer(cmdBuffer) == VK_SUCCESS);

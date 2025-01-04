@@ -112,11 +112,6 @@ void Swapchain::destroy(VkDevice logicalDevice, Swapchain& swapchain) {
         return;
     }
 
-    if (VkResult vres = vkDeviceWaitIdle(logicalDevice); vres != VK_SUCCESS) {
-        logWarnTagged(RENDERER_TAG, "Failed to wait idle the logical device");
-        return;
-    }
-
     if (!swapchain.imageViews.empty()) {
         logInfoTagged(RENDERER_TAG, "Destroying swapchain image views");
         for (addr_size i = 0; i < swapchain.imageViews.len(); i++) {
