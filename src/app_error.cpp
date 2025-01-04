@@ -69,6 +69,12 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to create Vulkan Render Pass";
         case RendererError::FAILED_TO_CREATE_VULKAN_GRAPHICS_PIPELINE:
             return "Failed to create Vulkan Graphics Pipeline";
+        case RendererError::FAILED_TO_CREATE_VULKAN_FRAME_BUFFER:
+            return "Failed to create Vulkan Frame Buffer";
+        case RendererError::FAILED_TO_CREATE_VULKAN_COMMAND_POOL:
+            return "Failed to create Vulkan Command Pool";
+        case RendererError::FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER:
+            return "Failed to allocate Vulkan Command Buffer";
     }
     return "unknown";
 }

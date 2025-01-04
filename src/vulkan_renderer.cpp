@@ -15,6 +15,9 @@ using RendererError::FAILED_TO_CREATE_VULKAN_DEBUG_MESSENGER;
 using RendererError::FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT;
 using RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES;
 using RendererError::FAILED_TO_CREATE_LOGICAL_DEVICE;
+using RendererError::FAILED_TO_CREATE_VULKAN_FRAME_BUFFER;
+using RendererError::FAILED_TO_CREATE_VULKAN_COMMAND_POOL;
+using RendererError::FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER;
 
 #define FAILED_TO_GET_VULKAN_VERSION_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_GET_VULKAN_VERSION));
@@ -34,12 +37,19 @@ using RendererError::FAILED_TO_CREATE_LOGICAL_DEVICE;
     core::unexpected(createRendErr(FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES));
 #define FAILED_TO_CREATE_LOGICAL_DEVICE_ERREXPR \
     core::unexpected(createRendErr(FAILED_TO_CREATE_LOGICAL_DEVICE));
+#define FAILED_TO_CREATE_VULKAN_FRAME_BUFFER_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_FRAME_BUFFER));
+#define FAILED_TO_CREATE_VULKAN_COMMAND_POOL_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_CREATE_VULKAN_COMMAND_POOL));
+#define FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER_ERREXPR \
+    core::unexpected(createRendErr(FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER));
 
 namespace {
 
 using ExtPropsList = core::ArrList<VkExtensionProperties>;
 using LayerPropsList = core::ArrList<VkLayerProperties>;
 using GPUDeviceList = core::ArrList<GPUDevice>;
+using FrameBufferList = core::ArrList<VkFramebuffer>;
 
 struct VulkanQueue {
     VkQueue queue = VK_NULL_HANDLE;
@@ -72,7 +82,10 @@ VkDevice g_device = VK_NULL_HANDLE;
 VulkanQueue g_graphicsQueue = {};
 VulkanQueue g_presentQueue = {};
 Swapchain g_swapchain = {};
+FrameBufferList g_swapchainFrameBuffers;
 RenderPipeline g_renderPipeline = {};
+VkCommandPool g_commandPool = VK_NULL_HANDLE;
+VkCommandBuffer g_cmdBuf = VK_NULL_HANDLE;
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -100,8 +113,15 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
 core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName);
 VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
 core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked, core::Memory<const char*> deviceExts);
+core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDevice,
+                                                             const Swapchain& swapchain,
+                                                             const RenderPipeline& pipeline);
+core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice, const PickedGPUDevice& picked);
+core::expected<VkCommandBuffer, AppError> createCommandBuffer(VkDevice logicalDevice, VkCommandPool pool);
 
 core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
+
+void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx);
 
 } // namespace
 
@@ -252,6 +272,28 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         logInfoTagged(RENDERER_TAG, "Render Pipeline created");
     }
 
+    // Create Command Pool
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    {
+        auto res = createCommandPool(logicalDevice, pickedDevice);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        commandPool = res.value();
+        logInfoTagged(RENDERER_TAG, "Command Pool created");
+    }
+
+    // Create Command Buffer
+    VkCommandBuffer cmdBuf;
+    {
+        auto res = createCommandBuffer(logicalDevice, commandPool);
+        if (res.hasErr()) {
+            return core::unexpected(res.err());
+        }
+        cmdBuf = res.value();
+        logInfoTagged(RENDERER_TAG, "Command Buffer created");
+    }
+
     g_instance = instance;
     g_surface = surface;
     g_selectedGPU = pickedDevice.gpu;
@@ -260,11 +302,27 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_presentQueue = presentQueue;
     g_swapchain = std::move(swapchain);
     g_renderPipeline = std::move(renderPipeline);
+    g_commandPool = commandPool;
+    g_cmdBuf = cmdBuf;
 
     return {};
 }
 
 void Renderer::shutdown() {
+    if (g_commandPool != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying Command Pool");
+        vkDestroyCommandPool(g_device, g_commandPool, nullptr);
+        g_commandPool = VK_NULL_HANDLE;
+    }
+
+    if (!g_swapchainFrameBuffers.empty()) {
+        logInfoTagged(RENDERER_TAG, "Destroying FrameBuffers");
+        for (addr_size i = 0; i < g_swapchainFrameBuffers.len(); i++) {
+            vkDestroyFramebuffer(g_device, g_swapchainFrameBuffers[i], nullptr);
+        }
+        g_swapchainFrameBuffers.free();
+    }
+
     Swapchain::destroy(g_device, g_swapchain);
     RenderPipeline::destroy(g_device, g_renderPipeline);
 
@@ -437,6 +495,68 @@ core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevi
     return logicalDevice;
 }
 
+core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDevice,
+                                                             const Swapchain& swapchain,
+                                                             const RenderPipeline& pipeline) {
+    auto ret = FrameBufferList(swapchain.imageViews.len(), VkFramebuffer{});
+
+    for (size_t i = 0; i < swapchain.imageViews.len(); i++) {
+        VkImageView attachments[] = {
+            swapchain.imageViews[i]
+        };
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = pipeline.renderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments = attachments;
+        framebufferInfo.width = swapchain.extent.width;
+        framebufferInfo.height = swapchain.extent.height;
+        framebufferInfo.layers = 1;
+
+        if (
+            VkResult vres = vkCreateFramebuffer(logicalDevice, &framebufferInfo, nullptr, &ret[i]);
+            vres != VK_SUCCESS
+        ) {
+            return FAILED_TO_CREATE_VULKAN_FRAME_BUFFER_ERREXPR;
+        }
+    }
+
+    return ret;
+}
+
+core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice, const PickedGPUDevice& picked) {
+    VkCommandPoolCreateInfo poolCreateInfo{};
+    poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolCreateInfo.queueFamilyIndex = picked.graphicsQueueIdx;
+
+    VkCommandPool ret;
+    if (
+        VkResult vres =vkCreateCommandPool(logicalDevice, &poolCreateInfo, nullptr, &ret);
+        vres != VK_SUCCESS
+    ) {
+        return FAILED_TO_CREATE_VULKAN_COMMAND_POOL_ERREXPR;
+    }
+
+    return ret;
+}
+
+core::expected<VkCommandBuffer, AppError> createCommandBuffer(VkDevice logicalDevice, VkCommandPool pool) {
+    VkCommandBufferAllocateInfo allocCreateInfo{};
+    allocCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocCreateInfo.commandPool = pool;
+    allocCreateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocCreateInfo.commandBufferCount = 1;
+
+    VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
+    if (vkAllocateCommandBuffers(logicalDevice, &allocCreateInfo, &cmdBuffer) != VK_SUCCESS) {
+        return FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER_ERREXPR;
+    }
+
+    return cmdBuffer;
+}
+
 VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
     VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{};
 
@@ -510,6 +630,54 @@ core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(Vk
     }
 
     return debugMessenger;
+}
+
+void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
+                         const RenderPipeline& renderPipeline,
+                         const FrameBufferList& frameBuffers,
+                         const Swapchain& swapchain) {
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    beginInfo.pInheritanceInfo = nullptr;
+
+    Assert(vkBeginCommandBuffer(cmdBuffer, &beginInfo) == VK_SUCCESS);
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPipeline.renderPass;
+    renderPassInfo.framebuffer = frameBuffers[imageIdx];
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapchain.extent;
+
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // BLACK
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
+
+    {
+        vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        defer { vkCmdEndRenderPass(cmdBuffer); };
+
+        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderPipeline.graphicsPipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = f32(swapchain.extent.width);
+        viewport.height = f32(swapchain.extent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapchain.extent;
+        vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+        vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+    }
+
+    Assert(vkEndCommandBuffer(cmdBuffer) == VK_SUCCESS);
 }
 
 core::expected<ExtPropsList*, AppError> getAllSupportedInstExtensions(bool useCache) {
