@@ -9,6 +9,8 @@ struct RenderPipeline {
         VkDevice logicalDevice;
         core::StrView vertShaderPath;
         core::StrView fragShaderPath;
+        VkExtent2D swapchainExtent;
+        VkFormat swapchainImageFormat;
     };
 
     [[nodiscard]] static core::expected<RenderPipeline, AppError> create(CreateInfo&& info);
@@ -16,4 +18,7 @@ struct RenderPipeline {
 
     core::ArrList<u8> fragShaderBytes;
     core::ArrList<u8> vertShaderBytes;
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkPipeline graphicsPipeline = VK_NULL_HANDLE;
 };

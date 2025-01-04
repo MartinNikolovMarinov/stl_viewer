@@ -29,6 +29,7 @@ struct PlatformError {
 };
 
 // TODO2: Unify the naming convension a bit better. Right now every error is named adhoc.
+// TODO2: Write a convinient macro for error checking vulkan function calls.
 enum struct RendererError : i32 {
     FAILED_TO_CREATE_VULKAN_INSTANCE,
     FAILED_TO_GET_VULKAN_VERSION,
@@ -48,6 +49,9 @@ enum struct RendererError : i32 {
     FAILED_TO_GET_SWAPCHAIN_IMAGES,
     FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW,
     FAILED_TO_CREATE_VULKAN_SHADER_MODULE,
+    FAILED_TO_CREATE_VULKAN_PIPELINE_LAYOUT,
+    FAILED_TO_CREATE_VULKAN_RENDER_PASS,
+    FAILED_TO_CREATE_VULKAN_GRAPHICS_PIPELINE,
 };
 
 struct AppError {

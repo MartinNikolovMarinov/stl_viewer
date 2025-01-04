@@ -62,7 +62,13 @@ constexpr const char* rendErrorToCStr(RendererError e) {
         case RendererError::FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW:
             return "Failed to create Swapchain Image View";
         case RendererError::FAILED_TO_CREATE_VULKAN_SHADER_MODULE:
-            return "Failed to create vulkan Shader Module";
+            return "Failed to create Vulkan Shader Module";
+        case RendererError::FAILED_TO_CREATE_VULKAN_PIPELINE_LAYOUT:
+            return "Failed to create Vulkan Pipeline Layout";
+        case RendererError::FAILED_TO_CREATE_VULKAN_RENDER_PASS:
+            return "Failed to create Vulkan Render Pass";
+        case RendererError::FAILED_TO_CREATE_VULKAN_GRAPHICS_PIPELINE:
+            return "Failed to create Vulkan Graphics Pipeline";
     }
     return "unknown";
 }

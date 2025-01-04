@@ -239,6 +239,8 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         pipelineCreateInfo.logicalDevice = logicalDevice;
         pipelineCreateInfo.fragShaderPath = core::sv(STLV_ASSETS "/shaders/shader.frag.spirv");
         pipelineCreateInfo.vertShaderPath = core::sv(STLV_ASSETS "/shaders/shader.vert.spirv");
+        pipelineCreateInfo.swapchainExtent = swapchain.extent;
+        pipelineCreateInfo.swapchainImageFormat = swapchain.imageFormat;
         auto res = RenderPipeline::create(std::move(pipelineCreateInfo));
         if (res.hasErr()) {
             return core::unexpected(res.err());
