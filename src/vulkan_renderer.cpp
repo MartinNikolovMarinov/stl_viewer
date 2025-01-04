@@ -53,7 +53,10 @@ constexpr bool VALIDATION_LAYERS_ENABLED = false;
 #endif
 
 const char* requiredDeviceExtensions[] = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+#if defined(OS_MAC) && OS_MAC == 1
+    VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
+#endif
 };
 constexpr addr_size requiredDeviceExtensionsLen = sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
 
@@ -313,12 +316,22 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
     core::ArrList<const char*> extensions (requiredPlatformExtCount, nullptr);
     Platform::requiredVulkanExts(extensions.data());
 
+    VkFlags instanceCreateInfoFlags = 0;
+
     // Setup Instance Extensions
     {
+        extensions.push(VK_KHR_SURFACE_EXTENSION_NAME);
+
+        #if defined(OS_MAC) && OS_MAC == 1
+            // FIXME: Some of these might be optional ??
+            // Enable portability extension for MacOS.
+            extensions.push(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+            extensions.push(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+            instanceCreateInfoFlags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        #endif
+
         // Check required extensions
         {
-            extensions.push(VK_KHR_SURFACE_EXTENSION_NAME);
-
             for (addr_size i = 0; i < extensions.len(); i++) {
                 if (!checkSupportForInstExtension(extensions[i])) {
                     logFatalTagged(RENDERER_TAG, "Missing required extension: %s", extensions[i]);
@@ -339,15 +352,8 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
         }
     }
 
-    VkFlags flags = 0;
-#if defined(OS_MAC) && OS_MAC == 1
-    // Enable portability extension for MacOS.
-    extensions.push(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-    flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-#endif
-
     VkInstanceCreateInfo instanceCreateInfo = {};
-    instanceCreateInfo.flags = flags;
+    instanceCreateInfo.flags = instanceCreateInfoFlags;
     instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceCreateInfo.pApplicationInfo = &appInfo;
     instanceCreateInfo.enabledExtensionCount = u32(extensions.len());

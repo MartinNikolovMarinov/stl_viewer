@@ -4,6 +4,7 @@
 
 #if defined(OS_MAC) && OS_MAC == 1
     #define VK_USE_PLATFORM_METAL_EXT
+    #define VK_ENABLE_BETA_EXTENSIONS // need this for VK_KHR_portability_subset
     #include <vulkan/vulkan.h>
 #elif defined(OS_WIN) && OS_WIN == 1
     #define VK_USE_PLATFORM_WIN32_KHR
