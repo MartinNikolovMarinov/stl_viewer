@@ -6,10 +6,10 @@ using namespace coretypes;
 
 enum struct KeyboardModifiers : u8 {
     MODNONE = 0,
-    MODSHIFT = 1 << 1,
-    MODCONTROL = 2 << 1,
-    MODALT = 3 << 2,
-    MODSUPER = 4 << 3,
+    MODSHIFT = 1 << 0,
+    MODCONTROL = 1 << 1,
+    MODALT = 1 << 2,
+    MODSUPER = 1 << 3,
 };
 
 inline constexpr KeyboardModifiers operator|(KeyboardModifiers lhs, KeyboardModifiers rhs) {

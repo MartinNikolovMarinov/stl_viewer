@@ -253,7 +253,7 @@ core::expected<RenderPipeline, AppError> RenderPipeline::create(CreateInfo&& inf
     // Creating Graphics Pipeline
     VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
     pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineCreateInfo.stageCount = shaderStagesCreateInfo.len();
+    pipelineCreateInfo.stageCount = u32(shaderStagesCreateInfo.len());
     pipelineCreateInfo.pStages = shaderStagesCreateInfo.data();
     pipelineCreateInfo.pVertexInputState = &vertexInputCreateInfo;
     pipelineCreateInfo.pInputAssemblyState = &inputAssemblyCreateInfo;

@@ -101,7 +101,7 @@ core::expected<AppError> initCoreContext() {
         return core::unexpected(createPltErr(FAILED_TO_INITIALIZE_CORE_LOGGER,
                                 "Failed to initialize core logger"));
     }
-    core::setLoggerLevel(core::LogLevel::L_DEBUG);
+    core::setLoggerLevel(core::LogLevel::L_TRACE);
     core::useAnsiInLogger(USE_ANSI_LOGGING);
     // Set logger tags
     core::setLoggerTag(APP_TAG, appLogTagsToCStr(APP_TAG));
