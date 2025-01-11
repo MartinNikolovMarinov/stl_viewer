@@ -91,10 +91,12 @@ Swapchain g_swapchain = {};
 FrameBufferList g_swapchainFrameBuffers;
 RenderPipeline g_renderPipeline = {};
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
-VkCommandBuffer g_cmdBuf = VK_NULL_HANDLE;
-VkSemaphore g_imageAvailableSemaphore = VK_NULL_HANDLE;
-VkSemaphore g_renderFinishedSemaphore = VK_NULL_HANDLE;
-VkFence g_inFlightFence = VK_NULL_HANDLE;
+constexpr i32 MAX_FRAMES_IN_FLIGHT = 2;
+u32 g_currentFrame = 0;
+core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> g_cmdBufs;
+core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> g_imageAvailableSemaphores;
+core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> g_renderFinishedSemaphores;
+core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> g_inFlightFences;
 
 constexpr addr_size VERSION_BUFFER_SIZE = 255;
 core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
@@ -126,12 +128,13 @@ core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDev
                                                              const Swapchain& swapchain,
                                                              const RenderPipeline& pipeline);
 core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice, const PickedGPUDevice& picked);
-core::expected<VkCommandBuffer, AppError> createCommandBuffer(VkDevice logicalDevice, VkCommandPool pool);
+core::expected<core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>, AppError> createCommandBuffers(VkDevice logicalDevice,
+                                                                                                      VkCommandPool pool);
 
 core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
 
-core::expected<VkSemaphore, AppError> createSemaphore(VkDevice logicalDevice);
-core::expected<VkFence, AppError> createFence(VkDevice logicalDevice);
+core::expected<core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT>, AppError> createSemaphores(VkDevice logicalDevice);
+core::expected<core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT>, AppError> createFences(VkDevice logicalDevice);
 
 void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
                          const RenderPipeline& renderPipeline,
@@ -310,35 +313,35 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     }
 
     // Create Command Buffer
-    VkCommandBuffer cmdBuf;
+    core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> cmdBufs;
     {
-        auto res = createCommandBuffer(logicalDevice, commandPool);
+        auto res = createCommandBuffers(logicalDevice, commandPool);
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
-        cmdBuf = res.value();
+        cmdBufs = std::move(res.value());
         logInfoTagged(RENDERER_TAG, "Command Buffer created");
     }
 
     // Create Synchronization Objects
-    VkSemaphore imageAvailableSemaphore = VK_NULL_HANDLE;
-    VkSemaphore renderFinishedSemaphore = VK_NULL_HANDLE;
-    VkFence inFlightFence = VK_NULL_HANDLE;
+    core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores;
+    core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> renderFinishedSemaphores;
+    core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> inFlightFences;
     {
         {
-            auto res = createSemaphore(logicalDevice);
+            auto res = createSemaphores(logicalDevice);
             if (res.hasErr()) return core::unexpected(res.err());
-            imageAvailableSemaphore = res.value();
+            imageAvailableSemaphores = std::move(res.value());
         }
         {
-            auto res = createSemaphore(logicalDevice);
+            auto res = createSemaphores(logicalDevice);
             if (res.hasErr()) return core::unexpected(res.err());
-            renderFinishedSemaphore = res.value();
+            renderFinishedSemaphores = std::move(res.value());
         }
         {
-            auto res = createFence(logicalDevice);
+            auto res = createFences(logicalDevice);
             if (res.hasErr()) return core::unexpected(res.err());
-            inFlightFence = res.value();
+            inFlightFences = std::move(res.value());
         }
 
         logInfoTagged(RENDERER_TAG, "Synchronization Objects created");
@@ -354,50 +357,50 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_renderPipeline = std::move(renderPipeline);
     g_swapchainFrameBuffers = std::move(frameBuffers);
     g_commandPool = commandPool;
-    g_cmdBuf = cmdBuf;
-    g_imageAvailableSemaphore = imageAvailableSemaphore;
-    g_renderFinishedSemaphore = renderFinishedSemaphore;
-    g_inFlightFence = inFlightFence;
+    g_cmdBufs = std::move(cmdBufs);
+    g_imageAvailableSemaphores = std::move(imageAvailableSemaphores);
+    g_renderFinishedSemaphores = std::move(renderFinishedSemaphores);
+    g_inFlightFences = std::move(inFlightFences);
 
     return {};
 }
 
 void Renderer::drawFrame() {
-    Assert(vkWaitForFences(g_device, 1, &g_inFlightFence, VK_TRUE, core::limitMax<u64>()) == VK_SUCCESS);
-    vkResetFences(g_device, 1, &g_inFlightFence);
+    Assert(vkWaitForFences(g_device, 1, &g_inFlightFences[g_currentFrame], VK_TRUE, core::limitMax<u64>()) == VK_SUCCESS);
+    vkResetFences(g_device, 1, &g_inFlightFences[g_currentFrame]);
 
     u32 imageIdx;
     // TODO: Needs different error handling!
     vkAcquireNextImageKHR(g_device,
                           g_swapchain.swapchain,
                           core::limitMax<u64>(),
-                          g_imageAvailableSemaphore,
+                          g_imageAvailableSemaphores[g_currentFrame],
                           VK_NULL_HANDLE,
                           &imageIdx);
 
-    Assert(vkResetCommandBuffer(g_cmdBuf, 0) == VK_SUCCESS);
-    recordCommandBuffer(g_cmdBuf, imageIdx, g_renderPipeline, g_swapchainFrameBuffers, g_swapchain);
+    Assert(vkResetCommandBuffer(g_cmdBufs[g_currentFrame], 0) == VK_SUCCESS);
+    recordCommandBuffer(g_cmdBufs[g_currentFrame], imageIdx, g_renderPipeline, g_swapchainFrameBuffers, g_swapchain);
 
     // Submit to the command buffer to the Graphics Queue
     {
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &g_cmdBuf;
+        submitInfo.pCommandBuffers = &g_cmdBufs[g_currentFrame];
 
-        VkSemaphore waitSemaphores[] = { g_imageAvailableSemaphore };
+        VkSemaphore waitSemaphores[] = { g_imageAvailableSemaphores[g_currentFrame] };
         constexpr addr_size waitSemaphoresLen = sizeof(waitSemaphores) / sizeof(waitSemaphores[0]);
         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
         submitInfo.waitSemaphoreCount = waitSemaphoresLen;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
 
-        VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphore };
+        VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphores[g_currentFrame] };
         constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
         submitInfo.signalSemaphoreCount = signalSemaphoresLen;
         submitInfo.pSignalSemaphores = signalSemaphores;
 
-        Assert(vkQueueSubmit(g_graphicsQueue.queue, 1, &submitInfo, g_inFlightFence) == VK_SUCCESS);
+        Assert(vkQueueSubmit(g_graphicsQueue.queue, 1, &submitInfo, g_inFlightFences[g_currentFrame]) == VK_SUCCESS);
     }
 
     // Present
@@ -405,7 +408,7 @@ void Renderer::drawFrame() {
         VkPresentInfoKHR presentInfo{};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-        VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphore };
+        VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphores[g_currentFrame] };
         constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
 
         presentInfo.waitSemaphoreCount = signalSemaphoresLen;
@@ -421,6 +424,8 @@ void Renderer::drawFrame() {
         // TODO: Needs different error handling!
         vkQueuePresentKHR(g_presentQueue.queue, &presentInfo);
     }
+
+    g_currentFrame = (g_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void Renderer::shutdown() {
@@ -428,19 +433,11 @@ void Renderer::shutdown() {
         logErrTagged(RENDERER_TAG, "Failed to wait idle the logical device");
     }
 
-    if (g_imageAvailableSemaphore) {
-        logInfoTagged(RENDERER_TAG, "Destroying Image Available Semaphore");
-        vkDestroySemaphore(g_device, g_imageAvailableSemaphore, nullptr);
-    }
-
-    if (g_renderFinishedSemaphore) {
-        logInfoTagged(RENDERER_TAG, "Destroying Render Finished Semaphore");
-        vkDestroySemaphore(g_device, g_renderFinishedSemaphore, nullptr);
-    }
-
-    if (g_inFlightFence) {
-        logInfoTagged(RENDERER_TAG, "Destroying In Flight Fence");
-        vkDestroyFence(g_device, g_inFlightFence, nullptr);
+    logInfoTagged(RENDERER_TAG, "Destroying Synchronization objects");
+    for (i32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroySemaphore(g_device, g_imageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(g_device, g_renderFinishedSemaphores[i], nullptr);
+        vkDestroyFence(g_device, g_inFlightFences[i], nullptr);
     }
 
     if (g_commandPool != VK_NULL_HANDLE) {
@@ -676,41 +673,51 @@ core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice
     return ret;
 }
 
-core::expected<VkCommandBuffer, AppError> createCommandBuffer(VkDevice logicalDevice, VkCommandPool pool) {
+core::expected<core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>, AppError> createCommandBuffers(VkDevice logicalDevice, VkCommandPool pool) {
     VkCommandBufferAllocateInfo allocCreateInfo{};
     allocCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocCreateInfo.commandPool = pool;
     allocCreateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocCreateInfo.commandBufferCount = 1;
+    allocCreateInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
 
-    VkCommandBuffer cmdBuffer = VK_NULL_HANDLE;
-    if (vkAllocateCommandBuffers(logicalDevice, &allocCreateInfo, &cmdBuffer) != VK_SUCCESS) {
+    core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> cmdBuffers;
+    if (vkAllocateCommandBuffers(logicalDevice, &allocCreateInfo, cmdBuffers.data()) != VK_SUCCESS) {
         return FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER_ERREXPR;
     }
 
-    return cmdBuffer;
+    return cmdBuffers;
 }
 
-core::expected<VkSemaphore, AppError> createSemaphore(VkDevice logicalDevice) {
+core::expected<core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT>, AppError> createSemaphores(VkDevice logicalDevice) {
     VkSemaphoreCreateInfo semaphoreCreateInfo{};
     semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-    VkSemaphore ret = VK_NULL_HANDLE;
-    if (VkResult vres = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &ret); vres != VK_SUCCESS) {
-        return FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE_ERREXPR;
+    core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> ret;
+    for (addr_size i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (
+            VkResult vres = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &ret[i]);
+            vres != VK_SUCCESS
+        ) {
+            return FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE_ERREXPR;
+        }
     }
 
     return ret;
 }
 
-core::expected<VkFence, AppError> createFence(VkDevice logicalDevice) {
+core::expected<core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT>, AppError> createFences(VkDevice logicalDevice) {
     VkFenceCreateInfo fenceCreateInfo{};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    VkFence ret = VK_NULL_HANDLE;
-    if (VkResult vres = vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &ret); vres != VK_SUCCESS) {
-        return FAILED_TO_ALLOCATE_VULKAN_FENCE_ERREXPR;
+    core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> ret;
+    for (addr_size i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        if (
+            VkResult vres = vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &ret[i]);
+            vres != VK_SUCCESS
+        ) {
+            return FAILED_TO_ALLOCATE_VULKAN_FENCE_ERREXPR;
+        }
     }
 
     return ret;
