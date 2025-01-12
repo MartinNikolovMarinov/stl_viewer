@@ -117,7 +117,8 @@ void registerEventHandlers() {
         g_appIsRunning = false;
     });
     Platform::registerWindowResizeCallback([](i32 w, i32 h) {
-        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: WINDOW_RESIZE (w=%d, h=%d)", w, h);
+        logInfoTagged(INPUT_EVENTS_TAG, "EVENT: WINDOW_RESIZE (w=%d, h=%d)", w, h);
+        Renderer::resizeTarget(w, h);
     });
     Platform::registerWindowFocusCallback([](bool focus) {
         if (focus) logInfoTagged(INPUT_EVENTS_TAG, "EVENT: WINDOW_FOCUS_GAINED");

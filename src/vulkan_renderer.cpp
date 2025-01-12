@@ -62,6 +62,12 @@ struct VulkanQueue {
     i32 idx = -1;
 };
 
+struct RecreateSwapchain {
+    u32 width = 0;
+    u32 height = 0;
+    bool recreate = false;
+};
+
 #if STLV_DEBUG
 constexpr bool VALIDATION_LAYERS_ENABLED = true;
 #else
@@ -88,6 +94,8 @@ VkDevice g_device = VK_NULL_HANDLE;
 VulkanQueue g_graphicsQueue = {};
 VulkanQueue g_presentQueue = {};
 Swapchain g_swapchain = {};
+Swapchain::CreateInfo g_swapchainInfo = {};
+RecreateSwapchain g_swapchainRecreate = {};
 FrameBufferList g_swapchainFrameBuffers;
 RenderPipeline g_renderPipeline = {};
 VkCommandPool g_commandPool = VK_NULL_HANDLE;
@@ -264,8 +272,18 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
 
     // Create Swapchain
     Swapchain swapchain;
+    Swapchain::CreateInfo swapchainInfo;
     {
-        auto res = Swapchain::create(pickedDevice, logicalDevice, surface);
+        swapchainInfo.imageCount = pickedDevice.imageCount;
+        swapchainInfo.surfaceFormat = pickedDevice.surfaceFormat;
+        swapchainInfo.extent = pickedDevice.extent;
+        swapchainInfo.graphicsQueueIdx = pickedDevice.graphicsQueueIdx;
+        swapchainInfo.presentQueueIdx = pickedDevice.presentQueueIdx;
+        swapchainInfo.currentTransform = pickedDevice.currentTransform;
+        swapchainInfo.presentMode = pickedDevice.presentMode;
+        swapchainInfo.logicalDevice = logicalDevice;
+        swapchainInfo.surface = surface;
+        auto res = Swapchain::create(swapchainInfo);
         if (res.hasErr()) {
             return core::unexpected(res.err());
         }
@@ -354,6 +372,8 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     g_graphicsQueue = graphicsQueue;
     g_presentQueue = presentQueue;
     g_swapchain = std::move(swapchain);
+    g_swapchainInfo = std::move(g_swapchainInfo);
+    g_swapchainRecreate = {};
     g_renderPipeline = std::move(renderPipeline);
     g_swapchainFrameBuffers = std::move(frameBuffers);
     g_commandPool = commandPool;
@@ -426,6 +446,12 @@ void Renderer::drawFrame() {
     }
 
     g_currentFrame = (g_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void Renderer::resizeTarget(u32 width, u32 height) {
+    g_swapchainRecreate.height = height;
+    g_swapchainRecreate.width = width;
+    g_swapchainRecreate.recreate = true;
 }
 
 void Renderer::shutdown() {

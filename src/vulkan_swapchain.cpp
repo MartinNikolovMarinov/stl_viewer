@@ -2,16 +2,16 @@
 #include <vulkan_device_picker.h>
 #include <vulkan_swapchain.h>
 
-core::expected<Swapchain, AppError> Swapchain::create(const PickedGPUDevice& pickedDevice,
-                                                      VkDevice logicalDevice,
-                                                      VkSurfaceKHR surface) {
-    u32 imageCount = pickedDevice.imageCount;
-    auto& surfaceFormat = pickedDevice.surfaceFormat;
-    auto& imageExtent = pickedDevice.extent;
-    u32 graphicsQueueIdx = pickedDevice.graphicsQueueIdx;
-    u32 presentQueueIdx = pickedDevice.presentQueueIdx;
-    auto& currentTransform = pickedDevice.currentTransform;
-    auto& presentMode = pickedDevice.presentMode;
+core::expected<Swapchain, AppError> Swapchain::create(const Swapchain::CreateInfo& info) {
+    u32 imageCount = info.imageCount;
+    auto& surfaceFormat = info.surfaceFormat;
+    auto& imageExtent = info.extent;
+    u32 graphicsQueueIdx = info.graphicsQueueIdx;
+    u32 presentQueueIdx = info.presentQueueIdx;
+    auto& currentTransform = info.currentTransform;
+    auto& presentMode = info.presentMode;
+    auto& logicalDevice = info.logicalDevice;
+    auto& surface = info.surface;
 
     VkSwapchainCreateInfoKHR swapchainCreateInfo{};
     swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
