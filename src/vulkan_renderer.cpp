@@ -13,14 +13,6 @@
 //     bool recreate = false;
 // };
 
-// const char* requiredDeviceExtensions[] = {
-//     VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-// #if defined(OS_MAC) && OS_MAC == 1
-//     VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-// #endif
-// };
-// constexpr addr_size requiredDeviceExtensionsLen = sizeof(requiredDeviceExtensions) / sizeof(requiredDeviceExtensions[0]);
-
 // VkSurfaceKHR g_surface = VK_NULL_HANDLE;
 // VkDebugUtilsMessengerEXT g_debugMessenger = VK_NULL_HANDLE;
 // const GPUDevice* g_selectedGPU = nullptr;
@@ -71,95 +63,6 @@
 // } // namespace
 
 // core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
-//     core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
-
-//     if (auto res = logVulkanVersion(); res.hasErr()) {
-//         return res;
-//     }
-
-//     // Query and log all supported Instance extensions
-//     {
-//         auto res = getAllSupportedInstExtensions();
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         Assert(res.value() != nullptr, "Failed sanity check");
-//         logInfoTagged(RENDERER_TAG, "Listing all Supported Instance Extensions");
-//         logInstExtPropsList(*res.value());
-//     }
-
-//     // Query and log all supported layers
-//     if constexpr (VALIDATION_LAYERS_ENABLED) {
-//         auto res = getAllSupportedInstLayers();
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         Assert(res.value() != nullptr, "Failed sanity check");
-//         logInfoTagged(RENDERER_TAG, "Listing all Supported Instance Layers");
-//         logInstLayersList(*res.value());
-//     }
-
-//     // Create Instance
-//     VkInstance instance = VK_NULL_HANDLE;
-//     {
-//         auto res = vulkanCreateInstance(info.appName);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         instance = res.value();
-//         logInfoTagged(RENDERER_TAG, "Vulkan Instance created");
-//     }
-
-//     // Create Debug Messenger
-//     if constexpr (VALIDATION_LAYERS_ENABLED) {
-//         VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-//         auto res = vulkanCreateDebugMessenger(instance);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         debugMessenger = res.value();
-//         logInfoTagged(RENDERER_TAG, "Vulkan Debug Messenger created");
-//         g_debugMessenger = debugMessenger;
-//     }
-
-//     // Create KHR Surface
-//     VkSurfaceKHR surface = VK_NULL_HANDLE;
-//     {
-//         if (auto err = Platform::createVulkanSurface(instance, surface); !err.isOk()) {
-//             return core::unexpected(err);
-//         }
-//         logInfoTagged(RENDERER_TAG, "Vulkan Surface created");
-//     }
-
-//     // Log all supported Physical Devices
-//     {
-//         auto res = getAllSupportedPhysicalDevices(instance);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         Assert(res.value() != nullptr, "Failed sanity check");
-//         logInfoTagged(RENDERER_TAG, "BEGIN Supported Physical Devices");
-//         logPhysicalDevicesList(*res.value());
-//     }
-
-//     // Pick a suitable GPU
-//     PickedGPUDevice pickedDevice;
-//     {
-//         PickDeviceInfo info {};
-//         info.surface = surface;
-//         info.requiredExtensions = { requiredDeviceExtensions, requiredDeviceExtensionsLen };
-
-//         GPUDeviceList* all = core::Unpack(getAllSupportedPhysicalDevices(instance)); // This won't fail since it is cached.
-
-//         auto res = pickDevice({all->data(), all->len()}, info);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-
-//         pickedDevice = std::move(res.value());
-//         Assert(pickedDevice.gpu != nullptr, "Failed sanity check");
-//         logInfoTagged(RENDERER_TAG, "Selected GPU: %s", pickedDevice.gpu->props.deviceName);
-//     }
 
 //     // Create logical Device
 //     VkDevice logicalDevice;
@@ -374,10 +277,6 @@
 // }
 
 // void Renderer::shutdown() {
-//     if (VkResult vres = vkDeviceWaitIdle(g_device); vres != VK_SUCCESS) {
-//         logErrTagged(RENDERER_TAG, "Failed to wait idle the logical device");
-//     }
-
 //     logInfoTagged(RENDERER_TAG, "Destroying Synchronization objects");
 //     for (i32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 //         vkDestroySemaphore(g_device, g_imageAvailableSemaphores[i], nullptr);
@@ -401,35 +300,6 @@
 
 //     Swapchain::destroy(g_device, g_swapchain);
 //     RenderPipeline::destroy(g_device, g_renderPipeline);
-
-//     if (g_surface != VK_NULL_HANDLE) {
-//         logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");
-//         vkDestroySurfaceKHR(g_instance, g_surface, nullptr);
-//         g_surface = VK_NULL_HANDLE;
-//     }
-
-//     if (g_device != VK_NULL_HANDLE) {
-//         logInfoTagged(RENDERER_TAG, "Destroying logical device");
-//         vkDestroyDevice(g_device, nullptr);
-//         g_device = VK_NULL_HANDLE;
-//         g_graphicsQueue = {};
-//         g_presentQueue = {};
-//     }
-
-//     if (g_debugMessenger != VK_NULL_HANDLE) {
-//         wrap_vkDestroyDebugUtilsMessengerEXT(g_instance, g_debugMessenger, nullptr);
-//         g_debugMessenger = VK_NULL_HANDLE;
-//     }
-
-//     if (g_instance != VK_NULL_HANDLE) {
-//         logInfoTagged(RENDERER_TAG, "Destroying Vulkan instance");
-//         vkDestroyInstance(g_instance, nullptr);
-//         g_instance = VK_NULL_HANDLE;
-//     }
-
-//     g_allSupportedInstExts.free();
-//     g_allSupportedInstLayers.free();
-//     g_allSupportedGPUs.free();
 // }
 
 // namespace {
@@ -718,40 +588,6 @@
 //     return false;
 // }
 
-// core::expected<GPUDeviceList*, AppError> getAllSupportedPhysicalDevices(VkInstance instance, bool useCache) {
-//     if (useCache && !g_allSupportedGPUs.empty()) {
-//         return &g_allSupportedGPUs;
-//     }
-
-//     u32 physDeviceCount;
-//     if (VkResult vres = vkEnumeratePhysicalDevices(instance, &physDeviceCount, nullptr); vres != VK_SUCCESS) {
-//         return FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT_ERREXPR;
-//     }
-
-//     auto physDeviceList = core::ArrList<VkPhysicalDevice>(physDeviceCount, VkPhysicalDevice{});
-//     if (VkResult vres = vkEnumeratePhysicalDevices(instance, &physDeviceCount, physDeviceList.data()); vres != VK_SUCCESS) {
-//         return FAILED_TO_FIND_GPUS_WITH_VULKAN_SUPPORT_ERREXPR;
-//     }
-
-//     auto gpus = GPUDeviceList(physDeviceCount, GPUDevice{});
-//     for (addr_size i = 0; i < physDeviceList.len(); i++) {
-//         auto pd = physDeviceList[i];
-
-//         VkPhysicalDeviceProperties props;
-//         vkGetPhysicalDeviceProperties(pd, &props);
-
-//         VkPhysicalDeviceFeatures features;
-//         vkGetPhysicalDeviceFeatures(pd, &features);
-
-//         gpus[i].device = pd;
-//         gpus[i].props = props;
-//         gpus[i].features = features;
-//     }
-
-//     g_allSupportedGPUs = std::move(gpus);
-//     return &g_allSupportedGPUs;
-// }
-
 // core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]) {
 //     u32 version = 0;
 //     if(VkResult vres = vkEnumerateInstanceVersion(&version); vres != VK_SUCCESS) {
@@ -789,14 +625,14 @@
 
 namespace {
 
-VulkanContext g_vulkanContext;
+VulkanContext g_vkctx;
 
 }
 
 core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
 
-    g_vulkanContext.device = core::Unpack(Device::create({ info.appName }), "Failed to create a device");
+    g_vkctx.device = core::Unpack(Device::create({ info.appName }), "Failed to create a device");
 
     return {};
 }
@@ -810,5 +646,7 @@ void Renderer::resizeTarget(u32 width, u32 height) {
 }
 
 void Renderer::shutdown() {
-    Device::destroy(g_vulkanContext.device);
+    // VK_MUST(vkDeviceWaitIdle(g_vkctx.device.logicalDevice));
+
+    Device::destroy(g_vkctx.device);
 }

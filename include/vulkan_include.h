@@ -25,31 +25,45 @@
 #define VK_MUST(expr) Assert((expr) == VK_SUCCESS)
 
 struct Queue {
-    VkQueue queue = VK_NULL_HANDLE;
+    VkQueue handle = VK_NULL_HANDLE;
     i32 idx = -1;
+};
+
+struct Surface {
+    VkSurfaceKHR handle = VK_NULL_HANDLE;
+    VkSurfaceFormatKHR format;
+    VkPresentModeKHR presentMode;
+    VkExtent2D extent;
+    VkSurfaceTransformFlagBitsKHR currentTransform;
+    u32 imageCount = 0;
 };
 
 struct Device {
     struct CreateInfo {
         const char* appName;
     };
+    struct GPUDevice {
+        VkPhysicalDevice device;
+        VkPhysicalDeviceProperties props;
+        VkPhysicalDeviceFeatures features;
+    };
 
     VkInstance instance = VK_NULL_HANDLE;
     VkDevice logicalDevice = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties physicalProps;
-    VkPhysicalDeviceFeatures physicalFeatures;
+    core::Memory<const char*> requiredDeviceExtensions;
+    VkPhysicalDeviceProperties physicalDeviceProps;
+    VkPhysicalDeviceFeatures physicalDeviceFeatures;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+    Surface surface;
 
     Queue graphicsQueue = {};
     Queue presentQueue = {};
 
     [[nodiscard]] static core::expected<Device, AppError> create(CreateInfo&& info);
-    static void destroy(Device& device);
-};
+    [[nodiscard]] static core::expected<AppError> pickDevice(core::Memory<const GPUDevice> gpus, Device& out);
 
-struct Surface {
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    static void destroy(Device& device);
 };
 
 struct Swapchain {
@@ -64,7 +78,7 @@ struct Pipeline {
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
     VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-    core::ArrList<VkFramebuffer> framebuffers;
+    core::ArrList<VkFramebuffer> frameBuffers;
 };
 
 struct CommandBuffers {
