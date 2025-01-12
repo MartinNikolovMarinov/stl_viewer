@@ -23,6 +23,8 @@ void registerEventHandlers();
 
 void assertHandler(const char* failedExpr, const char* file, i32 line, const char* funcName, const char* errMsg);
 
+void debugPrintMemoryUsage();
+
 }
 
 bool Application::isRunning() {
@@ -40,7 +42,6 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
     if (auto err = Platform::init(title, w, h); !err.isOk()) {
         return core::unexpected(err);
     }
-    logInfo("Platform initialized SUCCESSFULLY");
 
     registerEventHandlers();
 
@@ -50,8 +51,9 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
     if (auto res = Renderer::init(rendererInfo); res.hasErr()) {
         return res;
     }
-    logInfo("Renderer initialized SUCCESSFULLY");
     logSectionTitleInfoTagged(APP_TAG, "END Renderer Initialization");
+
+    debugPrintMemoryUsage();
 
     return {};
 }
@@ -69,12 +71,12 @@ core::expected<AppError> Application::start() {
 }
 
 void Application::shutdown() {
-    // TODO2: I probably need to handle termination signals at some point ? At least interupts like SIGINT (ctrl-C)
+    logSectionTitleInfoTagged(APP_TAG, "BEGIN Renderer Shutdown");
     Renderer::shutdown();
-    logInfo("Renderer::shutdown finished successfully");
+    logSectionTitleInfoTagged(APP_TAG, "END Renderer Shutdown");
 
     Platform::shutdown();
-    logInfo("Platform::shutdown finished successfully");
+    logInfoTagged(APP_TAG, "Platform Shutdown");
 
     core::destroyProgramCtx();
 }
@@ -82,7 +84,8 @@ void Application::shutdown() {
 namespace {
 
 core::expected<AppError> initCoreContext() {
-    core::initProgramCtx(assertHandler);
+    static auto globalDebugAllocator = core::StdStatsAllocator{};
+    core::initProgramCtx(assertHandler, core::createAllocatorCtx(&globalDebugAllocator));
 
     // Logger setup
     i32* tagIndicesToIgnore = nullptr;
@@ -101,7 +104,7 @@ core::expected<AppError> initCoreContext() {
         return core::unexpected(createPltErr(FAILED_TO_INITIALIZE_CORE_LOGGER,
                                 "Failed to initialize core logger"));
     }
-    core::setLoggerLevel(core::LogLevel::L_TRACE);
+    core::setLoggerLevel(core::LogLevel::L_DEBUG);
     core::useAnsiInLogger(USE_ANSI_LOGGING);
     // Set logger tags
     core::setLoggerTag(APP_TAG, appLogTagsToCStr(APP_TAG));
@@ -181,5 +184,15 @@ void assertHandler(const char* failedExpr, const char* file, i32 line, const cha
     // The only place in the code where an exception is used. Debuggers handle this in a relatively convinient way.
     throw std::runtime_error("Assertion failed!");
 };
+
+void debugPrintMemoryUsage() {
+    core::AllocatorContext& gactx = core::getAllocator(0);
+    addr_size inUseMemory = gactx.inUseMemory();
+    addr_size totalMemoryAllocated = gactx.totalMemoryAllocated();
+    char buff[128];
+    logInfo(ANSI_BOLD("Memory in_use: %s, total_allocated: %s"),
+            core::testing::memoryUsedToStr(buff, inUseMemory),
+            core::testing::memoryUsedToStr(buff, totalMemoryAllocated));
+}
 
 } // namespace

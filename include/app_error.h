@@ -28,6 +28,7 @@ struct PlatformError {
     Type type;
 };
 
+// FIXME: Define errors once you are sure how the structure of the renderer will actually workout.
 // TODO2: Unify the naming convension a bit better. Right now every error is named adhoc.
 // TODO2: Write a convinient macro for error checking vulkan function calls.
 enum struct RendererError : i32 {

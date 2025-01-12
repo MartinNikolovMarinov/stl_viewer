@@ -64,8 +64,8 @@ set(stlv_src
     src/user_input.cpp
     src/vulkan_renderer.cpp
     src/vulkan_device_picker.cpp
-    src/vulkan_swapchain.cpp
-    src/vulkan_renderpipeline.cpp
+    # src/vulkan_swapchain.cpp
+    # src/vulkan_renderpipeline.cpp
 )
 
 if(OS STREQUAL "linux")

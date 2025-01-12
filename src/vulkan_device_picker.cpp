@@ -1,376 +1,345 @@
 #include <app_logger.h>
-#include <vulkan_device_picker.h>
 #include <platform.h>
+#include <renderer.h>
+#include <vulkan_include.h>
 
 namespace {
+    struct GPUDevice;
 
-struct QueueFamilyIndices {
-    i32 graphicsIndex = -1;
-    i32 presentIndex  = -1;
+    using ExtPropsList = core::ArrList<VkExtensionProperties>;
+    using LayerPropsList = core::ArrList<VkLayerProperties>;
+    using GPUDeviceList = core::ArrList<GPUDevice>;
 
-    constexpr bool hasMinimumSupport() {
-        return graphicsIndex >= 0 && presentIndex >= 0;
-    }
+    struct GPUDevice {
+        VkPhysicalDevice device = VK_NULL_HANDLE;
+        VkPhysicalDeviceProperties props;
+        VkPhysicalDeviceFeatures features;
+    };
 
-    static core::expected<QueueFamilyIndices, AppError> create(
-        VkPhysicalDevice device,
-        VkSurfaceKHR surface,
-        const core::ArrList<VkQueueFamilyProperties>& vkQueueFamilyProps
-    );
-};
+#if STLV_DEBUG
+    constexpr bool VALIDATION_LAYERS_ENABLED = true;
+#else
+    constexpr bool VALIDATION_LAYERS_ENABLED = false;
+#endif
 
-struct SwapchainFeatureDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    core::ArrList<VkSurfaceFormatKHR> formats;
-    core::ArrList<VkPresentModeKHR> presentModes;
-};
 
-u32                                                            getDeviceSutabilityScore(const GPUDevice& gpu,
-                                                                                        const PickDeviceInfo& info,
-                                                                                        QueueFamilyIndices& outIndices,
-                                                                                        VkSurfaceFormatKHR& outSurfaceFormat,
-                                                                                        VkPresentModeKHR& outPresentMode,
-                                                                                        VkExtent2D& outExtent,
-                                                                                        u32& imageCount,
-                                                                                        VkSurfaceTransformFlagBitsKHR& currentTransform);
-core::ArrList<VkQueueFamilyProperties>                         getVkQueueFamilyPropsForDevice(VkPhysicalDevice device);
-core::expected<QueueFamilyIndices, AppError>                   findQueueIndices(VkPhysicalDevice device, const PickDeviceInfo& info);
-core::expected<core::ArrList<VkExtensionProperties>, AppError> getAllSupportedExtensionsForDevice(VkPhysicalDevice device);
-bool                                                           checkRequiredExtSupport(const PickDeviceInfo& info,
-                                                                                       const core::ArrList<VkExtensionProperties>& supportedDeviceExts);
-core::expected<SwapchainFeatureDetails, AppError>              getSwapchainFeatures(VkPhysicalDevice device, const PickDeviceInfo& info);
-bool                                                           pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats,
-                                                                                 VkSurfaceFormatKHR& out);
-VkPresentModeKHR                                               pickSwapPresentMode(const core::ArrList<VkPresentModeKHR>& presentModes,
-                                                                                   u32& score);
-VkExtent2D                                                     pickSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+    ExtPropsList g_allSupportedInstExts;
+    LayerPropsList g_allSupportedInstLayers;
+    GPUDeviceList g_allSupportedGPUs;
+
+    constexpr addr_size VERSION_BUFFER_SIZE = 255;
+    void getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
+    void logVulkanVersion();
+
+    ExtPropsList* getAllSupportedInstExtensions(bool useCache = true);
+    void          logInstExtPropsList(const ExtPropsList& list);
+    bool          checkSupportForInstExtension(const char* extensionName);
+
+    LayerPropsList* getAllSupportedInstLayers(bool useCache = true);
+    void            logInstLayersList(const LayerPropsList& list);
+    bool            checkSupportForInstLayer(const char* name);
+
+    GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache = true);
+    void           logPhysicalDevicesList(const GPUDeviceList& list);
+
+    VkInstance vulkanCreateInstance(const char* appName);
+
+    VkDebugUtilsMessengerEXT vulkanCreateDebugMessenger(VkInstance instance);
+    VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
+    VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
+                                             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                                             const VkAllocationCallbacks* pAllocator,
+                                             VkDebugUtilsMessengerEXT* pDebugMessenger);
+    void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                             VkDebugUtilsMessengerEXT debugMessenger,
+                                             const VkAllocationCallbacks* pAllocator);
 
 } // namespace
 
-core::expected<PickedGPUDevice, AppError> pickDevice(core::Memory<const GPUDevice> gpus, const PickDeviceInfo& info) {
-    PickedGPUDevice pickedDevice = {};
-    i32 prefferedIdx = -1;
-    u32 maxScore = 0;
+core::expected<Device, AppError> Device::create(CreateInfo&& info) {
+    Device device;
 
-    for (addr_size i = 0; i < gpus.len(); i++) {
-        QueueFamilyIndices queueFamilies{};
-        VkSurfaceFormatKHR surfaceFormat{};
-        VkPresentModeKHR presentMode{};
-        VkExtent2D extent{};
-        u32 imageCount = 0;
-        VkSurfaceTransformFlagBitsKHR currentTransform;
+    logInfoTagged(RENDERER_TAG, "Creating Device");
 
-        u32 currScore = getDeviceSutabilityScore(gpus[i],
-                                                 info,
-                                                 queueFamilies,
-                                                 surfaceFormat,
-                                                 presentMode,
-                                                 extent,
-                                                 imageCount,
-                                                 currentTransform);
-
-        if (currScore > maxScore) {
-            prefferedIdx = i32(i);
-            maxScore = currScore;
-
-            pickedDevice.gpu = &gpus[addr_size(prefferedIdx)];
-            pickedDevice.graphicsQueueIdx = queueFamilies.graphicsIndex;
-            pickedDevice.presentQueueIdx = queueFamilies.presentIndex;
-            pickedDevice.surfaceFormat = std::move(surfaceFormat);
-            pickedDevice.presentMode = std::move(presentMode);
-            pickedDevice.extent = std::move(extent);
-            pickedDevice.imageCount = imageCount;
-            pickedDevice.currentTransform = currentTransform;
-        }
+    logVulkanVersion();
+    logInstExtPropsList(*getAllSupportedInstExtensions());
+    if constexpr (VALIDATION_LAYERS_ENABLED) {
+        logInstLayersList(*getAllSupportedInstLayers());
     }
 
-    if (prefferedIdx < 0) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES));
+    // Create Instance
+    VkInstance instance = vulkanCreateInstance(info.appName);
+    logInfoTagged(RENDERER_TAG, "VkInstance created");
+
+    // Create Debug Messenger
+    if constexpr (VALIDATION_LAYERS_ENABLED) {
+        VkDebugUtilsMessengerEXT debugMessenger = vulkanCreateDebugMessenger(instance);
+        logInfoTagged(RENDERER_TAG, "VkDebugUtilsMessengerEXT created");
+        device.debugMessenger = debugMessenger;
     }
 
-    return pickedDevice;
+    device.instance = instance;
+    return device;
 }
 
-namespace  {
-
-/**
- * @brief Gives a score for the physical device based on the supported feature set. Higher is better. A score of 0 means
- *        that the device does not meet the application's minimal requirements.
- *
- * TODO2: This function does a too much, it should probably be split up into different functions that score different
- *        components.
- *
- * @param gpu The device to score.
- * @param info External information to aid the scoring.
- * @param out* Output arguments.
- *
- * @return The score.
-*/
-
-u32 getDeviceSutabilityScore(
-    const GPUDevice& gpu,
-    const PickDeviceInfo& info,
-    QueueFamilyIndices& outIndices,
-    VkSurfaceFormatKHR& outSurfaceFormat,
-    VkPresentModeKHR& outPresentMode,
-    VkExtent2D& outExtent,
-    u32& outImageCount,
-    VkSurfaceTransformFlagBitsKHR& outCurrentTransform
-) {
-    const auto& device = gpu.device;
-    const auto& props = gpu.props;
-    u32 score = 0;
-
-    // Verify required Queues are supported
-    {
-        auto res = findQueueIndices(gpu.device, info);
-        if (res.hasErr()) {
-            logWarnTagged(RENDERER_TAG, "Failed to find queue indices for device: %s, reason: %s",
-                         gpu.props.deviceName, res.err().toCStr());
-            return 0;
-        }
-
-        QueueFamilyIndices& queueFamilies = res.value();
-        if (!queueFamilies.hasMinimumSupport()) {
-            return 0;
-        }
-
-        // Has minimum required support for queues.
-        score++;
-        outIndices = queueFamilies;
+void Device::destroy(Device& device) {
+    if (device.debugMessenger != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying Debug messenger");
+        wrap_vkDestroyDebugUtilsMessengerEXT(device.instance, device.debugMessenger, nullptr);
+        device.debugMessenger = VK_NULL_HANDLE;
     }
 
-    // Get all device extensions
-    core::ArrList<VkExtensionProperties> supportedDeviceExts;
-    {
-        auto res = getAllSupportedExtensionsForDevice(device);
-        if (res.hasErr()) {
-            logWarnTagged(RENDERER_TAG, "Failed to get all supported extensions for device: %s, reason: %s",
-                         gpu.props.deviceName, res.err().toCStr());
-            return 0;
-        }
-        supportedDeviceExts = std::move(res.value());
+    if (device.instance != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying Vulkan instance");
+        vkDestroyInstance(device.instance, nullptr);
+        device.instance = VK_NULL_HANDLE;
     }
 
-    // Check Required Device extensions support
-    {
-        bool supported = checkRequiredExtSupport(info, supportedDeviceExts);
-        if (!supported) {
-            return 0;
-        }
-
-        // Has support for required extensions
-        score++;
-    }
-
-    // Get features for Swapchain
-    SwapchainFeatureDetails swapchainFeatureDetails;
-    {
-        auto res = getSwapchainFeatures(device, info);
-        if (res.hasErr()) {
-            logWarnTagged(RENDERER_TAG, "Failed to get Swapchain features for device: %s, reason: %s",
-                         gpu.props.deviceName, res.err().toCStr());
-            return 0;
-        }
-        swapchainFeatureDetails = std::move(res.value());
-    }
-
-    // Give a score for the supported Swapchain features.
-    {
-        const auto& formats = swapchainFeatureDetails.formats;
-        const auto& presentModes = swapchainFeatureDetails.presentModes;
-        const auto& capabilities = swapchainFeatureDetails.capabilities;
-
-        if (formats.empty()) return 0; // No supported formats
-        if (presentModes.empty()) return 0; // No supported present modes
-
-        outPresentMode = pickSwapPresentMode(presentModes, score);
-
-        outExtent = pickSwapExtent(capabilities);
-
-        outImageCount = capabilities.minImageCount + 1;
-        if (capabilities.maxImageCount > 0 && outImageCount > capabilities.maxImageCount) {
-            outImageCount = capabilities.maxImageCount;
-        }
-
-        outCurrentTransform = capabilities.currentTransform;
-
-        if (!pickSurfaceFormat(formats, outSurfaceFormat)) {
-            return 0; // No suttable surface format
-        }
-    }
-
-    if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-        // Discrete GPUs are preffered.
-        score += 100;
-    }
-
-    return score;
+    g_allSupportedInstExts.free();
+    g_allSupportedInstLayers.free();
+    g_allSupportedGPUs.free();
 }
 
-core::ArrList<VkQueueFamilyProperties> getVkQueueFamilyPropsForDevice(VkPhysicalDevice device) {
-    u32 queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+namespace {
 
-    core::ArrList<VkQueueFamilyProperties> queueFamilies(queueFamilyCount, VkQueueFamilyProperties{});
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+VkInstance vulkanCreateInstance(const char* appName) {
+    // Initialize Vulkan Instance
+    VkApplicationInfo appInfo = {};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = appName;
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "No Engine";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;
 
-    return queueFamilies;
+    // Retrieve required extensions by the platform layer
+    i32 requiredPlatformExtCount = 0;
+    Platform::requiredVulkanExtsCount(requiredPlatformExtCount);
+    core::ArrList<const char*> extensions (requiredPlatformExtCount, nullptr);
+    Platform::requiredVulkanExts(extensions.data());
+
+    VkFlags instanceCreateInfoFlags = 0;
+
+    // Setup Instance Extensions
+    {
+        extensions.push(VK_KHR_SURFACE_EXTENSION_NAME);
+
+        #if defined(OS_MAC) && OS_MAC == 1
+            // FIXME: Some of these might be optional ??
+            // Enable portability extension for MacOS.
+            extensions.push(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+            extensions.push(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+            instanceCreateInfoFlags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+        #endif
+
+        // Check required extensions
+        {
+            for (addr_size i = 0; i < extensions.len(); i++) {
+                if (!checkSupportForInstExtension(extensions[i])) {
+                    logFatalTagged(RENDERER_TAG, "Missing required extension: %s", extensions[i]);
+                    Assert(false, "Missing required extension");
+                }
+            }
+        }
+
+        // Check optional extensions
+        if constexpr (VALIDATION_LAYERS_ENABLED) {
+            if (checkSupportForInstExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+                extensions.push(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                logInfoTagged(RENDERER_TAG, "Enabling optional extension: %s", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            }
+            else {
+                logWarnTagged(RENDERER_TAG, "Optional extension %s is not supported", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            }
+        }
+    }
+
+    VkInstanceCreateInfo instanceCreateInfo = {};
+    instanceCreateInfo.flags = instanceCreateInfoFlags;
+    instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    instanceCreateInfo.pApplicationInfo = &appInfo;
+    instanceCreateInfo.enabledExtensionCount = u32(extensions.len());
+    instanceCreateInfo.ppEnabledExtensionNames = extensions.data();
+
+    // Setup Validation Layers
+    if constexpr (VALIDATION_LAYERS_ENABLED) {
+        const char* layerNames[1];
+        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation");
+                        //  checkSupportForInstLayer("VK_LAYER_LUNARG_api_dump");
+        if (supported) {
+            layerNames[0] = "VK_LAYER_KHRONOS_validation";
+            // layerNames[1] = "VK_LAYER_LUNARG_api_dump";
+            instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
+            instanceCreateInfo.ppEnabledLayerNames = layerNames;
+            logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer");
+
+            // The following code is required to enable the debug utils extension during instance creation
+            static VkDebugUtilsMessengerCreateInfoEXT debugMessageInfo = defaultDebugMessengerInfo();
+            instanceCreateInfo.pNext = &debugMessageInfo;
+        }
+        else {
+            logWarnTagged(RENDERER_TAG, "VK_LAYER_KHRONOS_validation is not supported");
+        }
+    }
+
+    VkInstance instane = VK_NULL_HANDLE;
+    VK_MUST(vkCreateInstance(&instanceCreateInfo, nullptr, &instane));
+
+    return instane;
 }
 
-core::expected<QueueFamilyIndices, AppError> QueueFamilyIndices::create(
-    VkPhysicalDevice device,
-    VkSurfaceKHR surface,
-    const core::ArrList<VkQueueFamilyProperties>& vkQueueFamilyProps
-) {
-    AppError err {};
-    QueueFamilyIndices ret{};
+VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo{};
 
-    auto findGraphicsQueue = [](const VkQueueFamilyProperties& x, addr_size) {
-        VkQueueFlags flags = x.queueFlags;
-        bool supportsGraphics = flags & VK_QUEUE_GRAPHICS_BIT;
-        return supportsGraphics;
+    debugMessengerCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+    debugMessengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                                               // VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+
+    debugMessengerCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+    debugMessengerCreateInfo.pfnUserCallback = [](
+        VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        VkDebugUtilsMessageTypeFlagsEXT messageType,
+        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+        [[maybe_unused]] void* pUserData
+    ) -> VkBool32 {
+        static constexpr addr_size DEBUG_MESSAGE_BUFFER_SIZE = 1024;
+        char buffer[DEBUG_MESSAGE_BUFFER_SIZE];
+        char* ptr = buffer;
+
+        // Write message type to the buffer
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
+            ptr = core::memcopy(ptr, "[GENERAL] ", core::cstrLen("[GENERAL] "));
+        }
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+            ptr = core::memcopy(ptr, "[VALIDATION] ", core::cstrLen("[VALIDATION] "));
+        }
+        if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+            ptr = core::memcopy(ptr, "[PERFORMANCE] ", core::cstrLen("[PERFORMANCE] "));
+        }
+
+        // Write callback message to the buffer
+        ptr = core::memcopy(ptr, pCallbackData->pMessage, core::cstrLen(pCallbackData->pMessage));
+
+        // Null-terminate the buffer
+        *ptr = '\0';
+
+        // Log the message with the appropriate logger
+        if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
+            logErrTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+            logWarnTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+            logInfoTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+        else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+            logDebugTagged(VULKAN_VALIDATION_TAG, buffer);
+        }
+
+        return VK_FALSE;
     };
 
-    auto findPresentQueue = [&err, &device, &surface](const VkQueueFamilyProperties&, addr_size i) {
-        VkBool32 presentSupport = VK_FALSE;
-        if (VkResult vres = vkGetPhysicalDeviceSurfaceSupportKHR(device, u32(i), surface, &presentSupport);
-            vres != VK_SUCCESS) {
-            err = createRendErr(RendererError::FAILED_TO_QUERY_FOR_PRESENT_QUEUE_SUPPORT);
-            return true; // return true for early exit
-        }
-        return presentSupport == VK_TRUE;
-    };
-
-    ret.graphicsIndex = i32(core::find(vkQueueFamilyProps, findGraphicsQueue));
-    if (ret.graphicsIndex == -1) return ret;
-
-    ret.presentIndex = i32(core::find(vkQueueFamilyProps, findPresentQueue));
-    if (!err.isOk()) return core::unexpected(err);
-    if (ret.presentIndex == -1) return ret;
-
-    return ret;
+    return debugMessengerCreateInfo;
 }
 
-core::expected<QueueFamilyIndices, AppError> findQueueIndices(VkPhysicalDevice device, const PickDeviceInfo& info) {
-    auto vkQueueFamilyProps = getVkQueueFamilyPropsForDevice(device);
-    auto res = QueueFamilyIndices::create(device, info.surface, vkQueueFamilyProps);
-    return res;
+VkDebugUtilsMessengerEXT vulkanCreateDebugMessenger(VkInstance instance) {
+    VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo = defaultDebugMessengerInfo();
+    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+    VkResult vres = wrap_vkCreateDebugUtilsMessengerEXT(instance,
+                                                        &debugMessengerCreateInfo,
+                                                        nullptr,
+                                                        &debugMessenger);
+    VK_MUST(vres);
+    return debugMessenger;
 }
 
-core::expected<core::ArrList<VkExtensionProperties>, AppError> getAllSupportedExtensionsForDevice(VkPhysicalDevice device) {
-    u32 extCount = 0;
-    if (
-        VkResult vres = vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, nullptr);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_ENUMERATE_VULKAN_DEVICE_EXTENSION_PROPERTIES));
+GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache) {
+    if (useCache && !g_allSupportedGPUs.empty()) {
+        return &g_allSupportedGPUs;
     }
 
-    core::ArrList<VkExtensionProperties> availableExts(extCount, VkExtensionProperties{});
-    if (
-        VkResult vres = vkEnumerateDeviceExtensionProperties(device, nullptr, &extCount, availableExts.data());
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_ENUMERATE_VULKAN_DEVICE_EXTENSION_PROPERTIES));
+    u32 physDeviceCount;
+    VK_MUST(vkEnumeratePhysicalDevices(instance, &physDeviceCount, nullptr));
+
+    auto physDeviceList = core::ArrList<VkPhysicalDevice>(physDeviceCount, VkPhysicalDevice{});
+    VK_MUST(vkEnumeratePhysicalDevices(instance, &physDeviceCount, physDeviceList.data()));
+
+    auto gpus = GPUDeviceList(physDeviceCount, GPUDevice{});
+    for (addr_size i = 0; i < physDeviceList.len(); i++) {
+        auto pd = physDeviceList[i];
+
+        VkPhysicalDeviceProperties props;
+        vkGetPhysicalDeviceProperties(pd, &props);
+
+        VkPhysicalDeviceFeatures features;
+        vkGetPhysicalDeviceFeatures(pd, &features);
+
+        gpus[i].device = pd;
+        gpus[i].props = props;
+        gpus[i].features = features;
     }
 
-    return availableExts;
+    g_allSupportedGPUs = std::move(gpus);
+    return &g_allSupportedGPUs;
 }
 
-bool checkRequiredExtSupport(
-    const PickDeviceInfo& info,
-    const core::ArrList<VkExtensionProperties>& supportedDeviceExts
-) {
-    for (addr_size i = 0; i < info.requiredExtensions.len(); i++) {
-        const char* currExtName = info.requiredExtensions[i];
-        const addr_size currExtNameLen = core::cstrLen(currExtName);
+void logPhysicalDevicesList(const GPUDeviceList& list) {
+    logInfoTagged(RENDERER_TAG, "Physical Devices (%llu)", list.len());
+    for (addr_size i = 0; i < list.len(); i++) {
+        auto& gpu = list[i];
+        auto& props = gpu.props;
+        // auto& features = gpu.features; // TODO2: log relevant features
 
-        addr_off foundIdx = core::find(supportedDeviceExts, [&currExtName, &currExtNameLen](const VkExtensionProperties& v, addr_size) {
-            i32 diff = core::memcmp(currExtName, currExtNameLen,
-                                    v.extensionName, core::cstrLen(v.extensionName));
-            return diff == 0;
-        });
-
-        if (foundIdx < 0) {
-            logDebugTagged(RENDERER_TAG, "Device does not support extension: %s", currExtName);
-            return false;
-        }
+        logInfoTagged(RENDERER_TAG, "");
+        logInfoTagged(RENDERER_TAG, "\tDevice Name: %s", props.deviceName);
+        logInfoTagged(RENDERER_TAG, "\tAPI Version: %u.%u.%u",
+                      VK_VERSION_MAJOR(props.apiVersion),
+                      VK_VERSION_MINOR(props.apiVersion),
+                      VK_VERSION_PATCH(props.apiVersion));
+        logInfoTagged(RENDERER_TAG, "\tDriver Version: %u",
+                      props.driverVersion);
+        logInfoTagged(RENDERER_TAG, "\tVendor ID: %u, Device ID: %u",
+                      props.vendorID, props.deviceID);
+        logInfoTagged(RENDERER_TAG, "\tDevice Type: %s",
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "Integrated GPU" :
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" :
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "Virtual GPU" :
+                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "CPU" : "Other");
     }
-
-    return true;
 }
 
-core::expected<SwapchainFeatureDetails, AppError> getSwapchainFeatures(VkPhysicalDevice device, const PickDeviceInfo& info) {
-    SwapchainFeatureDetails details;
-
-    // Basic surface capabilities (min/max number of images in swap chain, min/max width and height of images)
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, info.surface, &details.capabilities);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES));
+ExtPropsList* getAllSupportedInstExtensions(bool useCache) {
+    if (useCache && !g_allSupportedInstExts.empty()) {
+        return &g_allSupportedInstExts;
     }
 
-    // Surface formats (pixel format, color space)
-    u32 formatCount;
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfaceFormatsKHR(device, info.surface, &formatCount, nullptr);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_FORMATS));
-    }
+    u32 extensionCount = 0;
+    VK_MUST(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
 
-    details.formats = core::ArrList<VkSurfaceFormatKHR>(formatCount, VkSurfaceFormatKHR{});
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfaceFormatsKHR(device,
-                                                             info.surface,
-                                                             &formatCount,
-                                                             details.formats.data());
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_FORMATS));
-    }
+    auto extList = ExtPropsList(extensionCount, VkExtensionProperties{});
+    VK_MUST(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extList.data()));
 
-    // Available presentation modes
-    uint32_t presentModeCount;
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfacePresentModesKHR(device, info.surface, &presentModeCount, nullptr);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES));
-    }
-
-    details.presentModes = core::ArrList<VkPresentModeKHR>(presentModeCount, VkPresentModeKHR{});
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfacePresentModesKHR(device,
-                                                                  info.surface,
-                                                                  &presentModeCount,
-                                                                  details.presentModes.data());
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES));
-    }
-
-    return details;
+    g_allSupportedInstExts = std::move(extList);
+    return &g_allSupportedInstExts;
 }
 
-bool pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats, VkSurfaceFormatKHR& out) {
-    // NOTE:
-    //
-    // The Vulkan specification mandates that implementations supporting swapchains must support
-    // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR. This ensures that any Vulkan-compliant GPU will
-    // have this color space available and I can REQUIRE it here!
-    //
-    // Vulkan implementations that support swapchains are required to support at least one sRGB format, and
-    // VK_FORMAT_B8G8R8A8_SRGB is ALMOST ALWAYS included.
+void logInstExtPropsList(const ExtPropsList& list) {
+    logInfoTagged(RENDERER_TAG, "Extensions (%llu)", list.len());
+    for (addr_size i = 0; i < list.len(); i++) {
+        logInfoTagged(RENDERER_TAG, "\t%s v%u", list[i].extensionName, list[i].specVersion);
+    }
+}
 
-    for (addr_size i = 0; i < formats.len(); i++) {
-        const auto& f = formats[i];
-        if (f.format == VK_FORMAT_B8G8R8A8_SRGB &&
-            f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-            out.format = f.format;
-            out.colorSpace = f.colorSpace;
+bool checkSupportForInstExtension(const char* extensionName) {
+    const ExtPropsList& extensions = *getAllSupportedInstExtensions();
+    for (addr_size i = 0; i < extensions.len(); i++) {
+        if (core::memcmp(extensions[i].extensionName, extensionName, core::cstrLen(extensionName)) == 0) {
             return true;
         }
     }
@@ -378,57 +347,97 @@ bool pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats, VkSurfa
     return false;
 }
 
-VkPresentModeKHR pickSwapPresentMode(const core::ArrList<VkPresentModeKHR>& presentModes, u32& score) {
-    // NOTE: From the Vulkan Tutorial
-    //
-    // The presentation mode is arguably the most important setting for the swap chain, because it represents the actual
-    // conditions for showing images to the screen. There are 4 commonly used modes in Vulkan:
-    // * VK_PRESENT_MODE_IMMEDIATE_KHR: Images submitted by your application are transferred to the screen right away,
-    //   which may result in tearing.
-    // * VK_PRESENT_MODE_FIFO_KHR: The swap chain is a queue where the display takes an image from the front of the
-    //   queue when the display is refreshed and the program inserts rendered images at the back of the queue. If the
-    //   queue is full then the program has to WAIT. This is most similar to VERTICAL SYNC. The moment that the display
-    //   is refreshed is known as "vertical blank".
-    // * VK_PRESENT_MODE_FIFO_RELAXED_KHR: This mode only differs from the previous one if the application is late and
-    //   the queue was empty at the last vertical blank. Instead of waiting for the next vertical blank, the image is
-    //   transferred right away when it finally arrives. This may result in visible tearing.
-    // * VK_PRESENT_MODE_MAILBOX_KHR: This is another variation of the second mode. Instead of blocking the application
-    //   when the queue is full, the images that are already queued are simply replaced with the newer ones. This mode
-    //   can be used to render frames as fast as possible while still avoiding tearing, resulting in fewer latency
-    //   issues than standard vertical sync. This is commonly known as "triple buffering", although the existence of
-    //   three buffers alone does not necessarily mean that the framerate is unlocked.
+LayerPropsList* getAllSupportedInstLayers(bool useCache) {
+    if (useCache && !g_allSupportedInstLayers.empty()) {
+        return &g_allSupportedInstLayers;
+    }
 
-    // TODO2: Do I actually need trieple buffering?
-    for (addr_size i = 0; i < presentModes.len(); i++) {
-        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-            return VK_PRESENT_MODE_MAILBOX_KHR;
+    u32 layerCount;
+    VK_MUST(vkEnumerateInstanceLayerProperties(&layerCount, nullptr));
+
+    auto layList = LayerPropsList(layerCount, VkLayerProperties{});
+    VK_MUST(vkEnumerateInstanceLayerProperties(&layerCount, layList.data()));
+
+    g_allSupportedInstLayers = std::move(layList);
+    return &g_allSupportedInstLayers;
+}
+
+void logInstLayersList(const LayerPropsList& list) {
+    logInfoTagged(RENDERER_TAG, "Layers (%llu)", list.len());
+    for (addr_size i = 0; i < list.len(); i++) {
+        logInfoTagged(RENDERER_TAG, "\tname: %s, description: %s, spec version: %u, impl version: %u",
+                      list[i].layerName, list[i].description, list[i].specVersion, list[i].implementationVersion);
+    }
+}
+
+bool checkSupportForInstLayer(const char* name) {
+    const LayerPropsList& layers = *getAllSupportedInstLayers();
+    for (addr_size i = 0; i < layers.len(); i++) {
+        VkLayerProperties p = layers[i];
+        if (core::memcmp(p.layerName, name, core::cstrLen(name)) == 0) {
+            return true;
         }
     }
 
-    // Decreasing the score because VK_PRESENT_MODE_FIFO_KHR is suboptimal, but it is the only Vulkan standard required
-    // present mode.
-    score--;
-    return VK_PRESENT_MODE_FIFO_KHR;
+    return false;
 }
 
-VkExtent2D pickSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-    if (capabilities.currentExtent.width != core::limitMax<u32>()) {
-        return capabilities.currentExtent;
+void logVulkanVersion() {
+    char buff[VERSION_BUFFER_SIZE];
+    getVulkanVersion(buff);
+    logInfoTagged(RENDERER_TAG, buff);
+}
+
+void getVulkanVersion(char out[VERSION_BUFFER_SIZE]) {
+    u32 version = 0;
+    VK_MUST(vkEnumerateInstanceVersion(&version));
+
+    u32 n;
+
+    out = core::memcopy(out, "Vulkan v", core::cstrLen("Vulkan v"));
+    n = core::Unpack(core::intToCstr(VK_VERSION_MAJOR(version), out, VERSION_BUFFER_SIZE));
+    out[n] = '.';
+    out += n + 1;
+
+    n = core::Unpack(core::intToCstr(VK_VERSION_MINOR(version), out, VERSION_BUFFER_SIZE));
+    out[n] = '.';
+    out += n + 1;
+
+    n = core::Unpack(core::intToCstr(VK_VERSION_PATCH(version), out, VERSION_BUFFER_SIZE));
+    out[n] = '\0';
+    out += n;
+}
+
+VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
+                                             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                                             const VkAllocationCallbacks* pAllocator,
+                                             VkDebugUtilsMessengerEXT* pDebugMessenger) {
+    static PFN_vkCreateDebugUtilsMessengerEXT func = nullptr;
+
+    if (func == nullptr) {
+        func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        if (func == nullptr) {
+            return VK_ERROR_EXTENSION_NOT_PRESENT;
+        }
     }
 
-    u32 width, height;
-    Platform::getFrameBufferSize(width, height);
+    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+}
 
-    VkExtent2D actualExtent = { width, height };
+void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                          VkDebugUtilsMessengerEXT debugMessenger,
+                                          const VkAllocationCallbacks* pAllocator) {
+    static PFN_vkDestroyDebugUtilsMessengerEXT func = nullptr;
 
-    actualExtent.width = core::clamp(actualExtent.width,
-                                     capabilities.minImageExtent.width,
-                                     capabilities.maxImageExtent.width);
-    actualExtent.height = core::clamp(actualExtent.height,
-                                      capabilities.minImageExtent.height,
-                                      capabilities.maxImageExtent.height);
+    if (func == nullptr) {
+        func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        if (func == nullptr) {
+            return;
+        }
+    }
 
-    return actualExtent;
+    func(instance, debugMessenger, pAllocator);
 }
 
 } // namespace
+

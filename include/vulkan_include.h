@@ -1,5 +1,7 @@
 #pragma once
 
+#include <app_error.h>
+#include <basic.h>
 #include <core_system_checks.h>
 
 #if defined(OS_MAC) && OS_MAC == 1
@@ -19,3 +21,61 @@
         #include <vulkan/vulkan.h>
     #endif
 #endif
+
+#define VK_MUST(expr) Assert((expr) == VK_SUCCESS)
+
+struct Queue {
+    VkQueue queue = VK_NULL_HANDLE;
+    i32 idx = -1;
+};
+
+struct Device {
+    struct CreateInfo {
+        const char* appName;
+    };
+
+    VkInstance instance = VK_NULL_HANDLE;
+    VkDevice logicalDevice = VK_NULL_HANDLE;
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    VkPhysicalDeviceProperties physicalProps;
+    VkPhysicalDeviceFeatures physicalFeatures;
+    VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
+
+    Queue graphicsQueue = {};
+    Queue presentQueue = {};
+
+    [[nodiscard]] static core::expected<Device, AppError> create(CreateInfo&& info);
+    static void destroy(Device& device);
+};
+
+struct Surface {
+    VkSurfaceKHR surface = VK_NULL_HANDLE;
+};
+
+struct Swapchain {
+    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    core::ArrList<VkImage> images;
+    core::ArrList<VkImageView> imageViews;
+    VkFormat imageFormat;
+    VkExtent2D extent;
+};
+
+struct Pipeline {
+    VkRenderPass renderPass = VK_NULL_HANDLE;
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline graphicsPipeline = VK_NULL_HANDLE;
+    core::ArrList<VkFramebuffer> framebuffers;
+};
+
+struct CommandBuffers {
+    VkCommandPool commandPool = VK_NULL_HANDLE;
+    core::ArrList<VkCommandBuffer> cmdBuffers;
+};
+
+struct VulkanContext {
+    Device device;
+    Surface surface;
+    Swapchain swapchain;
+    Pipeline pipeline;
+    CommandBuffers cmdBuffers;
+};
