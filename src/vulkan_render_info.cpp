@@ -18,7 +18,6 @@ RendererInitInfo RendererInitInfo::create(const char* appName) {
             VK_KHR_SURFACE_EXTENSION_NAME,
         #if defined(OS_MAC) && OS_MAC == 1
             VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
-            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
         #endif
         #if defined(STLV_DEBUG) && STLV_DEBUG == 1
             VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
@@ -28,7 +27,14 @@ RendererInitInfo RendererInitInfo::create(const char* appName) {
             requiredInstanceExtensions,
             sizeof(requiredInstanceExtensions) / sizeof(requiredInstanceExtensions[0])
         };
-        info.backend.vk.optionalInstanceExtensions = {};
+
+        static const char* optionalInstanceExtensions[] = {
+            VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME
+        };
+        info.backend.vk.optionalInstanceExtensions = {
+            optionalInstanceExtensions,
+            sizeof(optionalInstanceExtensions) / sizeof(optionalInstanceExtensions[0])
+        };
     }
 
     // Device Extensions

@@ -493,7 +493,6 @@ core::expected<VkInstance, AppError> vulkanCreateInstance(const char* appName) {
         extensions.push(VK_KHR_SURFACE_EXTENSION_NAME);
 
         #if defined(OS_MAC) && OS_MAC == 1
-            // FIXME: Some of these might be optional ??
             // Enable portability extension for MacOS.
             extensions.push(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
             extensions.push(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);

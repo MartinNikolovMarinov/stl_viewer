@@ -75,9 +75,6 @@ core::expected<Device, AppError> Device::create(const RendererInitInfo& renderer
     logInfoTagged(RENDERER_TAG, "WSI Surface created");
     device.surface = surface;
 
-    // Log all supported Physical Devices
-    logPhysicalDevicesList(*getAllSupportedPhysicalDevices(device.instance));
-
     // Pick a suitable GPU
     device.requiredDeviceExtensions = rendererInitInfo.backend.vk.requiredDeviceExtensions;
     GPUDeviceList* all = getAllSupportedPhysicalDevices(device.instance);
@@ -303,30 +300,6 @@ GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache
 
     g_allSupportedGPUs = std::move(gpus);
     return &g_allSupportedGPUs;
-}
-
-void logPhysicalDevicesList(const GPUDeviceList& list) {
-    logInfoTagged(RENDERER_TAG, "Physical Devices (%llu)", list.len());
-    for (addr_size i = 0; i < list.len(); i++) {
-        auto& gpu = list[i];
-        auto& props = gpu.props;
-
-        logInfoTagged(RENDERER_TAG, "");
-        logInfoTagged(RENDERER_TAG, "\tDevice Name: %s", props.deviceName);
-        logInfoTagged(RENDERER_TAG, "\tAPI Version: %u.%u.%u",
-                      VK_VERSION_MAJOR(props.apiVersion),
-                      VK_VERSION_MINOR(props.apiVersion),
-                      VK_VERSION_PATCH(props.apiVersion));
-        logInfoTagged(RENDERER_TAG, "\tDriver Version: %u",
-                      props.driverVersion);
-        logInfoTagged(RENDERER_TAG, "\tVendor ID: %u, Device ID: %u",
-                      props.vendorID, props.deviceID);
-        logInfoTagged(RENDERER_TAG, "\tDevice Type: %s",
-                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "Integrated GPU" :
-                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" :
-                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "Virtual GPU" :
-                      props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "CPU" : "Other");
-    }
 }
 
 ExtPropsList* getAllSupportedInstExtensions(bool useCache) {
