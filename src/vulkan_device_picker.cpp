@@ -4,7 +4,7 @@
 
 namespace {
 
-using GPUDevice = Device::GPUDevice;
+using PhysicalDevice = Device::PhysicalDevice;
 
 struct QueueFamilyIndices {
     i32 graphicsIndex = -1;
@@ -27,7 +27,7 @@ struct SwapchainFeatureDetails {
     core::ArrList<VkPresentModeKHR> presentModes;
 };
 
-u32                                                            getDeviceSutabilityScore(const GPUDevice& gpu,
+u32                                                            getDeviceSutabilityScore(const PhysicalDevice& gpu,
                                                                                         const Device& infoDevice,
                                                                                         QueueFamilyIndices& outIndices,
                                                                                         VkSurfaceFormatKHR& outSurfaceFormat,
@@ -49,7 +49,7 @@ VkExtent2D                                                     pickSwapExtent(co
 
 } // namespace
 
-core::expected<AppError> Device::pickDevice(core::Memory<const GPUDevice> gpus, Device& out) {
+core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> gpus, Device& out) {
     i32 prefferedIdx = -1;
     u32 maxScore = 0;
 
@@ -111,7 +111,7 @@ namespace  {
 */
 
 u32 getDeviceSutabilityScore(
-    const GPUDevice& gpu,
+    const PhysicalDevice& gpu,
     const Device& infoDevice,
     QueueFamilyIndices& outIndices,
     VkSurfaceFormatKHR& outSurfaceFormat,
@@ -165,6 +165,8 @@ u32 getDeviceSutabilityScore(
         // Has support for required extensions
         score++;
     }
+
+    // TODO: If optional extensions are needed, add check here and score them.
 
     // Get features for Swapchain
     SwapchainFeatureDetails swapchainFeatureDetails;

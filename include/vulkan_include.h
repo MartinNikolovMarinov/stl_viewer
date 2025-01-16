@@ -39,10 +39,7 @@ struct Surface {
 };
 
 struct Device {
-    struct CreateInfo {
-        const char* appName;
-    };
-    struct GPUDevice {
+    struct PhysicalDevice {
         VkPhysicalDevice device;
         VkPhysicalDeviceProperties props;
         VkPhysicalDeviceFeatures features;
@@ -60,8 +57,8 @@ struct Device {
     Queue graphicsQueue = {};
     Queue presentQueue = {};
 
-    [[nodiscard]] static core::expected<Device, AppError> create(CreateInfo&& info);
-    [[nodiscard]] static core::expected<AppError> pickDevice(core::Memory<const GPUDevice> gpus, Device& out);
+    [[nodiscard]] static core::expected<Device, AppError> create(const struct RendererInitInfo& rendererInitInfo);
+    [[nodiscard]] static core::expected<AppError> pickDevice(core::Memory<const PhysicalDevice> gpus, Device& out);
 
     static void destroy(Device& device);
 };

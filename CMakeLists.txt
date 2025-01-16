@@ -63,6 +63,7 @@ set(stlv_src
     src/app.cpp
     src/user_input.cpp
     src/vulkan_renderer.cpp
+    src/vulkan_render_info.cpp
     src/vulkan_device.cpp
     src/vulkan_device_picker.cpp
     # src/vulkan_swapchain.cpp

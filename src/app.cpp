@@ -23,7 +23,7 @@ void registerEventHandlers();
 
 void assertHandler(const char* failedExpr, const char* file, i32 line, const char* funcName, const char* errMsg);
 
-void debugPrintMemoryUsage();
+void __debugPrintMemoryUsage();
 
 }
 
@@ -46,14 +46,13 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
     registerEventHandlers();
 
     logSectionTitleInfoTagged(APP_TAG, "BEGIN Renderer Initialization");
-    RendererInitInfo rendererInfo = {};
-    rendererInfo.appName = appInfo.appName;
+    RendererInitInfo rendererInfo = RendererInitInfo::create(appInfo.appName);
     if (auto res = Renderer::init(rendererInfo); res.hasErr()) {
         return res;
     }
     logSectionTitleInfoTagged(APP_TAG, "END Renderer Initialization");
 
-    debugPrintMemoryUsage();
+    __debugPrintMemoryUsage();
 
     return {};
 }
@@ -185,7 +184,7 @@ void assertHandler(const char* failedExpr, const char* file, i32 line, const cha
     throw std::runtime_error("Assertion failed!");
 };
 
-void debugPrintMemoryUsage() {
+void __debugPrintMemoryUsage() {
     core::AllocatorContext& gactx = core::getAllocator(0);
     addr_size inUseMemory = gactx.inUseMemory();
     addr_size totalMemoryAllocated = gactx.totalMemoryAllocated();

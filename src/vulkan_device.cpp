@@ -6,24 +6,13 @@
 namespace {
     using ExtPropsList = core::ArrList<VkExtensionProperties>;
     using LayerPropsList = core::ArrList<VkLayerProperties>;
-    using GPUDeviceList = core::ArrList<Device::GPUDevice>;
+    using GPUDeviceList = core::ArrList<Device::PhysicalDevice>;
 
 #if STLV_DEBUG
     constexpr bool VALIDATION_LAYERS_ENABLED = true;
 #else
     constexpr bool VALIDATION_LAYERS_ENABLED = false;
 #endif
-
-    core::Memory<const char*> getRequiredDeviceExtensions() {
-        static const char* requiredExts[] = {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-    #if defined(OS_MAC) && OS_MAC == 1
-            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-    #endif
-        };
-        constexpr addr_size len = sizeof(requiredExts) / sizeof(requiredExts[0]);
-        return { requiredExts, len };
-    }
 
     ExtPropsList g_allSupportedInstExts;
     LayerPropsList g_allSupportedInstLayers;
@@ -44,7 +33,7 @@ namespace {
     GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache = true);
     void           logPhysicalDevicesList(const GPUDeviceList& list);
 
-    VkInstance vulkanCreateInstance(const char* appName);
+    VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo);
 
     VkDebugUtilsMessengerEXT vulkanCreateDebugMessenger(VkInstance instance);
     VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
@@ -58,7 +47,7 @@ namespace {
 
 } // namespace
 
-core::expected<Device, AppError> Device::create(CreateInfo&& info) {
+core::expected<Device, AppError> Device::create(const RendererInitInfo& rendererInitInfo) {
     Device device;
 
     logInfoTagged(RENDERER_TAG, "Creating Device");
@@ -70,7 +59,7 @@ core::expected<Device, AppError> Device::create(CreateInfo&& info) {
     }
 
     // Create Instance
-    device.instance = vulkanCreateInstance(info.appName);
+    device.instance = vulkanCreateInstance(rendererInitInfo);
     logInfoTagged(RENDERER_TAG, "VkInstance created");
 
     // Create Debug Messenger
@@ -90,7 +79,7 @@ core::expected<Device, AppError> Device::create(CreateInfo&& info) {
     logPhysicalDevicesList(*getAllSupportedPhysicalDevices(device.instance));
 
     // Pick a suitable GPU
-    device.requiredDeviceExtensions = getRequiredDeviceExtensions();
+    device.requiredDeviceExtensions = rendererInitInfo.backend.vk.requiredDeviceExtensions;
     GPUDeviceList* all = getAllSupportedPhysicalDevices(device.instance);
     core::Expect(pickDevice(all->memView(), device), "Failed to pick a physical device");
     logInfoTagged(RENDERER_TAG, "Selected GPU: %s", device.physicalDeviceProps.deviceName);
@@ -124,11 +113,11 @@ void Device::destroy(Device& device) {
 
 namespace {
 
-VkInstance vulkanCreateInstance(const char* appName) {
+VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo) {
     // Initialize Vulkan Instance
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pApplicationName = appName;
+    appInfo.pApplicationName = rendererInitInfo.appName;
     appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.pEngineName = "No Engine";
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -137,44 +126,47 @@ VkInstance vulkanCreateInstance(const char* appName) {
     // Retrieve required extensions by the platform layer
     i32 requiredPlatformExtCount = 0;
     Platform::requiredVulkanExtsCount(requiredPlatformExtCount);
-    core::ArrList<const char*> extensions (requiredPlatformExtCount, nullptr);
+    const addr_size requiredExtCount = requiredPlatformExtCount + rendererInitInfo.backend.vk.requiredInstanceExtensions.len();
+    core::ArrList<const char*> extensions (requiredExtCount, nullptr);
     Platform::requiredVulkanExts(extensions.data());
-
-    VkFlags instanceCreateInfoFlags = 0;
 
     // Setup Instance Extensions
     {
-        extensions.push(VK_KHR_SURFACE_EXTENSION_NAME);
-
-        #if defined(OS_MAC) && OS_MAC == 1
-            // FIXME: Some of these might be optional ??
-            // Enable portability extension for MacOS.
-            extensions.push(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-            extensions.push(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-            instanceCreateInfoFlags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-        #endif
-
-        // Check required extensions
-        {
-            for (addr_size i = 0; i < extensions.len(); i++) {
-                if (!checkSupportForInstExtension(extensions[i])) {
-                    logFatalTagged(RENDERER_TAG, "Missing required extension: %s", extensions[i]);
-                    Assert(false, "Missing required extension");
-                }
-            }
-        }
-
-        // Check optional extensions
-        if constexpr (VALIDATION_LAYERS_ENABLED) {
-            if (checkSupportForInstExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
-                extensions.push(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-                logInfoTagged(RENDERER_TAG, "Enabling optional extension: %s", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        // Add Required extensions
+        for (addr_size i = 0; i < rendererInitInfo.backend.vk.requiredInstanceExtensions.len(); i++) {
+            const char* ex = rendererInitInfo.backend.vk.requiredInstanceExtensions[i];
+            if (checkSupportForInstExtension(ex)) {
+                extensions[requiredPlatformExtCount + i] = rendererInitInfo.backend.vk.requiredInstanceExtensions[i];
             }
             else {
-                logWarnTagged(RENDERER_TAG, "Optional extension %s is not supported", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+                logFatalTagged(RENDERER_TAG, "Missing required extension: %s", ex);
+                Panic(false, "Missing required extension");
             }
         }
+
+        // Add Optional extensions
+        for (addr_size i = 0; i < rendererInitInfo.backend.vk.optionalInstanceExtensions.len(); i++) {
+            const char* ex = rendererInitInfo.backend.vk.optionalInstanceExtensions[i];
+            if (checkSupportForInstExtension(ex)) {
+                extensions.push(ex);
+            }
+            else {
+                logWarnTagged(RENDERER_TAG, "Missing optional extension: %s", ex);
+            }
+        }
+
+        logInfoTagged(RENDERER_TAG, "Enabled extensions:");
+        for (addr_size i = 0; i < extensions.len(); i++) {
+            const char* ex = extensions[i];
+            logInfoTagged(RENDERER_TAG, "\t%s", ex);
+        }
     }
+
+    VkFlags instanceCreateInfoFlags = 0;
+    #if defined(OS_MAC) && OS_MAC == 1
+        // Enable portability extension for MacOS.
+        instanceCreateInfoFlags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    #endif
 
     VkInstanceCreateInfo instanceCreateInfo = {};
     instanceCreateInfo.flags = instanceCreateInfoFlags;
@@ -185,23 +177,25 @@ VkInstance vulkanCreateInstance(const char* appName) {
 
     // Setup Validation Layers
     if constexpr (VALIDATION_LAYERS_ENABLED) {
-        const char* layerNames[1];
-        bool supported = checkSupportForInstLayer("VK_LAYER_KHRONOS_validation");
-                        //  checkSupportForInstLayer("VK_LAYER_LUNARG_api_dump");
-        if (supported) {
-            layerNames[0] = "VK_LAYER_KHRONOS_validation";
-            // layerNames[1] = "VK_LAYER_LUNARG_api_dump";
-            instanceCreateInfo.enabledLayerCount = sizeof(layerNames) / sizeof(layerNames[0]);
-            instanceCreateInfo.ppEnabledLayerNames = layerNames;
-            logInfoTagged(RENDERER_TAG, "Enabling VK_LAYER_KHRONOS_validation layer");
+        logInfoTagged(RENDERER_TAG, "Enabled layers:");
+        auto& layers = rendererInitInfo.backend.vk.layers;
+        for (addr_size i = 0; i < layers.len(); i++) {
+            const char* layer = layers[i];
+            if (checkSupportForInstLayer(layer)) {
+                logInfoTagged(RENDERER_TAG, "\t%s", layer);
+            }
+            else {
+                logErrTagged(RENDERER_TAG, "%s layer is not supported", layer);
+                Panic(false, "Missing Vulkan Instance Layer"); // this should not happen
+            }
+        }
 
-            // The following code is required to enable the debug utils extension during instance creation
-            static VkDebugUtilsMessengerCreateInfoEXT debugMessageInfo = defaultDebugMessengerInfo();
-            instanceCreateInfo.pNext = &debugMessageInfo;
-        }
-        else {
-            logWarnTagged(RENDERER_TAG, "VK_LAYER_KHRONOS_validation is not supported");
-        }
+        instanceCreateInfo.enabledLayerCount = u32(layers.len());
+        instanceCreateInfo.ppEnabledLayerNames = layers.data();
+
+        // The following code is required to enable the debug utils extension during instance creation:
+        static VkDebugUtilsMessengerCreateInfoEXT debugMessageInfo = defaultDebugMessengerInfo();
+        instanceCreateInfo.pNext = &debugMessageInfo;
     }
 
     VkInstance instane = VK_NULL_HANDLE;
@@ -292,7 +286,7 @@ GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache
     auto physDeviceList = core::ArrList<VkPhysicalDevice>(physDeviceCount, VkPhysicalDevice{});
     VK_MUST(vkEnumeratePhysicalDevices(instance, &physDeviceCount, physDeviceList.data()));
 
-    auto gpus = GPUDeviceList(physDeviceCount, Device::GPUDevice{});
+    auto gpus = GPUDeviceList(physDeviceCount, Device::PhysicalDevice{});
     for (addr_size i = 0; i < physDeviceList.len(); i++) {
         auto pd = physDeviceList[i];
 
@@ -316,7 +310,6 @@ void logPhysicalDevicesList(const GPUDeviceList& list) {
     for (addr_size i = 0; i < list.len(); i++) {
         auto& gpu = list[i];
         auto& props = gpu.props;
-        // auto& features = gpu.features; // TODO2: log relevant features
 
         logInfoTagged(RENDERER_TAG, "");
         logInfoTagged(RENDERER_TAG, "\tDevice Name: %s", props.deviceName);

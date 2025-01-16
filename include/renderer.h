@@ -3,8 +3,27 @@
 #include <basic.h>
 #include <app_error.h>
 
+enum RendererBackendType : u8 {
+    NONE,
+    VULKAN
+};
+
 struct RendererInitInfo {
-    const char* appName;
+    struct VulkanInfo {
+        core::Memory<const char*> requiredDeviceExtensions;
+        core::Memory<const char*> optionalDeviceExtensions;
+        core::Memory<const char*> requiredInstanceExtensions;
+        core::Memory<const char*> optionalInstanceExtensions;
+        core::Memory<const char*> layers;
+    };
+
+    const char* appName = nullptr;
+    RendererBackendType backendType = RendererBackendType::NONE;
+    union {
+        VulkanInfo vk;
+    } backend;
+
+    static RendererInitInfo create(const char* appName);
 };
 
 struct Renderer {

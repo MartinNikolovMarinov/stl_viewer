@@ -632,7 +632,7 @@ VulkanContext g_vkctx;
 core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
 
-    g_vkctx.device = core::Unpack(Device::create({ info.appName }), "Failed to create a device");
+    g_vkctx.device = core::Unpack(Device::create(info), "Failed to create a device");
 
     return {};
 }
