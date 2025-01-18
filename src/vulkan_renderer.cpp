@@ -29,7 +29,6 @@
 // core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> g_renderFinishedSemaphores;
 // core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> g_inFlightFences;
 
-// core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked, core::Memory<const char*> deviceExts);
 // core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDevice,
 //                                                              const Swapchain& swapchain,
 //                                                              const RenderPipeline& pipeline);
@@ -48,27 +47,6 @@
 // } // namespace
 
 // core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
-
-//     // Create Swapchain
-//     Swapchain swapchain;
-//     Swapchain::CreateInfo swapchainInfo;
-//     {
-//         swapchainInfo.imageCount = pickedDevice.imageCount;
-//         swapchainInfo.surfaceFormat = pickedDevice.surfaceFormat;
-//         swapchainInfo.extent = pickedDevice.extent;
-//         swapchainInfo.graphicsQueueIdx = pickedDevice.graphicsQueueIdx;
-//         swapchainInfo.presentQueueIdx = pickedDevice.presentQueueIdx;
-//         swapchainInfo.currentTransform = pickedDevice.currentTransform;
-//         swapchainInfo.presentMode = pickedDevice.presentMode;
-//         swapchainInfo.logicalDevice = logicalDevice;
-//         swapchainInfo.surface = surface;
-//         auto res = Swapchain::create(swapchainInfo);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         swapchain = std::move(res.value());
-//         logInfoTagged(RENDERER_TAG, "Swapchain created");
-//     }
 
 //     // Create Rendering Pipeline
 //     RenderPipeline renderPipeline;
@@ -406,129 +384,6 @@
 //     Assert(vkEndCommandBuffer(cmdBuffer) == VK_SUCCESS);
 // }
 
-// core::expected<ExtPropsList*, AppError> getAllSupportedInstExtensions(bool useCache) {
-//     if (useCache && !g_allSupportedInstExts.empty()) {
-//         return &g_allSupportedInstExts;
-//     }
-
-//     u32 extensionCount = 0;
-//     if (VkResult vres = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-//         vres != VK_SUCCESS) {
-//         return FAILED_TO_ENUMERATE_VULKAN_INSTANCE_EXTENSION_PROPERTIES_ERREXPR;
-//     }
-
-//     auto extList = ExtPropsList(extensionCount, VkExtensionProperties{});
-//     if (VkResult vres = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extList.data());
-//         vres != VK_SUCCESS) {
-//         return FAILED_TO_ENUMERATE_VULKAN_INSTANCE_EXTENSION_PROPERTIES_ERREXPR;
-//     }
-
-//     g_allSupportedInstExts = std::move(extList);
-//     return &g_allSupportedInstExts;
-// }
-
-// void logInstExtPropsList(const ExtPropsList& list) {
-//     logInfoTagged(RENDERER_TAG, "Extensions (%llu)", list.len());
-//     for (addr_size i = 0; i < list.len(); i++) {
-//         logInfoTagged(RENDERER_TAG, "\t%s v%u", list[i].extensionName, list[i].specVersion);
-//     }
-// }
-
-// bool checkSupportForInstExtension(const char* extensionName) {
-//     auto res = getAllSupportedInstExtensions();
-//     if (res.hasErr()) {
-//         logWarnTagged(RENDERER_TAG, "Query for all supported extensions failed, reason: %s", res.err().toCStr());
-//         return false;
-//     }
-
-//     const ExtPropsList& extensions = *res.value();
-//     for (addr_size i = 0; i < extensions.len(); i++) {
-//         if (core::memcmp(extensions[i].extensionName, extensionName, core::cstrLen(extensionName)) == 0) {
-//             return true;
-//         }
-//     }
-
-//     return false;
-// }
-
-// core::expected<LayerPropsList*, AppError> getAllSupportedInstLayers(bool useCache) {
-//     if (useCache && !g_allSupportedInstLayers.empty()) {
-//         return &g_allSupportedInstLayers;
-//     }
-
-//     u32 layerCount;
-//     if (VkResult vres = vkEnumerateInstanceLayerProperties(&layerCount, nullptr); vres != VK_SUCCESS) {
-//         return FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES_ERREXPR;
-//     }
-
-//     auto layList = LayerPropsList(layerCount, VkLayerProperties{});
-//     if (VkResult vres = vkEnumerateInstanceLayerProperties(&layerCount, layList.data()); vres != VK_SUCCESS) {
-//         return FAILED_TO_ENUMERATE_VULKAN_INSTANCE_LAYER_PROPERTIES_ERREXPR;
-//     }
-
-//     g_allSupportedInstLayers = std::move(layList);
-//     return &g_allSupportedInstLayers;
-// }
-
-// void logInstLayersList(const LayerPropsList& list) {
-//     logInfoTagged(RENDERER_TAG, "Layers (%llu)", list.len());
-//     for (addr_size i = 0; i < list.len(); i++) {
-//         logInfoTagged(RENDERER_TAG, "\tname: %s, description: %s, spec version: %u, impl version: %u",
-//                       list[i].layerName, list[i].description, list[i].specVersion, list[i].implementationVersion);
-//     }
-// }
-
-// bool checkSupportForInstLayer(const char* name) {
-//     auto res = getAllSupportedInstLayers();
-//     if (res.hasErr()) {
-//         logWarnTagged(RENDERER_TAG, "Query for all supported layers failed, reason: %s", res.err().toCStr());
-//         return false;
-//     }
-
-//     const LayerPropsList& layers = *res.value();
-//     for (addr_size i = 0; i < layers.len(); i++) {
-//         VkLayerProperties p = layers[i];
-//         if (core::memcmp(p.layerName, name, core::cstrLen(name)) == 0) {
-//             return true;
-//         }
-//     }
-
-//     return false;
-// }
-
-// core::expected<AppError> getVulkanVersion(char out[VERSION_BUFFER_SIZE]) {
-//     u32 version = 0;
-//     if(VkResult vres = vkEnumerateInstanceVersion(&version); vres != VK_SUCCESS) {
-//         return FAILED_TO_GET_VULKAN_VERSION_ERREXPR;
-//     }
-
-//     u32 n;
-
-//     out = core::memcopy(out, "Vulkan v", core::cstrLen("Vulkan v"));
-//     n = core::Unpack(core::intToCstr(VK_VERSION_MAJOR(version), out, VERSION_BUFFER_SIZE));
-//     out[n] = '.';
-//     out += n + 1;
-
-//     n = core::Unpack(core::intToCstr(VK_VERSION_MINOR(version), out, VERSION_BUFFER_SIZE));
-//     out[n] = '.';
-//     out += n + 1;
-
-//     n = core::Unpack(core::intToCstr(VK_VERSION_PATCH(version), out, VERSION_BUFFER_SIZE));
-//     out[n] = '\0';
-//     out += n;
-
-//     return {};
-// }
-
-// core::expected<AppError> logVulkanVersion() {
-//     char buff[VERSION_BUFFER_SIZE];
-//     if (auto res = getVulkanVersion(buff); res.hasErr()) {
-//         return res;
-//     }
-//     logInfo(buff);
-//     return {};
-// }
-
 // } // namespace
 
 namespace {
@@ -541,6 +396,7 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
 
     g_vkctx.device = core::Unpack(Device::create(info), "Failed to create a device");
+    g_vkctx.swapchain = core::Unpack(Swapchain::create(g_vkctx));
 
     return {};
 }
@@ -554,7 +410,8 @@ void Renderer::resizeTarget(u32 width, u32 height) {
 }
 
 void Renderer::shutdown() {
-    // VK_MUST(vkDeviceWaitIdle(g_vkctx.device.logicalDevice));
+    VK_MUST(vkDeviceWaitIdle(g_vkctx.device.logicalDevice));
 
+    Swapchain::destroy(g_vkctx.swapchain, g_vkctx.device);
     Device::destroy(g_vkctx.device);
 }

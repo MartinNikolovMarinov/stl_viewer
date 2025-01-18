@@ -5,6 +5,7 @@
 namespace {
 
 using PhysicalDevice = Device::PhysicalDevice;
+using DeviceExtensions = Device::Extensions;
 
 struct QueueFamilyIndices {
     i32 graphicsIndex = -1;

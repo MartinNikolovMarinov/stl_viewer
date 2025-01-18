@@ -5,6 +5,14 @@
 
 #define VK_MUST(expr) Assert((expr) == VK_SUCCESS)
 
+struct VulkanQueue;
+struct Surface;
+struct Device;
+struct Swapchain;
+struct Pipeline;
+struct CommandBuffers;
+struct VulkanContext;
+
 struct VulkanQueue {
     VkQueue handle = VK_NULL_HANDLE;
     i32 idx = -1;
@@ -19,20 +27,6 @@ struct Surface {
     u32 imageCount = 0;
 };
 
-struct DeviceExtensions {
-    core::Memory<const char*> required;
-    core::Memory<const char*> optional;
-    core::ArrList<bool> optionalIsActive;
-
-    inline addr_size enabledExtensionsCount() const {
-        addr_size computed = required.len();
-        for (addr_size i = 0; i < optionalIsActive.len(); i++) {
-            if (optionalIsActive[i]) computed++;
-        }
-        return computed;
-    }
-};
-
 struct Device {
     struct PhysicalDevice {
         VkPhysicalDevice device;
@@ -40,10 +34,24 @@ struct Device {
         VkPhysicalDeviceFeatures features;
     };
 
+    struct Extensions {
+        core::Memory<const char*> required;
+        core::Memory<const char*> optional;
+        core::ArrList<bool> optionalIsActive;
+
+        inline addr_size enabledExtensionsCount() const {
+            addr_size computed = required.len();
+            for (addr_size i = 0; i < optionalIsActive.len(); i++) {
+                if (optionalIsActive[i]) computed++;
+            }
+            return computed;
+        }
+    };
+
     VkInstance instance = VK_NULL_HANDLE;
     VkDevice logicalDevice = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    DeviceExtensions deviceExtensions;
+    Extensions deviceExtensions;
     VkPhysicalDeviceProperties physicalDeviceProps;
     VkPhysicalDeviceFeatures physicalDeviceFeatures;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
@@ -59,11 +67,15 @@ struct Device {
 };
 
 struct Swapchain {
-    VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    VkSwapchainKHR handle = VK_NULL_HANDLE;
     core::ArrList<VkImage> images;
     core::ArrList<VkImageView> imageViews;
     VkFormat imageFormat;
     VkExtent2D extent;
+
+    [[nodiscard]] static core::expected<Swapchain, AppError> create(const VulkanContext& vkctx);
+
+    static void destroy(Swapchain& swapchain, const Device& device);
 };
 
 struct Pipeline {
