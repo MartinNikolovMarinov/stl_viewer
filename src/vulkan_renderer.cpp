@@ -13,9 +13,6 @@
 //     bool recreate = false;
 // };
 
-// VkSurfaceKHR g_surface = VK_NULL_HANDLE;
-// VkDebugUtilsMessengerEXT g_debugMessenger = VK_NULL_HANDLE;
-// const GPUDevice* g_selectedGPU = nullptr;
 // VkDevice g_device = VK_NULL_HANDLE;
 // VulkanQueue g_graphicsQueue = {};
 // VulkanQueue g_presentQueue = {};
@@ -32,16 +29,6 @@
 // core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> g_renderFinishedSemaphores;
 // core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> g_inFlightFences;
 
-// void                                     logPhysicalDevicesList(const GPUDeviceList& list);
-
-// VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
-//                                              const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-//                                              const VkAllocationCallbacks* pAllocator,
-//                                              VkDebugUtilsMessengerEXT* pDebugMessenger);
-// void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
-//                                           VkDebugUtilsMessengerEXT debugMessenger,
-//                                           const VkAllocationCallbacks* pAllocator);
-
 // core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked, core::Memory<const char*> deviceExts);
 // core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDevice,
 //                                                              const Swapchain& swapchain,
@@ -49,8 +36,6 @@
 // core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice, const PickedGPUDevice& picked);
 // core::expected<core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>, AppError> createCommandBuffers(VkDevice logicalDevice,
 //                                                                                                       VkCommandPool pool);
-
-// core::expected<VkDebugUtilsMessengerEXT, AppError> vulkanCreateDebugMessenger(VkInstance instance);
 
 // core::expected<core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT>, AppError> createSemaphores(VkDevice logicalDevice);
 // core::expected<core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT>, AppError> createFences(VkDevice logicalDevice);
@@ -63,34 +48,6 @@
 // } // namespace
 
 // core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
-
-//     // Create logical Device
-//     VkDevice logicalDevice;
-//     {
-//         core::Memory<const char*> deviceExts = { requiredDeviceExtensions, requiredDeviceExtensionsLen };
-//         auto res = vulkanCreateLogicalDevice(pickedDevice, deviceExts);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         logicalDevice = res.value();
-//         logInfoTagged(RENDERER_TAG, "Logical Device created");
-//     }
-
-//     // Retrieve the graphics queue from the new logical device
-//     VulkanQueue graphicsQueue;
-//     {
-//         graphicsQueue.idx = pickedDevice.graphicsQueueIdx;
-//         vkGetDeviceQueue(logicalDevice, u32(graphicsQueue.idx), 0, &graphicsQueue.queue);
-//         logInfoTagged(RENDERER_TAG, "Graphics Queue set");
-//     }
-
-//     // Retrieve the graphics queue from the new logical device
-//     VulkanQueue presentQueue;
-//     {
-//         presentQueue.idx = pickedDevice.presentQueueIdx;
-//         vkGetDeviceQueue(logicalDevice, u32(presentQueue.idx), 0, &presentQueue.queue);
-//         logInfoTagged(RENDERER_TAG, "Present Queue set");
-//     }
 
 //     // Create Swapchain
 //     Swapchain swapchain;
@@ -303,55 +260,6 @@
 // }
 
 // namespace {
-
-// core::expected<VkDevice, AppError> vulkanCreateLogicalDevice(const PickedGPUDevice& picked, core::Memory<const char*> deviceExts) {
-//     constexpr float queuePriority = 1.0f;
-//     constexpr addr_size MAX_QUEUES = 5;
-
-//     // Extract unique indices
-//     core::ArrStatic<i32, MAX_QUEUES> uniqueIndices;
-//     {
-//         auto uniqueIdxFn = [](i32 v, addr_size, i32 el) { return v == el; };
-//         core::pushUnique(uniqueIndices, picked.graphicsQueueIdx, uniqueIdxFn);
-//         core::pushUnique(uniqueIndices, picked.presentQueueIdx, uniqueIdxFn);
-//     }
-
-//     core::ArrStatic<VkDeviceQueueCreateInfo, MAX_QUEUES> queueInfos;
-//     for (addr_size i = 0; i < uniqueIndices.len(); i++) {
-//         i32 idx = uniqueIndices[i];
-//         VkDeviceQueueCreateInfo queueCreateInfo = {};
-//         queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-//         queueCreateInfo.queueFamilyIndex = u32(idx);
-//         queueCreateInfo.queueCount       = 1;
-//         queueCreateInfo.pQueuePriorities = &queuePriority;
-//         queueInfos.push(queueCreateInfo);
-//     }
-
-//     // Enable any device features you want here
-//     VkPhysicalDeviceFeatures deviceFeatures {};
-//     // For example:
-//     // deviceFeatures.samplerAnisotropy = VK_TRUE;
-
-//     VkDeviceCreateInfo deviceCreateInfo {};
-//     deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-//     deviceCreateInfo.pQueueCreateInfos       = queueInfos.data();
-//     deviceCreateInfo.queueCreateInfoCount    = u32(queueInfos.len());
-//     deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
-
-//     // If you need device-specific extensions (like swapchain):
-//     deviceCreateInfo.enabledExtensionCount   = u32(deviceExts.len());
-//     deviceCreateInfo.ppEnabledExtensionNames = deviceExts.data();
-
-//     VkDevice logicalDevice = VK_NULL_HANDLE;
-//     if (
-//         VkResult vres = vkCreateDevice(picked.gpu->device, &deviceCreateInfo, nullptr, &logicalDevice);
-//         vres != VK_SUCCESS
-//     ) {
-//         return FAILED_TO_CREATE_LOGICAL_DEVICE_ERREXPR;
-//     }
-
-//     return logicalDevice;
-// }
 
 // core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDevice,
 //                                                              const Swapchain& swapchain,

@@ -4,46 +4,49 @@
 #include <vulkan_renderer.h>
 
 namespace {
-    using ExtPropsList = core::ArrList<VkExtensionProperties>;
-    using LayerPropsList = core::ArrList<VkLayerProperties>;
-    using GPUDeviceList = core::ArrList<Device::PhysicalDevice>;
+
+using ExtPropsList = core::ArrList<VkExtensionProperties>;
+using LayerPropsList = core::ArrList<VkLayerProperties>;
+using GPUDeviceList = core::ArrList<Device::PhysicalDevice>;
 
 #if STLV_DEBUG
-    constexpr bool VALIDATION_LAYERS_ENABLED = true;
+constexpr bool VALIDATION_LAYERS_ENABLED = true;
 #else
-    constexpr bool VALIDATION_LAYERS_ENABLED = false;
+constexpr bool VALIDATION_LAYERS_ENABLED = false;
 #endif
 
-    ExtPropsList g_allSupportedInstExts;
-    LayerPropsList g_allSupportedInstLayers;
-    GPUDeviceList g_allSupportedGPUs;
+ExtPropsList g_allSupportedInstExts;
+LayerPropsList g_allSupportedInstLayers;
+GPUDeviceList g_allSupportedGPUs;
 
-    constexpr addr_size VERSION_BUFFER_SIZE = 255;
-    void getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
-    void logVulkanVersion();
+constexpr addr_size VERSION_BUFFER_SIZE = 255;
+void getVulkanVersion(char out[VERSION_BUFFER_SIZE]);
+void logVulkanVersion();
 
-    ExtPropsList* getAllSupportedInstExtensions(bool useCache = true);
-    void          logInstExtPropsList(const ExtPropsList& list);
-    bool          checkSupportForInstExtension(const char* extensionName);
+ExtPropsList* getAllSupportedInstExtensions(bool useCache = true);
+void          logInstExtPropsList(const ExtPropsList& list);
+bool          checkSupportForInstExtension(const char* extensionName);
 
-    LayerPropsList* getAllSupportedInstLayers(bool useCache = true);
-    void            logInstLayersList(const LayerPropsList& list);
-    bool            checkSupportForInstLayer(const char* name);
+LayerPropsList* getAllSupportedInstLayers(bool useCache = true);
+void            logInstLayersList(const LayerPropsList& list);
+bool            checkSupportForInstLayer(const char* name);
 
-    GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache = true);
-    void           logPhysicalDevicesList(const GPUDeviceList& list);
+GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache = true);
+void           logPhysicalDevicesList(const GPUDeviceList& list);
 
-    VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo);
+VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo);
 
-    VkDebugUtilsMessengerEXT vulkanCreateDebugMessenger(VkInstance instance);
-    VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
-    VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
-                                             const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-                                             const VkAllocationCallbacks* pAllocator,
-                                             VkDebugUtilsMessengerEXT* pDebugMessenger);
-    void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
-                                             VkDebugUtilsMessengerEXT debugMessenger,
-                                             const VkAllocationCallbacks* pAllocator);
+VkDebugUtilsMessengerEXT vulkanCreateDebugMessenger(VkInstance instance);
+VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo();
+VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
+                                            const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+                                            const VkAllocationCallbacks* pAllocator,
+                                            VkDebugUtilsMessengerEXT* pDebugMessenger);
+void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                            VkDebugUtilsMessengerEXT debugMessenger,
+                                            const VkAllocationCallbacks* pAllocator);
+
+VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, Device& device);
 
 } // namespace
 
@@ -76,15 +79,37 @@ core::expected<Device, AppError> Device::create(const RendererInitInfo& renderer
     device.surface = surface;
 
     // Pick a suitable GPU
-    device.requiredDeviceExtensions = rendererInitInfo.backend.vk.requiredDeviceExtensions;
+    device.deviceExtensions.required = rendererInitInfo.backend.vk.requiredDeviceExtensions;
+    device.deviceExtensions.optional = rendererInitInfo.backend.vk.optionalDeviceExtensions;
     GPUDeviceList* all = getAllSupportedPhysicalDevices(device.instance);
     core::Expect(pickDevice(all->memView(), device), "Failed to pick a physical device");
-    logInfoTagged(RENDERER_TAG, "Selected GPU: %s", device.physicalDeviceProps.deviceName);
+
+    // Create a logical device
+    device.logicalDevice = vulkanCreateLogicalDevice(rendererInitInfo, device);
+    logInfoTagged(RENDERER_TAG, "Logical Device created");
+
+    // Retrive queues
+    {
+        // Retrieve the Graphics Queue from the new logical device
+        vkGetDeviceQueue(device.logicalDevice, u32(device.graphicsQueue.idx), 0, &device.graphicsQueue.handle);
+        logInfoTagged(RENDERER_TAG, "Graphics Queue set");
+
+        // Retrieve the Present Queue from the new logical device
+        vkGetDeviceQueue(device.logicalDevice, u32(device.presentQueue.idx), 0, &device.presentQueue.handle);
+        logInfoTagged(RENDERER_TAG, "Present Queue set");
+    }
+
 
     return device;
 }
 
 void Device::destroy(Device& device) {
+    if (device.logicalDevice != VK_NULL_HANDLE) {
+        logInfoTagged(RENDERER_TAG, "Destroying Vulkan logical device");
+        vkDestroyDevice(device.logicalDevice, nullptr);
+        device.logicalDevice = VK_NULL_HANDLE;
+    }
+
     if (device.surface.handle != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying Vulkan KHR surface");
         vkDestroySurfaceKHR(device.instance, device.surface.handle, nullptr);
@@ -425,6 +450,61 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
     }
 
     func(instance, debugMessenger, pAllocator);
+}
+
+VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, Device& device) {
+    constexpr float queuePriority = 1.0f;
+    constexpr addr_size MAX_QUEUES = 5;
+
+    // Extract unique indices
+    core::ArrStatic<i32, MAX_QUEUES> uniqueIndices;
+    {
+        constexpr auto uniqueIdxFn = [](i32 v, addr_size, i32 el) { return v == el; };
+        core::pushUnique(uniqueIndices, device.graphicsQueue.idx, uniqueIdxFn);
+        core::pushUnique(uniqueIndices, device.graphicsQueue.idx, uniqueIdxFn);
+    }
+
+    core::ArrStatic<VkDeviceQueueCreateInfo, MAX_QUEUES> queueInfos;
+    for (addr_size i = 0; i < uniqueIndices.len(); i++) {
+        i32 idx = uniqueIndices[i];
+        VkDeviceQueueCreateInfo queueCreateInfo = {};
+        queueCreateInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        queueCreateInfo.queueFamilyIndex = u32(idx);
+        queueCreateInfo.queueCount       = 1;
+        queueCreateInfo.pQueuePriorities = &queuePriority;
+        queueInfos.push(queueCreateInfo);
+    }
+
+    core::ArrList<const char*> enabledExtensions (device.deviceExtensions.required.len() +
+                                                  device.deviceExtensions.optional.len());
+    enabledExtensions.push(device.deviceExtensions.required);
+    for (addr_size i = 0; i < device.deviceExtensions.optional.len(); i++) {
+        const char* ext = device.deviceExtensions.optional[i];
+        bool isActivated = device.deviceExtensions.optionalIsActive[i];
+        if (isActivated) {
+            enabledExtensions.push(ext);
+        }
+    }
+
+    // Enable any device features you want here
+    VkPhysicalDeviceFeatures deviceFeatures {};
+    // For example:
+    // deviceFeatures.samplerAnisotropy = VK_TRUE;
+
+    VkDeviceCreateInfo deviceCreateInfo {};
+    deviceCreateInfo.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.pQueueCreateInfos       = queueInfos.data();
+    deviceCreateInfo.queueCreateInfoCount    = u32(queueInfos.len());
+    deviceCreateInfo.pEnabledFeatures        = &deviceFeatures;
+
+    // If you need device-specific extensions (like swapchain):
+    deviceCreateInfo.enabledExtensionCount   = u32(enabledExtensions.len());
+    deviceCreateInfo.ppEnabledExtensionNames = enabledExtensions.data();
+
+    VkDevice logicalDevice = VK_NULL_HANDLE;
+    VK_MUST(vkCreateDevice(device.physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice));
+
+    return logicalDevice;
 }
 
 } // namespace

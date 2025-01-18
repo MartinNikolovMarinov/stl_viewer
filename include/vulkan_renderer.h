@@ -5,7 +5,7 @@
 
 #define VK_MUST(expr) Assert((expr) == VK_SUCCESS)
 
-struct Queue {
+struct VulkanQueue {
     VkQueue handle = VK_NULL_HANDLE;
     i32 idx = -1;
 };
@@ -19,6 +19,20 @@ struct Surface {
     u32 imageCount = 0;
 };
 
+struct DeviceExtensions {
+    core::Memory<const char*> required;
+    core::Memory<const char*> optional;
+    core::ArrList<bool> optionalIsActive;
+
+    inline addr_size enabledExtensionsCount() const {
+        addr_size computed = required.len();
+        for (addr_size i = 0; i < optionalIsActive.len(); i++) {
+            if (optionalIsActive[i]) computed++;
+        }
+        return computed;
+    }
+};
+
 struct Device {
     struct PhysicalDevice {
         VkPhysicalDevice device;
@@ -29,14 +43,14 @@ struct Device {
     VkInstance instance = VK_NULL_HANDLE;
     VkDevice logicalDevice = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    core::Memory<const char*> requiredDeviceExtensions;
+    DeviceExtensions deviceExtensions;
     VkPhysicalDeviceProperties physicalDeviceProps;
     VkPhysicalDeviceFeatures physicalDeviceFeatures;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
     Surface surface;
 
-    Queue graphicsQueue = {};
-    Queue presentQueue = {};
+    VulkanQueue graphicsQueue = {};
+    VulkanQueue presentQueue = {};
 
     [[nodiscard]] static core::expected<Device, AppError> create(const struct RendererInitInfo& rendererInitInfo);
     [[nodiscard]] static core::expected<AppError> pickDevice(core::Memory<const PhysicalDevice> gpus, Device& out);
@@ -66,7 +80,6 @@ struct CommandBuffers {
 
 struct VulkanContext {
     Device device;
-    Surface surface;
     Swapchain swapchain;
     Pipeline pipeline;
     CommandBuffers cmdBuffers;

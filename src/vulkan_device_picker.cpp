@@ -35,16 +35,20 @@ u32                                                            getDeviceSutabili
                                                                                         VkSurfaceFormatKHR& outSurfaceFormat,
                                                                                         VkPresentModeKHR& outPresentMode,
                                                                                         VkExtent2D& outExtent,
-                                                                                        u32& imageCount,
-                                                                                        VkSurfaceTransformFlagBitsKHR& currentTransform);
+                                                                                        u32& outImageCount,
+                                                                                        VkSurfaceTransformFlagBitsKHR& outCurrentTransform,
+                                                                                        core::ArrList<bool>& outOptionalExtsActiveList);
 
 core::ArrList<VkQueueFamilyProperties>                         getVkQueueFamilyPropsForDevice(VkPhysicalDevice device);
 core::expected<QueueFamilyIndices, AppError>                   findQueueIndices(VkPhysicalDevice device, const Device& infoDevice);
 
 core::expected<core::ArrList<VkExtensionProperties>, AppError> getAllSupportedExtensionsForDevice(VkPhysicalDevice device);
 void                                                           logAllSupportedExtensionsForDevice(core::Memory<const VkExtensionProperties> exts);
-bool                                                           checkDeviceExtSupport(core::Memory<const char*> exts,
+void                                                           logAllDeviceEnabledExtensions(const DeviceExtensions& exts);
+bool                                                           checkDeviceExtSupport(const char* ext,
                                                                                      const core::ArrList<VkExtensionProperties>& supportedExts);
+bool                                                           checkRequiredDeviceExtsSupport(core::Memory<const char*> exts,
+                                                                                              const core::ArrList<VkExtensionProperties>& supportedExts);
 
 core::expected<SwapchainFeatureDetails, AppError>              getSwapchainFeatures(VkPhysicalDevice device, const Device& infoDevice);
 bool                                                           pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats,
@@ -68,6 +72,7 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
         VkExtent2D extent{};
         u32 imageCount = 0;
         VkSurfaceTransformFlagBitsKHR currentTransform;
+        core::ArrList<bool> optionalExtsActiveList (out.deviceExtensions.optional.len(), false);
 
         logPhysicalDevice(gpus[i]);
         u32 currScore = getDeviceSutabilityScore(gpus[i],
@@ -77,7 +82,8 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
                                                  presentMode,
                                                  extent,
                                                  imageCount,
-                                                 currentTransform);
+                                                 currentTransform,
+                                                 optionalExtsActiveList);
 
         if (currScore > maxScore) {
             prefferedIdx = i32(i);
@@ -93,12 +99,16 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
             out.surface.extent = std::move(extent);
             out.surface.imageCount = imageCount;
             out.surface.currentTransform = currentTransform;
+            out.deviceExtensions.optionalIsActive = std::move(optionalExtsActiveList);
         }
     }
 
     if (prefferedIdx < 0) {
         return core::unexpected(createRendErr(RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES));
     }
+
+    logInfoTagged(RENDERER_TAG, ANSI_BOLD("Selected GPU: %s"), out.physicalDeviceProps.deviceName);
+    logAllDeviceEnabledExtensions(out.deviceExtensions);
 
     return {};
 }
@@ -127,7 +137,8 @@ u32 getDeviceSutabilityScore(
     VkPresentModeKHR& outPresentMode,
     VkExtent2D& outExtent,
     u32& outImageCount,
-    VkSurfaceTransformFlagBitsKHR& outCurrentTransform
+    VkSurfaceTransformFlagBitsKHR& outCurrentTransform,
+    core::ArrList<bool>& outOptionalExtsActiveList
 ) {
     const auto& device = gpu.device;
     const auto& props = gpu.props;
@@ -171,7 +182,7 @@ u32 getDeviceSutabilityScore(
 
     // Check Required Device extensions support
     {
-        bool supported = checkDeviceExtSupport(infoDevice.requiredDeviceExtensions, supportedDeviceExts);
+        bool supported = checkRequiredDeviceExtsSupport(infoDevice.deviceExtensions.required, supportedDeviceExts);
         if (!supported) {
             return 0;
         }
@@ -180,7 +191,20 @@ u32 getDeviceSutabilityScore(
         score++;
     }
 
-    // TODO: If optional extensions are needed, add check here and score them.
+    // Check Optional Device extensions support
+    {
+        for (addr_size i = 0; i < infoDevice.deviceExtensions.optional.len(); i++) {
+            const char* ext = infoDevice.deviceExtensions.optional[i];
+            bool supported = checkDeviceExtSupport(ext, supportedDeviceExts);
+            if (supported) {
+                score++;
+                outOptionalExtsActiveList[i] = true;
+            }
+            else {
+                logWarnTagged(RENDERER_TAG, "Device does not support optional extension: %s", ext);
+            }
+        }
+    }
 
     // Get features for Swapchain
     SwapchainFeatureDetails swapchainFeatureDetails;
@@ -304,19 +328,41 @@ void logAllSupportedExtensionsForDevice(core::Memory<const VkExtensionProperties
     }
 }
 
-bool checkDeviceExtSupport(core::Memory<const char*> exts, const core::ArrList<VkExtensionProperties>& supportedExts) {
+void logAllDeviceEnabledExtensions(const DeviceExtensions& exts) {
+    logInfoTagged(RENDERER_TAG, "Device Enabled Extensions (%llu):", exts.enabledExtensionsCount());
+    for (addr_size i = 0; i < exts.required.len(); i++) {
+        const char* ext = exts.required[i];
+        logInfoTagged(RENDERER_TAG, "\t%s (required)", ext);
+    }
+    for (addr_size i = 0; i < exts.optional.len(); i++) {
+        if (exts.optionalIsActive[i]) {
+            const char* ext = exts.optional[i];
+            logInfoTagged(RENDERER_TAG, "\t%s (optional)", ext);
+        }
+    }
+}
+
+bool checkDeviceExtSupport(const char* ext, const core::ArrList<VkExtensionProperties>& supportedExts) {
+    const addr_size currExtNameLen = core::cstrLen(ext);
+
+    addr_off foundIdx = core::find(supportedExts, [&ext, &currExtNameLen](const VkExtensionProperties& v, addr_size) {
+        i32 diff = core::memcmp(ext, currExtNameLen, v.extensionName, core::cstrLen(v.extensionName));
+        return diff == 0;
+    });
+
+    if (foundIdx < 0) {
+        return false;
+    }
+
+    return true;
+}
+
+
+bool checkRequiredDeviceExtsSupport(core::Memory<const char*> exts, const core::ArrList<VkExtensionProperties>& supportedExts) {
     for (addr_size i = 0; i < exts.len(); i++) {
         const char* currExtName = exts[i];
-        const addr_size currExtNameLen = core::cstrLen(currExtName);
-
-        addr_off foundIdx = core::find(supportedExts, [&currExtName, &currExtNameLen](const VkExtensionProperties& v, addr_size) {
-            i32 diff = core::memcmp(currExtName, currExtNameLen,
-                                    v.extensionName, core::cstrLen(v.extensionName));
-            return diff == 0;
-        });
-
-        if (foundIdx < 0) {
-            logInfoTagged(RENDERER_TAG, "Device does not support extension: %s", currExtName);
+        if (!checkDeviceExtSupport(currExtName, supportedExts)) {
+            logInfoTagged(RENDERER_TAG, "Device does not support required extension: %s", currExtName);
             return false;
         }
     }
@@ -344,7 +390,7 @@ core::expected<SwapchainFeatureDetails, AppError> getSwapchainFeatures(VkPhysica
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_FORMATS));
     }
 
-    details.formats = core::ArrList<VkSurfaceFormatKHR>(formatCount, VkSurfaceFormatKHR{});
+    details.formats.replaceWith(VkSurfaceFormatKHR{}, formatCount);
     if (
         VkResult vres = vkGetPhysicalDeviceSurfaceFormatsKHR(device,
                                                              infoDevice.surface.handle,
@@ -364,7 +410,7 @@ core::expected<SwapchainFeatureDetails, AppError> getSwapchainFeatures(VkPhysica
         return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES));
     }
 
-    details.presentModes = core::ArrList<VkPresentModeKHR>(presentModeCount, VkPresentModeKHR{});
+    details.presentModes.replaceWith(VkPresentModeKHR{}, presentModeCount);
     if (
         VkResult vres = vkGetPhysicalDeviceSurfacePresentModesKHR(device,
                                                                   infoDevice.surface.handle,
