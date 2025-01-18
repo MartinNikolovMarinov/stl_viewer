@@ -1,7 +1,7 @@
 #include <app_logger.h>
 #include <platform.h>
 #include <renderer.h>
-#include <vulkan_include.h>
+#include <vulkan_renderer.h>
 
 namespace {
     using ExtPropsList = core::ArrList<VkExtensionProperties>;
