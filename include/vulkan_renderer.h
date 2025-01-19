@@ -11,8 +11,6 @@ struct VulkanDevice;
 struct VulkanSwapchain;
 struct VulkanShaderStage;
 struct VulkanShader;
-struct VulkanPipeline;
-struct VulkanCommandBuffers;
 struct VulkanContext;
 
 struct VulkanQueue {
@@ -114,12 +112,7 @@ struct VulkanShaderStage {
     static void destroy(VulkanShaderStage& stage, VkDevice logicalDevice);
 };
 
-struct VulkanPipeline {
-    VkPipeline handle = VK_NULL_HANDLE;
-    VkRenderPass renderPass = VK_NULL_HANDLE;
-    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-};
-
+// TODO: [REMAINDER]: These entire structure can be destroyed once a RenderPipeline has been created.
 struct VulkanShader {
     struct CreateFromFileInfo {
         core::StrView vertexShaderPath;
@@ -130,24 +123,20 @@ struct VulkanShader {
     static constexpr const char* SHADERS_ENTRY_FUNCTION = "main";
 
     core::ArrStatic<VulkanShaderStage, MAX_SHADER_STAGES> stages;
-    VulkanPipeline pipeline;
 
     [[nodiscard]] static VulkanShader createGraphicsShaderFromFile(const CreateFromFileInfo& info,
                                                                    const VulkanContext& vkctx);
     static void destroy(VulkanShader& shader, VkDevice logicalDevice);
 };
 
-struct VulkanCommandBuffers {
-    VkCommandPool commandPool = VK_NULL_HANDLE;
-    core::ArrList<VkCommandBuffer> cmdBuffers;
-};
-
 struct VulkanContext {
-    static constexpr addr_size MAX_SHADERS_COUNT = 5;
-
     VulkanDevice device;
     VulkanSwapchain swapchain;
-    core::ArrStatic<VulkanShader, MAX_SHADERS_COUNT> shaders;
-    VulkanShader* boundShader;
-    VulkanCommandBuffers cmdBuffers;
+
+    // EXPERIMENTAL SECTION:
+    VulkanShader shader;
+    VkPipeline pipeline;
+    VkPipelineLayout pipelineLayout;
+    VkRenderPass renderPass;
+    core::ArrStatic<VkFramebuffer, 3> frameBuffers;
 };
