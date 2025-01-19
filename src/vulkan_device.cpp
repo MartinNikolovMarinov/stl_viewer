@@ -318,7 +318,7 @@ GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache
         VkPhysicalDeviceFeatures features;
         vkGetPhysicalDeviceFeatures(pd, &features);
 
-        gpus[i].device = pd;
+        gpus[i].handle = pd;
         gpus[i].props = props;
         gpus[i].features = features;
     }

@@ -6,13 +6,13 @@ core::expected<Swapchain, AppError> Swapchain::create(const VulkanContext& vkctx
     auto& logicalDevice = vkctx.device.logicalDevice;
     auto& surface = vkctx.device.surface;
 
-    u32 imageCount = surface.imageCount;
-    auto& surfaceFormat = surface.format;
-    auto& imageExtent = surface.extent;
+    u32 imageCount = surface.capabilities.imageCount;
+    auto& surfaceFormat = surface.capabilities.format;
+    auto& imageExtent = surface.capabilities.extent;
     u32 graphicsQueueIdx = device.graphicsQueue.idx;
     u32 presentQueueIdx = device.presentQueue.idx;
-    auto& currentTransform = surface.currentTransform;
-    auto& presentMode = surface.presentMode;
+    auto& currentTransform = surface.capabilities.currentTransform;
+    auto& presentMode = surface.capabilities.presentMode;
 
     VkSwapchainCreateInfoKHR swapchainCreateInfo{};
     swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

@@ -19,17 +19,31 @@ struct VulkanQueue {
 };
 
 struct Surface {
+    struct Capabilities {
+        VkSurfaceCapabilitiesKHR capabilities;
+        core::ArrList<VkSurfaceFormatKHR> formats;
+        core::ArrList<VkPresentModeKHR> presentModes;
+    };
+
+    struct CachedCapabilities {
+        VkSurfaceFormatKHR format;
+        VkPresentModeKHR presentMode;
+        VkExtent2D extent;
+        VkSurfaceTransformFlagBitsKHR currentTransform;
+        u32 imageCount = 0;
+    };
+
     VkSurfaceKHR handle = VK_NULL_HANDLE;
-    VkSurfaceFormatKHR format;
-    VkPresentModeKHR presentMode;
-    VkExtent2D extent;
-    VkSurfaceTransformFlagBitsKHR currentTransform;
-    u32 imageCount = 0;
+    CachedCapabilities capabilities;
+
+    [[nodiscard]] static Surface::Capabilities queryCapabilities(const Surface& surface,
+                                                                 VkPhysicalDevice physicalDevice);
+    [[nodiscard]] static core::expected<CachedCapabilities, AppError> pickCapabilities(const Capabilities& capabilities);
 };
 
 struct Device {
     struct PhysicalDevice {
-        VkPhysicalDevice device;
+        VkPhysicalDevice handle;
         VkPhysicalDeviceProperties props;
         VkPhysicalDeviceFeatures features;
     };

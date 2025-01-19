@@ -2,8 +2,6 @@
 #include <platform.h>
 #include <renderer.h>
 #include <vulkan_renderer.h>
-// #include <vulkan_swapchain.h>
-// #include <vulkan_renderpipeline.h>
 
 // namespace {
 

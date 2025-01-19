@@ -1,4 +1,5 @@
 #include <app_logger.h>
+#include <app_error.h>
 #include <platform.h>
 #include <vulkan_renderer.h>
 
@@ -22,22 +23,12 @@ struct QueueFamilyIndices {
     );
 };
 
-struct SwapchainFeatureDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    core::ArrList<VkSurfaceFormatKHR> formats;
-    core::ArrList<VkPresentModeKHR> presentModes;
-};
-
 void                                                           logPhysicalDevice(const Device::PhysicalDevice& device);
 
 u32                                                            getDeviceSutabilityScore(const PhysicalDevice& gpu,
                                                                                         const Device& infoDevice,
                                                                                         QueueFamilyIndices& outIndices,
-                                                                                        VkSurfaceFormatKHR& outSurfaceFormat,
-                                                                                        VkPresentModeKHR& outPresentMode,
-                                                                                        VkExtent2D& outExtent,
-                                                                                        u32& outImageCount,
-                                                                                        VkSurfaceTransformFlagBitsKHR& outCurrentTransform,
+                                                                                        Surface::CachedCapabilities& outPickedSurfaceCapabilities,
                                                                                         core::ArrList<bool>& outOptionalExtsActiveList);
 
 core::ArrList<VkQueueFamilyProperties>                         getVkQueueFamilyPropsForDevice(VkPhysicalDevice device);
@@ -51,12 +42,11 @@ bool                                                           checkDeviceExtSup
 bool                                                           checkRequiredDeviceExtsSupport(core::Memory<const char*> exts,
                                                                                               const core::ArrList<VkExtensionProperties>& supportedExts);
 
-core::expected<SwapchainFeatureDetails, AppError>              getSwapchainFeatures(VkPhysicalDevice device, const Device& infoDevice);
+void                                                           logSurfaceCapabilities(const Surface& surface);
 bool                                                           pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats,
                                                                                  VkSurfaceFormatKHR& out);
-VkPresentModeKHR                                               pickSwapPresentMode(const core::ArrList<VkPresentModeKHR>& presentModes,
-                                                                                   u32& score);
-VkExtent2D                                                     pickSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+VkPresentModeKHR                                               pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes);
+VkExtent2D                                                     pickSurfaceExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 } // namespace
 
@@ -68,38 +58,26 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
 
     for (addr_size i = 0; i < gpus.len(); i++) {
         QueueFamilyIndices queueFamilies{};
-        VkSurfaceFormatKHR surfaceFormat{};
-        VkPresentModeKHR presentMode{};
-        VkExtent2D extent{};
-        u32 imageCount = 0;
-        VkSurfaceTransformFlagBitsKHR currentTransform;
+        Surface::CachedCapabilities outPickedSurfaceCapabilities;
         core::ArrList<bool> optionalExtsActiveList (out.deviceExtensions.optional.len(), false);
 
         logPhysicalDevice(gpus[i]);
         u32 currScore = getDeviceSutabilityScore(gpus[i],
                                                  out,
                                                  queueFamilies,
-                                                 surfaceFormat,
-                                                 presentMode,
-                                                 extent,
-                                                 imageCount,
-                                                 currentTransform,
+                                                 outPickedSurfaceCapabilities,
                                                  optionalExtsActiveList);
 
         if (currScore > maxScore) {
             prefferedIdx = i32(i);
             maxScore = currScore;
 
-            out.physicalDevice = gpus[addr_size(prefferedIdx)].device;
+            out.physicalDevice = gpus[addr_size(prefferedIdx)].handle;
             out.physicalDeviceFeatures = gpus[addr_size(prefferedIdx)].features;
             out.physicalDeviceProps = gpus[addr_size(prefferedIdx)].props;
             out.graphicsQueue.idx = queueFamilies.graphicsIndex;
             out.presentQueue.idx = queueFamilies.presentIndex;
-            out.surface.format = std::move(surfaceFormat);
-            out.surface.presentMode = std::move(presentMode);
-            out.surface.extent = std::move(extent);
-            out.surface.imageCount = imageCount;
-            out.surface.currentTransform = currentTransform;
+            out.surface.capabilities = std::move(outPickedSurfaceCapabilities);
             out.deviceExtensions.optionalIsActive = std::move(optionalExtsActiveList);
         }
     }
@@ -110,8 +88,79 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
 
     logInfoTagged(RENDERER_TAG, ANSI_BOLD("Selected GPU: %s"), out.physicalDeviceProps.deviceName);
     logAllDeviceEnabledExtensions(out.deviceExtensions);
+    logSurfaceCapabilities(out.surface);
 
     return {};
+}
+
+Surface::Capabilities Surface::queryCapabilities(const Surface& surface,
+                                                 VkPhysicalDevice physicalDevice) {
+    Surface::Capabilities details;
+
+    // Basic surface capabilities (min/max number of images in swap chain, min/max width and height of images)
+    VK_MUST(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice,
+                                                      surface.handle,
+                                                      &details.capabilities));
+
+    // Surface formats (pixel format, color space)
+    u32 formatCount;
+    VK_MUST(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,
+                                                 surface.handle,
+                                                 &formatCount,
+                                                 nullptr));
+    details.formats.replaceWith(VkSurfaceFormatKHR{}, formatCount);
+    VK_MUST(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,
+                                                 surface.handle,
+                                                 &formatCount,
+                                                 details.formats.data()));
+
+    // Available presentation modes
+    uint32_t presentModeCount;
+    VK_MUST(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice,
+                                                      surface.handle,
+                                                      &presentModeCount,
+                                                      nullptr));
+    details.presentModes.replaceWith(VkPresentModeKHR{}, presentModeCount);
+    VK_MUST(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice,
+                                                      surface.handle,
+                                                      &presentModeCount,
+                                                      details.presentModes.data()));
+
+    return details;
+}
+
+core::expected<Surface::CachedCapabilities, AppError> Surface::pickCapabilities(const Surface::Capabilities& surfaceCapabilities) {
+    const auto& formats = surfaceCapabilities.formats;
+    const auto& presentModes = surfaceCapabilities.presentModes;
+    const auto& capabilities = surfaceCapabilities.capabilities;
+
+    if (formats.empty()) {
+        // No supported formats
+        return core::unexpected(createRendErr(RendererError::FAILED_TO_PICK_SUTABLE_SURFACE_FOR_SWAPCHAIN));
+    }
+    if (presentModes.empty()) {
+        // No supported present modes
+        return core::unexpected(createRendErr(RendererError::FAILED_TO_PICK_SUTABLE_SURFACE_FOR_SWAPCHAIN));
+    }
+
+    Surface::CachedCapabilities ret;
+
+    ret.presentMode = pickSurfacePresentMode(presentModes);
+    ret.extent = pickSurfaceExtent(capabilities);
+
+    ret.imageCount = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 && ret.imageCount > capabilities.maxImageCount) {
+        ret.imageCount = capabilities.maxImageCount;
+    }
+
+    ret.currentTransform = capabilities.currentTransform;
+
+    if (!pickSurfaceFormat(formats, ret.format)) {
+        // No suttable surface format
+        return core::unexpected(createRendErr(RendererError::FAILED_TO_PICK_SUTABLE_SURFACE_FOR_SWAPCHAIN));
+    }
+
+    return ret;
 }
 
 namespace  {
@@ -134,20 +183,16 @@ u32 getDeviceSutabilityScore(
     const PhysicalDevice& gpu,
     const Device& infoDevice,
     QueueFamilyIndices& outIndices,
-    VkSurfaceFormatKHR& outSurfaceFormat,
-    VkPresentModeKHR& outPresentMode,
-    VkExtent2D& outExtent,
-    u32& outImageCount,
-    VkSurfaceTransformFlagBitsKHR& outCurrentTransform,
+    Surface::CachedCapabilities& outPickedSurfaceCapabilities,
     core::ArrList<bool>& outOptionalExtsActiveList
 ) {
-    const auto& device = gpu.device;
+    const auto& device = gpu.handle;
     const auto& props = gpu.props;
     u32 score = 0;
 
     // Verify required Queues are supported
     {
-        auto res = findQueueIndices(gpu.device, infoDevice);
+        auto res = findQueueIndices(gpu.handle, infoDevice);
         if (res.hasErr()) {
             logWarnTagged(RENDERER_TAG, "Failed to find queue indices for device: %s, reason: %s",
                          gpu.props.deviceName, res.err().toCStr());
@@ -207,41 +252,16 @@ u32 getDeviceSutabilityScore(
         }
     }
 
-    // Get features for Swapchain
-    SwapchainFeatureDetails swapchainFeatureDetails;
+    // Give a score for the supported Surface features.
     {
-        auto res = getSwapchainFeatures(device, infoDevice);
+        Surface::Capabilities surfaceCapabilities = Surface::queryCapabilities(infoDevice.surface, gpu.handle);
+        auto res = Surface::pickCapabilities(surfaceCapabilities);
         if (res.hasErr()) {
-            logWarnTagged(RENDERER_TAG, "Failed to get Swapchain features for device: %s, reason: %s",
-                         gpu.props.deviceName, res.err().toCStr());
+            // This should be rare.
+            logWarnTagged(RENDERER_TAG, "Device surface does not support the required capabilities.");
             return 0;
         }
-        swapchainFeatureDetails = std::move(res.value());
-    }
-
-    // Give a score for the supported Swapchain features.
-    {
-        const auto& formats = swapchainFeatureDetails.formats;
-        const auto& presentModes = swapchainFeatureDetails.presentModes;
-        const auto& capabilities = swapchainFeatureDetails.capabilities;
-
-        if (formats.empty()) return 0; // No supported formats
-        if (presentModes.empty()) return 0; // No supported present modes
-
-        outPresentMode = pickSwapPresentMode(presentModes, score);
-
-        outExtent = pickSwapExtent(capabilities);
-
-        outImageCount = capabilities.minImageCount + 1;
-        if (capabilities.maxImageCount > 0 && outImageCount > capabilities.maxImageCount) {
-            outImageCount = capabilities.maxImageCount;
-        }
-
-        outCurrentTransform = capabilities.currentTransform;
-
-        if (!pickSurfaceFormat(formats, outSurfaceFormat)) {
-            return 0; // No suttable surface format
-        }
+        outPickedSurfaceCapabilities = std::move(res.value());
     }
 
     if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
@@ -250,6 +270,27 @@ u32 getDeviceSutabilityScore(
     }
 
     return score;
+}
+
+void logPhysicalDevice(const Device::PhysicalDevice& device) {
+    auto& gpu = device;
+    auto& props = gpu.props;
+
+    logInfoTagged(RENDERER_TAG, "");
+    logInfoTagged(RENDERER_TAG, "Device Name: %s", props.deviceName);
+    logInfoTagged(RENDERER_TAG, "API Version: %u.%u.%u",
+                    VK_VERSION_MAJOR(props.apiVersion),
+                    VK_VERSION_MINOR(props.apiVersion),
+                    VK_VERSION_PATCH(props.apiVersion));
+    logInfoTagged(RENDERER_TAG, "Driver Version: %u",
+                    props.driverVersion);
+    logInfoTagged(RENDERER_TAG, "Vendor ID: %u, Device ID: %u",
+                    props.vendorID, props.deviceID);
+    logInfoTagged(RENDERER_TAG, "Device Type: %s",
+                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "Integrated GPU" :
+                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" :
+                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "Virtual GPU" :
+                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "CPU" : "Other");
 }
 
 core::ArrList<VkQueueFamilyProperties> getVkQueueFamilyPropsForDevice(VkPhysicalDevice device) {
@@ -371,60 +412,6 @@ bool checkRequiredDeviceExtsSupport(core::Memory<const char*> exts, const core::
     return true;
 }
 
-core::expected<SwapchainFeatureDetails, AppError> getSwapchainFeatures(VkPhysicalDevice device, const Device& infoDevice) {
-    SwapchainFeatureDetails details;
-
-    // Basic surface capabilities (min/max number of images in swap chain, min/max width and height of images)
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, infoDevice.surface.handle, &details.capabilities);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES));
-    }
-
-    // Surface formats (pixel format, color space)
-    u32 formatCount;
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfaceFormatsKHR(device, infoDevice.surface.handle, &formatCount, nullptr);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_FORMATS));
-    }
-
-    details.formats.replaceWith(VkSurfaceFormatKHR{}, formatCount);
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfaceFormatsKHR(device,
-                                                             infoDevice.surface.handle,
-                                                             &formatCount,
-                                                             details.formats.data());
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_FORMATS));
-    }
-
-    // Available presentation modes
-    uint32_t presentModeCount;
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfacePresentModesKHR(device, infoDevice.surface.handle, &presentModeCount, nullptr);
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES));
-    }
-
-    details.presentModes.replaceWith(VkPresentModeKHR{}, presentModeCount);
-    if (
-        VkResult vres = vkGetPhysicalDeviceSurfacePresentModesKHR(device,
-                                                                  infoDevice.surface.handle,
-                                                                  &presentModeCount,
-                                                                  details.presentModes.data());
-        vres != VK_SUCCESS
-    ) {
-        return core::unexpected(createRendErr(RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES));
-    }
-
-    return details;
-}
-
 bool pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats, VkSurfaceFormatKHR& out) {
     // NOTE:
     //
@@ -448,8 +435,8 @@ bool pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats, VkSurfa
     return false;
 }
 
-VkPresentModeKHR pickSwapPresentMode(const core::ArrList<VkPresentModeKHR>& presentModes, u32& score) {
-    // NOTE: From the Vulkan Tutorial
+VkPresentModeKHR pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes) {
+    // NOTE: From the Vulkan Tutoria
     //
     // The presentation mode is arguably the most important setting for the swap chain, because it represents the actual
     // conditions for showing images to the screen. There are 4 commonly used modes in Vulkan:
@@ -475,13 +462,15 @@ VkPresentModeKHR pickSwapPresentMode(const core::ArrList<VkPresentModeKHR>& pres
         }
     }
 
-    // Decreasing the score because VK_PRESENT_MODE_FIFO_KHR is suboptimal, but it is the only Vulkan standard required
-    // present mode.
-    score--;
+    // FIXME: move this !
+    // // Decreasing the score because VK_PRESENT_MODE_FIFO_KHR is suboptimal, but it is the only Vulkan standard required
+    // // present mode.
+    // score--;
+
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D pickSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
+VkExtent2D pickSurfaceExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
     if (capabilities.currentExtent.width != core::limitMax<u32>()) {
         return capabilities.currentExtent;
     }
@@ -501,25 +490,15 @@ VkExtent2D pickSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
     return actualExtent;
 }
 
-void logPhysicalDevice(const Device::PhysicalDevice& device) {
-    auto& gpu = device;
-    auto& props = gpu.props;
-
-    logInfoTagged(RENDERER_TAG, "");
-    logInfoTagged(RENDERER_TAG, "Device Name: %s", props.deviceName);
-    logInfoTagged(RENDERER_TAG, "API Version: %u.%u.%u",
-                    VK_VERSION_MAJOR(props.apiVersion),
-                    VK_VERSION_MINOR(props.apiVersion),
-                    VK_VERSION_PATCH(props.apiVersion));
-    logInfoTagged(RENDERER_TAG, "Driver Version: %u",
-                    props.driverVersion);
-    logInfoTagged(RENDERER_TAG, "Vendor ID: %u, Device ID: %u",
-                    props.vendorID, props.deviceID);
-    logInfoTagged(RENDERER_TAG, "Device Type: %s",
-                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "Integrated GPU" :
-                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" :
-                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "Virtual GPU" :
-                    props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "CPU" : "Other");
+void logSurfaceCapabilities(const Surface& surface) {
+    logInfoTagged(RENDERER_TAG, "Surface Capabilities:");
+    logInfoTagged(RENDERER_TAG, "\tformat: %u", surface.capabilities.format.format);
+    logInfoTagged(RENDERER_TAG, "\tcolorSpace: %u", surface.capabilities.format.colorSpace);
+    logInfoTagged(RENDERER_TAG, "\tpresent_mode: %u", surface.capabilities.presentMode);
+    logInfoTagged(RENDERER_TAG, "\textent: w=%u, h=%u",
+        surface.capabilities.extent.width, surface.capabilities.extent.height);
+    logInfoTagged(RENDERER_TAG, "\tcurrent_transform: %u", surface.capabilities.currentTransform);
+    logInfoTagged(RENDERER_TAG, "\timage_count: %u", surface.capabilities.imageCount);
 }
 
 } // namespace
