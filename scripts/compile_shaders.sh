@@ -75,6 +75,9 @@ if [[ ${#shader_array[@]} -gt 0 ]]; then
         echo "$mod_time" > "$out_filepath.modtime"
         check_exit_code "failed to save modification time for $shaderFile"
 
+        # Save the source for debugging
+        cat "$shaderFile" > "$out_filepath.debug.src"
+
         echo "$shaderFile (COMPILED)"
     done
 else

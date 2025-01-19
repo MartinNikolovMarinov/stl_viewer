@@ -55,6 +55,8 @@ constexpr const char* rendErrorToCStr(RendererError e) {
             return "Failed to get physical device surface formats";
         case RendererError::FAILED_TO_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES:
             return "Failed to get physical device surface present modes";
+        case RendererError::FAILED_TO_PICK_SUTABLE_SURFACE_FOR_SWAPCHAIN:
+            return "Failed to pick sutable Surface for Swapchain";
         case RendererError::FAILED_TO_CREATE_SWAPCHAIN:
             return "Failed to create Swapchain";
         case RendererError::FAILED_TO_GET_SWAPCHAIN_IMAGES:

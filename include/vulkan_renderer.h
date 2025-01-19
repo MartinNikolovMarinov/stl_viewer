@@ -6,11 +6,13 @@
 #define VK_MUST(expr) Assert((expr) == VK_SUCCESS)
 
 struct VulkanQueue;
-struct Surface;
-struct Device;
-struct Swapchain;
-struct Pipeline;
-struct CommandBuffers;
+struct VulkanSurface;
+struct VulkanDevice;
+struct VulkanSwapchain;
+struct VulkanShaderStage;
+struct VulkanShader;
+struct VulkanPipeline;
+struct VulkanCommandBuffers;
 struct VulkanContext;
 
 struct VulkanQueue {
@@ -18,7 +20,7 @@ struct VulkanQueue {
     i32 idx = -1;
 };
 
-struct Surface {
+struct VulkanSurface {
     struct Capabilities {
         VkSurfaceCapabilitiesKHR capabilities;
         core::ArrList<VkSurfaceFormatKHR> formats;
@@ -36,12 +38,12 @@ struct Surface {
     VkSurfaceKHR handle = VK_NULL_HANDLE;
     CachedCapabilities capabilities;
 
-    [[nodiscard]] static Surface::Capabilities queryCapabilities(const Surface& surface,
-                                                                 VkPhysicalDevice physicalDevice);
+    [[nodiscard]] static VulkanSurface::Capabilities queryCapabilities(const VulkanSurface& surface,
+                                                                       VkPhysicalDevice physicalDevice);
     [[nodiscard]] static core::expected<CachedCapabilities, AppError> pickCapabilities(const Capabilities& capabilities);
 };
 
-struct Device {
+struct VulkanDevice {
     struct PhysicalDevice {
         VkPhysicalDevice handle;
         VkPhysicalDeviceProperties props;
@@ -69,44 +71,83 @@ struct Device {
     VkPhysicalDeviceProperties physicalDeviceProps;
     VkPhysicalDeviceFeatures physicalDeviceFeatures;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-    Surface surface;
+    VulkanSurface surface;
 
     VulkanQueue graphicsQueue = {};
     VulkanQueue presentQueue = {};
 
-    [[nodiscard]] static core::expected<Device, AppError> create(const struct RendererInitInfo& rendererInitInfo);
-    [[nodiscard]] static core::expected<AppError> pickDevice(core::Memory<const PhysicalDevice> gpus, Device& out);
+    [[nodiscard]] static core::expected<VulkanDevice, AppError> create(const struct RendererInitInfo& rendererInitInfo);
+    [[nodiscard]] static core::expected<AppError> pickDevice(core::Memory<const PhysicalDevice> gpus, VulkanDevice& out);
 
-    static void destroy(Device& device);
+    static void destroy(VulkanDevice& device);
 };
 
-struct Swapchain {
+struct VulkanSwapchain {
     VkSwapchainKHR handle = VK_NULL_HANDLE;
     core::ArrList<VkImage> images;
     core::ArrList<VkImageView> imageViews;
     VkFormat imageFormat;
     VkExtent2D extent;
 
-    [[nodiscard]] static core::expected<Swapchain, AppError> create(const VulkanContext& vkctx);
+    [[nodiscard]] static core::expected<VulkanSwapchain, AppError> create(const VulkanContext& vkctx,
+                                                                          const VulkanSwapchain* old = nullptr);
 
-    static void destroy(Swapchain& swapchain, const Device& device);
+    static void destroy(VulkanSwapchain& swapchain, const VulkanDevice& device);
 };
 
-struct Pipeline {
+struct VulkanShaderStage {
+    enum Type : u8 {
+        UNDEFINED,
+        VERTEX,
+        FRAGMENT,
+    };
+
+    u32 id = 0;
+    VkShaderModule shaderModule = VK_NULL_HANDLE;
+    u8* shaderBytes = nullptr;
+    addr_size shaderBytesSize = 0;
+    Type stageType = Type::UNDEFINED;
+
+    [[nodiscard]] static core::expected<VulkanShaderStage, AppError> createFromFile(VkDevice logicalDevice,
+                                                                                    core::StrView path,
+                                                                                    Type stageType);
+    static void destroy(VulkanShaderStage& stage, VkDevice logicalDevice);
+};
+
+struct VulkanPipeline {
+    VkPipeline handle = VK_NULL_HANDLE;
     VkRenderPass renderPass = VK_NULL_HANDLE;
     VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
-    VkPipeline graphicsPipeline = VK_NULL_HANDLE;
-    core::ArrList<VkFramebuffer> frameBuffers;
 };
 
-struct CommandBuffers {
+struct VulkanShader {
+    struct CreateFromFileInfo {
+        core::StrView vertexShaderPath;
+        core::StrView fragmetShaderPath;
+    };
+
+    static constexpr addr_size MAX_SHADER_STAGES = 5;
+    static constexpr const char* SHADERS_ENTRY_FUNCTION = "main";
+
+    core::ArrStatic<VulkanShaderStage, MAX_SHADER_STAGES> stages;
+    VulkanPipeline pipeline;
+
+    [[nodiscard]] static VulkanShader createGraphicsShaderFromFile(const CreateFromFileInfo& info,
+                                                                   const VulkanContext& vkctx);
+    static void destroy(VulkanShader& shader, VkDevice logicalDevice);
+};
+
+struct VulkanCommandBuffers {
     VkCommandPool commandPool = VK_NULL_HANDLE;
     core::ArrList<VkCommandBuffer> cmdBuffers;
 };
 
 struct VulkanContext {
-    Device device;
-    Swapchain swapchain;
-    Pipeline pipeline;
-    CommandBuffers cmdBuffers;
+    static constexpr addr_size MAX_SHADERS_COUNT = 5;
+
+    VulkanDevice device;
+    VulkanSwapchain swapchain;
+    core::ArrStatic<VulkanShader, MAX_SHADERS_COUNT> shaders;
+    VulkanShader* boundShader;
+    VulkanCommandBuffers cmdBuffers;
 };

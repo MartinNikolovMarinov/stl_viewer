@@ -7,7 +7,7 @@ namespace {
 
 using ExtPropsList = core::ArrList<VkExtensionProperties>;
 using LayerPropsList = core::ArrList<VkLayerProperties>;
-using GPUDeviceList = core::ArrList<Device::PhysicalDevice>;
+using GPUDeviceList = core::ArrList<VulkanDevice::PhysicalDevice>;
 
 #if STLV_DEBUG
 constexpr bool VALIDATION_LAYERS_ENABLED = true;
@@ -46,12 +46,12 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
                                             VkDebugUtilsMessengerEXT debugMessenger,
                                             const VkAllocationCallbacks* pAllocator);
 
-VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, Device& device);
+VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, VulkanDevice& device);
 
 } // namespace
 
-core::expected<Device, AppError> Device::create(const RendererInitInfo& rendererInitInfo) {
-    Device device;
+core::expected<VulkanDevice, AppError> VulkanDevice::create(const RendererInitInfo& rendererInitInfo) {
+    VulkanDevice device;
 
     logInfoTagged(RENDERER_TAG, "Creating Device");
 
@@ -73,7 +73,7 @@ core::expected<Device, AppError> Device::create(const RendererInitInfo& renderer
     }
 
     // Create a Surface
-    Surface surface;
+    VulkanSurface surface;
     Assert(Platform::createVulkanSurface(device.instance, surface.handle).isOk());
     logInfoTagged(RENDERER_TAG, "WSI Surface created");
     device.surface = surface;
@@ -103,7 +103,7 @@ core::expected<Device, AppError> Device::create(const RendererInitInfo& renderer
     return device;
 }
 
-void Device::destroy(Device& device) {
+void VulkanDevice::destroy(VulkanDevice& device) {
     if (device.logicalDevice != VK_NULL_HANDLE) {
         logInfoTagged(RENDERER_TAG, "Destroying Vulkan logical device");
         vkDestroyDevice(device.logicalDevice, nullptr);
@@ -308,7 +308,7 @@ GPUDeviceList* getAllSupportedPhysicalDevices(VkInstance instance, bool useCache
     auto physDeviceList = core::ArrList<VkPhysicalDevice>(physDeviceCount, VkPhysicalDevice{});
     VK_MUST(vkEnumeratePhysicalDevices(instance, &physDeviceCount, physDeviceList.data()));
 
-    auto gpus = GPUDeviceList(physDeviceCount, Device::PhysicalDevice{});
+    auto gpus = GPUDeviceList(physDeviceCount, VulkanDevice::PhysicalDevice{});
     for (addr_size i = 0; i < physDeviceList.len(); i++) {
         auto pd = physDeviceList[i];
 
@@ -452,7 +452,7 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
     func(instance, debugMessenger, pAllocator);
 }
 
-VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, Device& device) {
+VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, VulkanDevice& device) {
     constexpr float queuePriority = 1.0f;
     constexpr addr_size MAX_QUEUES = 5;
 

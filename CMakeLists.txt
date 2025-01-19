@@ -67,7 +67,7 @@ set(stlv_src
     src/vulkan_device.cpp
     src/vulkan_device_picker.cpp
     src/vulkan_swapchain.cpp
-    # src/vulkan_renderpipeline.cpp
+    src/vulkan_shader.cpp
 )
 
 if(OS STREQUAL "linux")

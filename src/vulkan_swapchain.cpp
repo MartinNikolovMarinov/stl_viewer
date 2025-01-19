@@ -1,7 +1,7 @@
 #include <app_logger.h>
 #include <vulkan_renderer.h>
 
-core::expected<Swapchain, AppError> Swapchain::create(const VulkanContext& vkctx) {
+core::expected<VulkanSwapchain, AppError> VulkanSwapchain::create(const VulkanContext& vkctx, const VulkanSwapchain* old) {
     auto& device = vkctx.device;
     auto& logicalDevice = vkctx.device.logicalDevice;
     auto& surface = vkctx.device.surface;
@@ -42,9 +42,9 @@ core::expected<Swapchain, AppError> Swapchain::create(const VulkanContext& vkctx
     swapchainCreateInfo.presentMode = presentMode;
     swapchainCreateInfo.clipped = VK_TRUE;
 
-    swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE; // TODO: Handle window resize by setting oldSwapchain.
+    swapchainCreateInfo.oldSwapchain = old ? old->handle : VK_NULL_HANDLE;
 
-    Swapchain swapchain = {};
+    VulkanSwapchain swapchain = {};
     if (
         VkResult vres = vkCreateSwapchainKHR(logicalDevice, &swapchainCreateInfo, nullptr, &swapchain.handle);
         vres != VK_SUCCESS
@@ -111,7 +111,7 @@ core::expected<Swapchain, AppError> Swapchain::create(const VulkanContext& vkctx
     return swapchain;
 }
 
-void Swapchain::destroy(Swapchain& swapchain, const Device& device) {
+void VulkanSwapchain::destroy(VulkanSwapchain& swapchain, const VulkanDevice& device) {
     defer { swapchain = {}; };
 
     if (device.logicalDevice == VK_NULL_HANDLE) {

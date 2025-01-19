@@ -46,23 +46,6 @@
 
 // core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
 
-//     // Create Rendering Pipeline
-//     RenderPipeline renderPipeline;
-//     {
-//         RenderPipeline::CreateInfo pipelineCreateInfo;
-//         pipelineCreateInfo.logicalDevice = logicalDevice;
-//         pipelineCreateInfo.fragShaderPath = core::sv(STLV_ASSETS "/shaders/shader.frag.spirv");
-//         pipelineCreateInfo.vertShaderPath = core::sv(STLV_ASSETS "/shaders/shader.vert.spirv");
-//         pipelineCreateInfo.swapchainExtent = swapchain.extent;
-//         pipelineCreateInfo.swapchainImageFormat = swapchain.imageFormat;
-//         auto res = RenderPipeline::create(std::move(pipelineCreateInfo));
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         renderPipeline = std::move(res.value());
-//         logInfoTagged(RENDERER_TAG, "Render Pipeline created");
-//     }
-
 //     // Create Frame Buffers
 //     FrameBufferList frameBuffers;
 //     {
@@ -393,8 +376,19 @@ VulkanContext g_vkctx;
 core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
 
-    g_vkctx.device = core::Unpack(Device::create(info), "Failed to create a device");
-    g_vkctx.swapchain = core::Unpack(Swapchain::create(g_vkctx));
+    g_vkctx.device = core::Unpack(VulkanDevice::create(info), "Failed to create a device");
+    g_vkctx.swapchain = core::Unpack(VulkanSwapchain::create(g_vkctx));
+
+    // Create example shader
+    {
+        VulkanShader::CreateFromFileInfo info = {
+            core::sv(STLV_ASSETS "/shaders/shader.vert.spirv"),
+            core::sv(STLV_ASSETS "/shaders/shader.frag.spirv")
+        };
+        VulkanShader exampleShader = VulkanShader::createGraphicsShaderFromFile(info, g_vkctx);
+        g_vkctx.shaders.push(exampleShader);
+        g_vkctx.boundShader = &g_vkctx.shaders[0];
+    }
 
     return {};
 }
@@ -410,6 +404,10 @@ void Renderer::resizeTarget(u32 width, u32 height) {
 void Renderer::shutdown() {
     VK_MUST(vkDeviceWaitIdle(g_vkctx.device.logicalDevice));
 
-    Swapchain::destroy(g_vkctx.swapchain, g_vkctx.device);
-    Device::destroy(g_vkctx.device);
+    g_vkctx.boundShader = nullptr;
+    for (addr_size i = 0; i < g_vkctx.shaders.len(); i++) {
+        VulkanShader::destroy(g_vkctx.shaders[i], g_vkctx.device.logicalDevice);
+    }
+    VulkanSwapchain::destroy(g_vkctx.swapchain, g_vkctx.device);
+    VulkanDevice::destroy(g_vkctx.device);
 }

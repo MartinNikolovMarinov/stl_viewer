@@ -5,8 +5,8 @@
 
 namespace {
 
-using PhysicalDevice = Device::PhysicalDevice;
-using DeviceExtensions = Device::Extensions;
+using PhysicalDevice = VulkanDevice::PhysicalDevice;
+using DeviceExtensions = VulkanDevice::Extensions;
 
 struct QueueFamilyIndices {
     i32 graphicsIndex = -1;
@@ -23,16 +23,16 @@ struct QueueFamilyIndices {
     );
 };
 
-void                                                           logPhysicalDevice(const Device::PhysicalDevice& device);
+void                                                           logPhysicalDevice(const PhysicalDevice& device);
 
 u32                                                            getDeviceSutabilityScore(const PhysicalDevice& gpu,
-                                                                                        const Device& infoDevice,
+                                                                                        const VulkanDevice& infoDevice,
                                                                                         QueueFamilyIndices& outIndices,
-                                                                                        Surface::CachedCapabilities& outPickedSurfaceCapabilities,
+                                                                                        VulkanSurface::CachedCapabilities& outPickedSurfaceCapabilities,
                                                                                         core::ArrList<bool>& outOptionalExtsActiveList);
 
 core::ArrList<VkQueueFamilyProperties>                         getVkQueueFamilyPropsForDevice(VkPhysicalDevice device);
-core::expected<QueueFamilyIndices, AppError>                   findQueueIndices(VkPhysicalDevice device, const Device& infoDevice);
+core::expected<QueueFamilyIndices, AppError>                   findQueueIndices(VkPhysicalDevice device, const VulkanDevice& infoDevice);
 
 core::expected<core::ArrList<VkExtensionProperties>, AppError> getAllSupportedExtensionsForDevice(VkPhysicalDevice device);
 void                                                           logAllSupportedExtensionsForDevice(core::Memory<const VkExtensionProperties> exts);
@@ -42,7 +42,7 @@ bool                                                           checkDeviceExtSup
 bool                                                           checkRequiredDeviceExtsSupport(core::Memory<const char*> exts,
                                                                                               const core::ArrList<VkExtensionProperties>& supportedExts);
 
-void                                                           logSurfaceCapabilities(const Surface& surface);
+void                                                           logSurfaceCapabilities(const VulkanSurface& surface);
 bool                                                           pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats,
                                                                                  VkSurfaceFormatKHR& out);
 VkPresentModeKHR                                               pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes);
@@ -50,7 +50,7 @@ VkExtent2D                                                     pickSurfaceExtent
 
 } // namespace
 
-core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> gpus, Device& out) {
+core::expected<AppError> VulkanDevice::pickDevice(core::Memory<const PhysicalDevice> gpus, VulkanDevice& out) {
     i32 prefferedIdx = -1;
     u32 maxScore = 0;
 
@@ -58,7 +58,7 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
 
     for (addr_size i = 0; i < gpus.len(); i++) {
         QueueFamilyIndices queueFamilies{};
-        Surface::CachedCapabilities outPickedSurfaceCapabilities;
+        VulkanSurface::CachedCapabilities outPickedSurfaceCapabilities;
         core::ArrList<bool> optionalExtsActiveList (out.deviceExtensions.optional.len(), false);
 
         logPhysicalDevice(gpus[i]);
@@ -93,9 +93,9 @@ core::expected<AppError> Device::pickDevice(core::Memory<const PhysicalDevice> g
     return {};
 }
 
-Surface::Capabilities Surface::queryCapabilities(const Surface& surface,
-                                                 VkPhysicalDevice physicalDevice) {
-    Surface::Capabilities details;
+VulkanSurface::Capabilities VulkanSurface::queryCapabilities(const VulkanSurface& surface,
+                                                             VkPhysicalDevice physicalDevice) {
+    VulkanSurface::Capabilities details;
 
     // Basic surface capabilities (min/max number of images in swap chain, min/max width and height of images)
     VK_MUST(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice,
@@ -129,7 +129,9 @@ Surface::Capabilities Surface::queryCapabilities(const Surface& surface,
     return details;
 }
 
-core::expected<Surface::CachedCapabilities, AppError> Surface::pickCapabilities(const Surface::Capabilities& surfaceCapabilities) {
+core::expected<VulkanSurface::CachedCapabilities, AppError> VulkanSurface::pickCapabilities(
+    const VulkanSurface::Capabilities& surfaceCapabilities
+) {
     const auto& formats = surfaceCapabilities.formats;
     const auto& presentModes = surfaceCapabilities.presentModes;
     const auto& capabilities = surfaceCapabilities.capabilities;
@@ -143,7 +145,7 @@ core::expected<Surface::CachedCapabilities, AppError> Surface::pickCapabilities(
         return core::unexpected(createRendErr(RendererError::FAILED_TO_PICK_SUTABLE_SURFACE_FOR_SWAPCHAIN));
     }
 
-    Surface::CachedCapabilities ret;
+    VulkanSurface::CachedCapabilities ret;
 
     ret.presentMode = pickSurfacePresentMode(presentModes);
     ret.extent = pickSurfaceExtent(capabilities);
@@ -181,9 +183,9 @@ namespace  {
 
 u32 getDeviceSutabilityScore(
     const PhysicalDevice& gpu,
-    const Device& infoDevice,
+    const VulkanDevice& infoDevice,
     QueueFamilyIndices& outIndices,
-    Surface::CachedCapabilities& outPickedSurfaceCapabilities,
+    VulkanSurface::CachedCapabilities& outPickedSurfaceCapabilities,
     core::ArrList<bool>& outOptionalExtsActiveList
 ) {
     const auto& device = gpu.handle;
@@ -254,8 +256,8 @@ u32 getDeviceSutabilityScore(
 
     // Give a score for the supported Surface features.
     {
-        Surface::Capabilities surfaceCapabilities = Surface::queryCapabilities(infoDevice.surface, gpu.handle);
-        auto res = Surface::pickCapabilities(surfaceCapabilities);
+        VulkanSurface::Capabilities surfaceCapabilities = VulkanSurface::queryCapabilities(infoDevice.surface, gpu.handle);
+        auto res = VulkanSurface::pickCapabilities(surfaceCapabilities);
         if (res.hasErr()) {
             // This should be rare.
             logWarnTagged(RENDERER_TAG, "Device surface does not support the required capabilities.");
@@ -272,7 +274,7 @@ u32 getDeviceSutabilityScore(
     return score;
 }
 
-void logPhysicalDevice(const Device::PhysicalDevice& device) {
+void logPhysicalDevice(const VulkanDevice::PhysicalDevice& device) {
     auto& gpu = device;
     auto& props = gpu.props;
 
@@ -337,7 +339,7 @@ core::expected<QueueFamilyIndices, AppError> QueueFamilyIndices::create(
     return ret;
 }
 
-core::expected<QueueFamilyIndices, AppError> findQueueIndices(VkPhysicalDevice device, const Device& infoDevice) {
+core::expected<QueueFamilyIndices, AppError> findQueueIndices(VkPhysicalDevice device, const VulkanDevice& infoDevice) {
     auto vkQueueFamilyProps = getVkQueueFamilyPropsForDevice(device);
     auto res = QueueFamilyIndices::create(device, infoDevice.surface.handle, vkQueueFamilyProps);
     return res;
@@ -490,7 +492,7 @@ VkExtent2D pickSurfaceExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
     return actualExtent;
 }
 
-void logSurfaceCapabilities(const Surface& surface) {
+void logSurfaceCapabilities(const VulkanSurface& surface) {
     logInfoTagged(RENDERER_TAG, "Surface Capabilities:");
     logInfoTagged(RENDERER_TAG, "\tformat: %u", surface.capabilities.format.format);
     logInfoTagged(RENDERER_TAG, "\tcolorSpace: %u", surface.capabilities.format.colorSpace);
