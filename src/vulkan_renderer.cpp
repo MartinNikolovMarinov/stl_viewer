@@ -11,117 +11,10 @@
 //     bool recreate = false;
 // };
 
-// VkDevice g_device = VK_NULL_HANDLE;
-// VulkanQueue g_graphicsQueue = {};
-// VulkanQueue g_presentQueue = {};
-// Swapchain g_swapchain = {};
-// Swapchain::CreateInfo g_swapchainInfo = {};
-// RecreateSwapchain g_swapchainRecreate = {};
-// FrameBufferList g_swapchainFrameBuffers;
-// RenderPipeline g_renderPipeline = {};
-// VkCommandPool g_commandPool = VK_NULL_HANDLE;
 // constexpr i32 MAX_FRAMES_IN_FLIGHT = 2;
 // u32 g_currentFrame = 0;
-// core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> g_cmdBufs;
-// core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> g_imageAvailableSemaphores;
-// core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> g_renderFinishedSemaphores;
-// core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> g_inFlightFences;
-
-// core::expected<FrameBufferList, AppError> createFrameBuffers(VkDevice logicalDevice,
-//                                                              const Swapchain& swapchain,
-//                                                              const RenderPipeline& pipeline);
-// core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice, const PickedGPUDevice& picked);
-// core::expected<core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>, AppError> createCommandBuffers(VkDevice logicalDevice,
-//                                                                                                       VkCommandPool pool);
-
-// core::expected<core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT>, AppError> createSemaphores(VkDevice logicalDevice);
-// core::expected<core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT>, AppError> createFences(VkDevice logicalDevice);
-
-// void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
-//                          const RenderPipeline& renderPipeline,
-//                          const FrameBufferList& frameBuffers,
-//                          const Swapchain& swapchain);
 
 // } // namespace
-
-// core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
-
-//     // Create Frame Buffers
-//     FrameBufferList frameBuffers;
-//     {
-//         auto res = createFrameBuffers(logicalDevice, swapchain, renderPipeline);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         frameBuffers = std::move(res.value());
-//         logInfoTagged(RENDERER_TAG, "Frame Buffers created");
-//     }
-
-//     // Create Command Pool
-//     VkCommandPool commandPool = VK_NULL_HANDLE;
-//     {
-//         auto res = createCommandPool(logicalDevice, pickedDevice);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         commandPool = res.value();
-//         logInfoTagged(RENDERER_TAG, "Command Pool created");
-//     }
-
-//     // Create Command Buffer
-//     core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> cmdBufs;
-//     {
-//         auto res = createCommandBuffers(logicalDevice, commandPool);
-//         if (res.hasErr()) {
-//             return core::unexpected(res.err());
-//         }
-//         cmdBufs = std::move(res.value());
-//         logInfoTagged(RENDERER_TAG, "Command Buffer created");
-//     }
-
-//     // Create Synchronization Objects
-//     core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores;
-//     core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> renderFinishedSemaphores;
-//     core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> inFlightFences;
-//     {
-//         {
-//             auto res = createSemaphores(logicalDevice);
-//             if (res.hasErr()) return core::unexpected(res.err());
-//             imageAvailableSemaphores = std::move(res.value());
-//         }
-//         {
-//             auto res = createSemaphores(logicalDevice);
-//             if (res.hasErr()) return core::unexpected(res.err());
-//             renderFinishedSemaphores = std::move(res.value());
-//         }
-//         {
-//             auto res = createFences(logicalDevice);
-//             if (res.hasErr()) return core::unexpected(res.err());
-//             inFlightFences = std::move(res.value());
-//         }
-
-//         logInfoTagged(RENDERER_TAG, "Synchronization Objects created");
-//     }
-
-//     g_instance = instance;
-//     g_surface = surface;
-//     g_selectedGPU = pickedDevice.gpu;
-//     g_device = logicalDevice;
-//     g_graphicsQueue = graphicsQueue;
-//     g_presentQueue = presentQueue;
-//     g_swapchain = std::move(swapchain);
-//     g_swapchainInfo = std::move(g_swapchainInfo);
-//     g_swapchainRecreate = {};
-//     g_renderPipeline = std::move(renderPipeline);
-//     g_swapchainFrameBuffers = std::move(frameBuffers);
-//     g_commandPool = commandPool;
-//     g_cmdBufs = std::move(cmdBufs);
-//     g_imageAvailableSemaphores = std::move(imageAvailableSemaphores);
-//     g_renderFinishedSemaphores = std::move(renderFinishedSemaphores);
-//     g_inFlightFences = std::move(inFlightFences);
-
-//     return {};
-// }
 
 // void Renderer::drawFrame() {
 //     Assert(vkWaitForFences(g_device, 1, &g_inFlightFences[g_currentFrame], VK_TRUE, core::limitMax<u64>()) == VK_SUCCESS);
@@ -252,41 +145,6 @@
 //     return cmdBuffers;
 // }
 
-// core::expected<core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT>, AppError> createSemaphores(VkDevice logicalDevice) {
-//     VkSemaphoreCreateInfo semaphoreCreateInfo{};
-//     semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-//     core::ArrStatic<VkSemaphore, MAX_FRAMES_IN_FLIGHT> ret;
-//     for (addr_size i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-//         if (
-//             VkResult vres = vkCreateSemaphore(logicalDevice, &semaphoreCreateInfo, nullptr, &ret[i]);
-//             vres != VK_SUCCESS
-//         ) {
-//             return FAILED_TO_ALLOCATE_VULKAN_SEMAPHORE_ERREXPR;
-//         }
-//     }
-
-//     return ret;
-// }
-
-// core::expected<core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT>, AppError> createFences(VkDevice logicalDevice) {
-//     VkFenceCreateInfo fenceCreateInfo{};
-//     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-//     fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-
-//     core::ArrStatic<VkFence, MAX_FRAMES_IN_FLIGHT> ret;
-//     for (addr_size i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-//         if (
-//             VkResult vres = vkCreateFence(logicalDevice, &fenceCreateInfo, nullptr, &ret[i]);
-//             vres != VK_SUCCESS
-//         ) {
-//             return FAILED_TO_ALLOCATE_VULKAN_FENCE_ERREXPR;
-//         }
-//     }
-
-//     return ret;
-// }
-
 // void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
 //                          const RenderPipeline& renderPipeline,
 //                          const FrameBufferList& frameBuffers,
@@ -341,6 +199,177 @@
 namespace {
 
 VulkanContext g_vkctx;
+
+// EXPERIMENTAL SECTION BEGIN
+void createRenderPipeline();
+void createFrameBuffers(core::Memory<VkFramebuffer> outFrameBuffers);
+void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers);
+void recordCommandBuffer(u32 imageIdx);
+void createSemaphores(core::Memory<VkSemaphore> outSemaphores);
+void createFences(core::Memory<VkFence> outFences);
+// EXPERIMENTAL SECTION END
+
+}
+
+core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
+    core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
+
+    g_vkctx.device = core::Unpack(VulkanDevice::create(info), "Failed to create a device");
+    g_vkctx.swapchain = core::Unpack(VulkanSwapchain::create(g_vkctx));
+
+    // Create example shader
+    {
+        VulkanShader::CreateFromFileInfo info = {
+            core::sv(STLV_ASSETS "/shaders/shader.vert.spirv"),
+            core::sv(STLV_ASSETS "/shaders/shader.frag.spirv")
+        };
+        g_vkctx.shader = VulkanShader::createGraphicsShaderFromFile(info, g_vkctx);
+    }
+
+    // EXPERIMENTAL SECTION BEGIN
+    {
+        const addr_size imageCount = g_vkctx.swapchain.imageViews.len();
+        g_vkctx.maxFramesInFlight = imageCount;
+
+        createRenderPipeline();
+        g_vkctx.frameBuffers.replaceWith(VkFramebuffer{}, g_vkctx.maxFramesInFlight);
+        createFrameBuffers(g_vkctx.frameBuffers.mem());
+        g_vkctx.cmdBuffers.replaceWith(VkCommandBuffer{}, g_vkctx.maxFramesInFlight);
+        createCommandBuffers(g_vkctx.cmdBuffers.mem());
+        g_vkctx.inFlightFences.replaceWith(VkFence{}, g_vkctx.maxFramesInFlight);
+        createFences(g_vkctx.inFlightFences.mem());
+        g_vkctx.imageAvailableSemaphores.replaceWith(VkSemaphore{}, g_vkctx.maxFramesInFlight);
+        createSemaphores(g_vkctx.imageAvailableSemaphores.mem());
+        g_vkctx.renderFinishedSemaphores.replaceWith(VkSemaphore{}, g_vkctx.maxFramesInFlight);
+        createSemaphores(g_vkctx.renderFinishedSemaphores.mem());
+    }
+    // EXPERIMENTAL SECTION END
+
+    return {};
+}
+
+void Renderer::drawFrame() {
+    // IMPORTANT: Logical Steps for drawing a frame
+    //  * Wait for the previous frame to finish
+    //  * Acquire an image from the swap chain
+    //  * Record a command buffer which draws the scene onto that image
+    //  * Submit the recorded command buffer
+    //  * Present the swap chain image
+
+    auto& currentFrame = g_vkctx.currentFrame;
+    auto& maxFramesInFlight = g_vkctx.maxFramesInFlight;
+    auto& device = g_vkctx.device;
+    auto& inFlightFence = g_vkctx.inFlightFences[currentFrame];
+    auto& imageAvailableSemaphore = g_vkctx.imageAvailableSemaphores[currentFrame];
+    auto& renderFinishedSemaphore = g_vkctx.renderFinishedSemaphores[currentFrame];
+    auto& cmdBuffer = g_vkctx.cmdBuffers[g_vkctx.currentFrame];
+    auto& swapchain = g_vkctx.swapchain;
+    auto& graphicsQueue = g_vkctx.device.graphicsQueue;
+    auto& presentQueue = g_vkctx.device.presentQueue;
+
+    VK_MUST(vkWaitForFences(device.logicalDevice, 1, &inFlightFence, VK_TRUE, UINT64_MAX));
+    VK_MUST(vkResetFences(device.logicalDevice, 1, &inFlightFence));
+
+    u32 imageIdx;
+    // TODO: Needs different error handling!
+    VK_MUST(vkAcquireNextImageKHR(device.logicalDevice, swapchain.handle, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIdx));
+
+    // Record Commands
+    {
+        VK_MUST(vkResetCommandBuffer(cmdBuffer, 0));
+        recordCommandBuffer(imageIdx);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+        VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+        submitInfo.waitSemaphoreCount = 1;
+        submitInfo.pWaitSemaphores = waitSemaphores;
+        submitInfo.pWaitDstStageMask = waitStages;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmdBuffer;
+
+        VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+        submitInfo.signalSemaphoreCount = 1;
+        submitInfo.pSignalSemaphores = signalSemaphores;
+
+        VK_MUST(vkQueueSubmit(graphicsQueue.handle, 1, &submitInfo, inFlightFence));
+    }
+
+    // Present
+    {
+        VkPresentInfoKHR presentInfo{};
+        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+        VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+        constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
+
+        presentInfo.waitSemaphoreCount = signalSemaphoresLen;
+        presentInfo.pWaitSemaphores = signalSemaphores;
+
+        VkSwapchainKHR swapchains[] = { swapchain.handle };
+        constexpr addr_size swapchainsLen = sizeof(swapchains) / sizeof(swapchains[0]);
+        presentInfo.swapchainCount = swapchainsLen;
+        presentInfo.pSwapchains = swapchains;
+        presentInfo.pImageIndices = &imageIdx;
+        presentInfo.pResults = nullptr;
+
+        // TODO: Needs different error handling!
+        VK_MUST(vkQueuePresentKHR(presentQueue.handle, &presentInfo));
+    }
+
+    currentFrame = (currentFrame + 1) % maxFramesInFlight;
+}
+
+void Renderer::resizeTarget(u32 width, u32 height) {
+
+}
+
+void Renderer::shutdown() {
+    VK_MUST(vkDeviceWaitIdle(g_vkctx.device.logicalDevice));
+
+    // EXPERIMENTAL SECTION:
+    {
+        for (addr_size i = 0; i < g_vkctx.inFlightFences.len(); i++)
+            vkDestroyFence(g_vkctx.device.logicalDevice, g_vkctx.inFlightFences[i], nullptr);
+        for (addr_size i = 0; i < g_vkctx.imageAvailableSemaphores.len(); i++)
+            vkDestroySemaphore(g_vkctx.device.logicalDevice, g_vkctx.imageAvailableSemaphores[i], nullptr);
+        for (addr_size i = 0; i < g_vkctx.renderFinishedSemaphores.len(); i++)
+            vkDestroySemaphore(g_vkctx.device.logicalDevice, g_vkctx.renderFinishedSemaphores[i], nullptr);
+
+        if (g_vkctx.cmdBuffersPool != VK_NULL_HANDLE) {
+            vkDestroyCommandPool(g_vkctx.device.logicalDevice, g_vkctx.cmdBuffersPool, nullptr);
+        }
+
+        for (addr_size i = 0; i < g_vkctx.frameBuffers.len(); i++) {
+            vkDestroyFramebuffer(g_vkctx.device.logicalDevice, g_vkctx.frameBuffers[i], nullptr);
+        }
+        g_vkctx.frameBuffers.clear();
+
+        if (g_vkctx.pipeline != VK_NULL_HANDLE) {
+            logInfoTagged(RENDERER_TAG, "Destroying VkPipeline");
+            vkDestroyPipeline(g_vkctx.device.logicalDevice, g_vkctx.pipeline, nullptr);
+        }
+
+        if (g_vkctx.pipelineLayout != VK_NULL_HANDLE) {
+            logInfoTagged(RENDERER_TAG, "Destroying Pipeline Layout");
+            vkDestroyPipelineLayout(g_vkctx.device.logicalDevice, g_vkctx.pipelineLayout, nullptr);
+        }
+
+        if (g_vkctx.renderPass != VK_NULL_HANDLE) {
+            logInfoTagged(RENDERER_TAG, "Destroying Render Pass");
+            vkDestroyRenderPass(g_vkctx.device.logicalDevice, g_vkctx.renderPass, nullptr);
+        }
+
+        VulkanShader::destroy(g_vkctx.shader, g_vkctx.device.logicalDevice);
+    }
+
+    VulkanSwapchain::destroy(g_vkctx.swapchain, g_vkctx.device);
+    VulkanDevice::destroy(g_vkctx.device);
+}
+
+namespace {
 
 void createRenderPipeline() {
     auto& device = g_vkctx.device;
@@ -560,6 +589,8 @@ void createFrameBuffers(core::Memory<VkFramebuffer> outFrameBuffers) {
     auto& swapchain = g_vkctx.swapchain;
     auto& renderPass = g_vkctx.renderPass;
 
+    Assert(outFrameBuffers.len() == swapchain.imageViews.len(), "Sanity check failed");
+
     for (size_t i = 0; i < swapchain.imageViews.len(); i++) {
         VkImageView attachments[] = {
             swapchain.imageViews[i]
@@ -578,69 +609,99 @@ void createFrameBuffers(core::Memory<VkFramebuffer> outFrameBuffers) {
     }
 }
 
+void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers) {
+    auto& device = g_vkctx.device;
+
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+    poolInfo.queueFamilyIndex = device.graphicsQueue.idx;
+
+    auto& cmdBuffersPool = g_vkctx.cmdBuffersPool;
+    VK_MUST(vkCreateCommandPool(device.logicalDevice, &poolInfo, nullptr, &cmdBuffersPool));
+
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = cmdBuffersPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = u32(cmdBuffers.len());
+
+    VK_MUST(vkAllocateCommandBuffers(device.logicalDevice, &allocInfo, cmdBuffers.data()));
 }
 
-core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
-    core::setLoggerTag(VULKAN_VALIDATION_TAG, appLogTagsToCStr(VULKAN_VALIDATION_TAG));
+void recordCommandBuffer(u32 imageIdx) {
+    auto& renderPass = g_vkctx.renderPass;
+    auto& frameBuffer = g_vkctx.frameBuffers[imageIdx];
+    auto& swapchain = g_vkctx.swapchain;
+    auto& cmdBuffer = g_vkctx.cmdBuffers[imageIdx];
+    auto& graphicsPipeline = g_vkctx.pipeline;
 
-    g_vkctx.device = core::Unpack(VulkanDevice::create(info), "Failed to create a device");
-    g_vkctx.swapchain = core::Unpack(VulkanSwapchain::create(g_vkctx));
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = 0;
+    beginInfo.pInheritanceInfo = nullptr;
 
-    // Create example shader
+    VK_MUST(vkBeginCommandBuffer(cmdBuffer, &beginInfo));
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = renderPass;
+    renderPassInfo.framebuffer = frameBuffer;
+    renderPassInfo.renderArea.offset = {0, 0};
+    renderPassInfo.renderArea.extent = swapchain.extent;
+
+    VkClearValue clearValue{};
+    clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
+
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearValue;
+
+    // Begin Render Pass
     {
-        VulkanShader::CreateFromFileInfo info = {
-            core::sv(STLV_ASSETS "/shaders/shader.vert.spirv"),
-            core::sv(STLV_ASSETS "/shaders/shader.frag.spirv")
-        };
-        g_vkctx.shader = VulkanShader::createGraphicsShaderFromFile(info, g_vkctx);
+        vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+        defer { vkCmdEndRenderPass(cmdBuffer); };
+
+        vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = f32(swapchain.extent.width);
+        viewport.height = f32(swapchain.extent.height);
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = {0, 0};
+        scissor.extent = swapchain.extent;
+        vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+        vkCmdDraw(cmdBuffer, 6, 1, 0, 0);
     }
 
-    // EXPERIMENTAL SECTION:
-    {
-        createRenderPipeline();
-        g_vkctx.frameBuffers.replaceWith(VkFramebuffer{}, g_vkctx.frameBuffers.cap());
-        createFrameBuffers(g_vkctx.frameBuffers.mem());
+    VK_MUST(vkEndCommandBuffer(cmdBuffer));
+}
+
+void createSemaphores(core::Memory<VkSemaphore> outSemaphores) {
+    auto& device = g_vkctx.device;
+
+    VkSemaphoreCreateInfo semaphoreCreateInfo{};
+    semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    for (addr_size i = 0; i < outSemaphores.len(); i++) {
+        VK_MUST(vkCreateSemaphore(device.logicalDevice, &semaphoreCreateInfo, nullptr, &outSemaphores[i]));
     }
-
-    return {};
 }
 
-void Renderer::drawFrame() {
+void createFences(core::Memory<VkFence> outFences) {
+    auto& device = g_vkctx.device;
 
-}
-
-void Renderer::resizeTarget(u32 width, u32 height) {
-
-}
-
-void Renderer::shutdown() {
-    VK_MUST(vkDeviceWaitIdle(g_vkctx.device.logicalDevice));
-
-    // EXPERIMENTAL SECTION:
-    {
-        for (addr_size i = 0; i < g_vkctx.frameBuffers.len(); i++) {
-            vkDestroyFramebuffer(g_vkctx.device.logicalDevice, g_vkctx.frameBuffers[i], nullptr);
-        }
-        g_vkctx.frameBuffers.clear();
-
-        if (g_vkctx.pipeline != VK_NULL_HANDLE) {
-            logInfoTagged(RENDERER_TAG, "Destroying VkPipeline");
-            vkDestroyPipeline(g_vkctx.device.logicalDevice, g_vkctx.pipeline, nullptr);
-        }
-
-        if (g_vkctx.pipelineLayout != VK_NULL_HANDLE) {
-            logInfoTagged(RENDERER_TAG, "Destroying Pipeline Layout");
-            vkDestroyPipelineLayout(g_vkctx.device.logicalDevice, g_vkctx.pipelineLayout, nullptr);
-        }
-
-        if (g_vkctx.renderPass != VK_NULL_HANDLE) {
-            logInfoTagged(RENDERER_TAG, "Destroying Render Pass");
-            vkDestroyRenderPass(g_vkctx.device.logicalDevice, g_vkctx.renderPass, nullptr);
-        }
-
-        VulkanShader::destroy(g_vkctx.shader, g_vkctx.device.logicalDevice);
+    VkFenceCreateInfo fenceCreateInfo{};
+    fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    for (addr_size i = 0; i < outFences.len(); i++) {
+        VK_MUST(vkCreateFence(device.logicalDevice, &fenceCreateInfo, nullptr, &outFences[i]));
     }
-
-    VulkanSwapchain::destroy(g_vkctx.swapchain, g_vkctx.device);
-    VulkanDevice::destroy(g_vkctx.device);
 }
+
+} // namespace

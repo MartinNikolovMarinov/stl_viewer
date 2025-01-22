@@ -138,5 +138,12 @@ struct VulkanContext {
     VkPipeline pipeline;
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
-    core::ArrStatic<VkFramebuffer, 3> frameBuffers;
+    core::ArrStatic<VkFramebuffer, 5> frameBuffers;
+    core::ArrStatic<VkFence, 5> inFlightFences;
+    core::ArrStatic<VkSemaphore, 5> imageAvailableSemaphores;
+    core::ArrStatic<VkSemaphore, 5> renderFinishedSemaphores;
+    core::ArrStatic<VkCommandBuffer, 5> cmdBuffers;
+    VkCommandPool cmdBuffersPool;
+    u32 currentFrame = 0;
+    u32 maxFramesInFlight = 0;
 };
