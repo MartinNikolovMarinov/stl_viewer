@@ -3,199 +3,6 @@
 #include <renderer.h>
 #include <vulkan_renderer.h>
 
-// namespace {
-
-// struct RecreateSwapchain {
-//     u32 width = 0;
-//     u32 height = 0;
-//     bool recreate = false;
-// };
-
-// constexpr i32 MAX_FRAMES_IN_FLIGHT = 2;
-// u32 g_currentFrame = 0;
-
-// } // namespace
-
-// void Renderer::drawFrame() {
-//     Assert(vkWaitForFences(g_device, 1, &g_inFlightFences[g_currentFrame], VK_TRUE, core::limitMax<u64>()) == VK_SUCCESS);
-//     vkResetFences(g_device, 1, &g_inFlightFences[g_currentFrame]);
-
-//     u32 imageIdx;
-//     // TODO: Needs different error handling!
-//     vkAcquireNextImageKHR(g_device,
-//                           g_swapchain.swapchain,
-//                           core::limitMax<u64>(),
-//                           g_imageAvailableSemaphores[g_currentFrame],
-//                           VK_NULL_HANDLE,
-//                           &imageIdx);
-
-//     Assert(vkResetCommandBuffer(g_cmdBufs[g_currentFrame], 0) == VK_SUCCESS);
-//     recordCommandBuffer(g_cmdBufs[g_currentFrame], imageIdx, g_renderPipeline, g_swapchainFrameBuffers, g_swapchain);
-
-//     // Submit to the command buffer to the Graphics Queue
-//     {
-//         VkSubmitInfo submitInfo{};
-//         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-//         submitInfo.commandBufferCount = 1;
-//         submitInfo.pCommandBuffers = &g_cmdBufs[g_currentFrame];
-
-//         VkSemaphore waitSemaphores[] = { g_imageAvailableSemaphores[g_currentFrame] };
-//         constexpr addr_size waitSemaphoresLen = sizeof(waitSemaphores) / sizeof(waitSemaphores[0]);
-//         VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-//         submitInfo.waitSemaphoreCount = waitSemaphoresLen;
-//         submitInfo.pWaitSemaphores = waitSemaphores;
-//         submitInfo.pWaitDstStageMask = waitStages;
-
-//         VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphores[g_currentFrame] };
-//         constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
-//         submitInfo.signalSemaphoreCount = signalSemaphoresLen;
-//         submitInfo.pSignalSemaphores = signalSemaphores;
-
-//         Assert(vkQueueSubmit(g_graphicsQueue.queue, 1, &submitInfo, g_inFlightFences[g_currentFrame]) == VK_SUCCESS);
-//     }
-
-//     // Present
-//     {
-//         VkPresentInfoKHR presentInfo{};
-//         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
-//         VkSemaphore signalSemaphores[] = { g_renderFinishedSemaphores[g_currentFrame] };
-//         constexpr addr_size signalSemaphoresLen = sizeof(signalSemaphores) / sizeof(signalSemaphores[0]);
-
-//         presentInfo.waitSemaphoreCount = signalSemaphoresLen;
-//         presentInfo.pWaitSemaphores = signalSemaphores;
-
-//         VkSwapchainKHR swapchains[] = { g_swapchain.swapchain };
-//         constexpr addr_size swapchainsLen = sizeof(swapchains) / sizeof(swapchains[0]);
-//         presentInfo.swapchainCount = swapchainsLen;
-//         presentInfo.pSwapchains = swapchains;
-//         presentInfo.pImageIndices = &imageIdx;
-//         presentInfo.pResults = nullptr;
-
-//         // TODO: Needs different error handling!
-//         vkQueuePresentKHR(g_presentQueue.queue, &presentInfo);
-//     }
-
-//     g_currentFrame = (g_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-// }
-
-// void Renderer::resizeTarget(u32 width, u32 height) {
-//     g_swapchainRecreate.height = height;
-//     g_swapchainRecreate.width = width;
-//     g_swapchainRecreate.recreate = true;
-// }
-
-// void Renderer::shutdown() {
-//     logInfoTagged(RENDERER_TAG, "Destroying Synchronization objects");
-//     for (i32 i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-//         vkDestroySemaphore(g_device, g_imageAvailableSemaphores[i], nullptr);
-//         vkDestroySemaphore(g_device, g_renderFinishedSemaphores[i], nullptr);
-//         vkDestroyFence(g_device, g_inFlightFences[i], nullptr);
-//     }
-
-//     if (g_commandPool != VK_NULL_HANDLE) {
-//         logInfoTagged(RENDERER_TAG, "Destroying Command Pool");
-//         vkDestroyCommandPool(g_device, g_commandPool, nullptr);
-//         g_commandPool = VK_NULL_HANDLE;
-//     }
-
-//     if (!g_swapchainFrameBuffers.empty()) {
-//         logInfoTagged(RENDERER_TAG, "Destroying FrameBuffers");
-//         for (addr_size i = 0; i < g_swapchainFrameBuffers.len(); i++) {
-//             vkDestroyFramebuffer(g_device, g_swapchainFrameBuffers[i], nullptr);
-//         }
-//         g_swapchainFrameBuffers.free();
-//     }
-
-//     Swapchain::destroy(g_device, g_swapchain);
-//     RenderPipeline::destroy(g_device, g_renderPipeline);
-// }
-
-// namespace {
-
-// core::expected<VkCommandPool, AppError> createCommandPool(VkDevice logicalDevice, const PickedGPUDevice& picked) {
-//     VkCommandPoolCreateInfo poolCreateInfo{};
-//     poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-//     poolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-//     poolCreateInfo.queueFamilyIndex = picked.graphicsQueueIdx;
-
-//     VkCommandPool ret;
-//     if (
-//         VkResult vres =vkCreateCommandPool(logicalDevice, &poolCreateInfo, nullptr, &ret);
-//         vres != VK_SUCCESS
-//     ) {
-//         return FAILED_TO_CREATE_VULKAN_COMMAND_POOL_ERREXPR;
-//     }
-
-//     return ret;
-// }
-
-// core::expected<core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT>, AppError> createCommandBuffers(VkDevice logicalDevice, VkCommandPool pool) {
-//     VkCommandBufferAllocateInfo allocCreateInfo{};
-//     allocCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-//     allocCreateInfo.commandPool = pool;
-//     allocCreateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-//     allocCreateInfo.commandBufferCount = MAX_FRAMES_IN_FLIGHT;
-
-//     core::ArrStatic<VkCommandBuffer, MAX_FRAMES_IN_FLIGHT> cmdBuffers;
-//     if (vkAllocateCommandBuffers(logicalDevice, &allocCreateInfo, cmdBuffers.data()) != VK_SUCCESS) {
-//         return FAILED_TO_ALLOCATE_VULKAN_COMMAND_BUFFER_ERREXPR;
-//     }
-
-//     return cmdBuffers;
-// }
-
-// void recordCommandBuffer(VkCommandBuffer cmdBuffer, u32 imageIdx,
-//                          const RenderPipeline& renderPipeline,
-//                          const FrameBufferList& frameBuffers,
-//                          const Swapchain& swapchain) {
-//     VkCommandBufferBeginInfo beginInfo{};
-//     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-//     beginInfo.flags = 0;
-//     beginInfo.pInheritanceInfo = nullptr;
-
-//     Assert(vkBeginCommandBuffer(cmdBuffer, &beginInfo) == VK_SUCCESS);
-
-//     VkRenderPassBeginInfo renderPassInfo{};
-//     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-//     renderPassInfo.renderPass = renderPipeline.renderPass;
-//     renderPassInfo.framebuffer = frameBuffers[imageIdx];
-//     renderPassInfo.renderArea.offset = {0, 0};
-//     renderPassInfo.renderArea.extent = swapchain.extent;
-
-//     VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}}; // BLACK
-//     renderPassInfo.clearValueCount = 1;
-//     renderPassInfo.pClearValues = &clearColor;
-
-//     {
-//         vkCmdBeginRenderPass(cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-//         defer { vkCmdEndRenderPass(cmdBuffer); };
-
-//         vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, renderPipeline.graphicsPipeline);
-
-//         VkViewport viewport{};
-//         viewport.x = 0.0f;
-//         viewport.y = 0.0f;
-//         viewport.width = f32(swapchain.extent.width);
-//         viewport.height = f32(swapchain.extent.height);
-//         viewport.minDepth = 0.0f;
-//         viewport.maxDepth = 1.0f;
-//         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
-
-//         VkRect2D scissor{};
-//         scissor.offset = {0, 0};
-//         scissor.extent = swapchain.extent;
-//         vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
-
-//         vkCmdDraw(cmdBuffer, 6, 1, 0, 0);
-//     }
-
-//     Assert(vkEndCommandBuffer(cmdBuffer) == VK_SUCCESS);
-// }
-
-
-// } // namespace
-
 namespace {
 
 VulkanContext g_vkctx;
@@ -207,6 +14,7 @@ void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers);
 void recordCommandBuffer(u32 imageIdx);
 void createSemaphores(core::Memory<VkSemaphore> outSemaphores);
 void createFences(core::Memory<VkFence> outFences);
+void recreateSwapchain();
 // EXPERIMENTAL SECTION END
 
 }
@@ -262,20 +70,36 @@ void Renderer::drawFrame() {
     auto& inFlightFence = g_vkctx.inFlightFences[currentFrame];
     auto& imageAvailableSemaphore = g_vkctx.imageAvailableSemaphores[currentFrame];
     auto& renderFinishedSemaphore = g_vkctx.renderFinishedSemaphores[currentFrame];
-    auto& cmdBuffer = g_vkctx.cmdBuffers[g_vkctx.currentFrame];
     auto& swapchain = g_vkctx.swapchain;
     auto& graphicsQueue = g_vkctx.device.graphicsQueue;
     auto& presentQueue = g_vkctx.device.presentQueue;
 
     VK_MUST(vkWaitForFences(device.logicalDevice, 1, &inFlightFence, VK_TRUE, UINT64_MAX));
-    VK_MUST(vkResetFences(device.logicalDevice, 1, &inFlightFence));
 
+    // Acquire next image from swapchian
     u32 imageIdx;
-    // TODO: Needs different error handling!
-    VK_MUST(vkAcquireNextImageKHR(device.logicalDevice, swapchain.handle, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIdx));
+    {
+        VkResult vkres = vkAcquireNextImageKHR(device.logicalDevice,
+                                               swapchain.handle,
+                                               UINT64_MAX, // TODO2: probably should have some reasonable max
+                                               imageAvailableSemaphore,
+                                               VK_NULL_HANDLE,
+                                               &imageIdx);
+
+        if (vkres == VK_ERROR_OUT_OF_DATE_KHR || vkres == VK_SUBOPTIMAL_KHR || g_vkctx.frameBufferResized) {
+            g_vkctx.frameBufferResized = false;
+            recreateSwapchain();
+            return;
+        }
+
+        Panic(vkres == VK_SUCCESS, "Failed to Acquire next image from swapchain.");
+    }
+
+    VK_MUST(vkResetFences(device.logicalDevice, 1, &inFlightFence));
 
     // Record Commands
     {
+        auto& cmdBuffer = g_vkctx.cmdBuffers[imageIdx];
         VK_MUST(vkResetCommandBuffer(cmdBuffer, 0));
         recordCommandBuffer(imageIdx);
 
@@ -315,15 +139,22 @@ void Renderer::drawFrame() {
         presentInfo.pImageIndices = &imageIdx;
         presentInfo.pResults = nullptr;
 
-        // TODO: Needs different error handling!
-        VK_MUST(vkQueuePresentKHR(presentQueue.handle, &presentInfo));
+        VkResult vkres = vkQueuePresentKHR(presentQueue.handle, &presentInfo);
+        if (vkres == VK_ERROR_OUT_OF_DATE_KHR || vkres == VK_SUBOPTIMAL_KHR || g_vkctx.frameBufferResized) {
+            g_vkctx.frameBufferResized = false;
+            recreateSwapchain();
+            return;
+        }
+        Panic(vkres == VK_SUCCESS, "Failed present image.");
     }
 
     currentFrame = (currentFrame + 1) % maxFramesInFlight;
 }
 
 void Renderer::resizeTarget(u32 width, u32 height) {
-
+    logInfoTagged(RENDERER_TAG, "Window Resized to (w=%u, h=%u)", width, height);
+    // TODO: Verify this does not break:
+    // g_vkctx.frameBufferResized = true;
 }
 
 void Renderer::shutdown() {
@@ -373,6 +204,7 @@ namespace {
 
 void createRenderPipeline() {
     auto& device = g_vkctx.device;
+    auto& surface = g_vkctx.device.surface;
     auto& swapchain = g_vkctx.swapchain;
     VkShaderModule vertexShaderModule = g_vkctx.shader.stages[0].shaderModule;
     VkShaderModule fragmentShaderModule = g_vkctx.shader.stages[1].shaderModule;
@@ -443,14 +275,14 @@ void createRenderPipeline() {
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = f32(swapchain.extent.width);
-        viewport.height = f32(swapchain.extent.height);
+        viewport.width = f32(surface.capabilities.extent.width);
+        viewport.height = f32(surface.capabilities.extent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
 
         VkRect2D scissors{};
         scissors.offset = {0, 0};
-        scissors.extent = swapchain.extent;
+        scissors.extent = surface.capabilities.extent;
 
         VkPipelineViewportStateCreateInfo viewportStateCreateInfo{};
         viewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -511,7 +343,7 @@ void createRenderPipeline() {
         // Creating Render Pass
         {
             VkAttachmentDescription colorAttachment{};
-            colorAttachment.format = swapchain.imageFormat;
+            colorAttachment.format = surface.capabilities.format.format;
             colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
             colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
             colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -588,6 +420,7 @@ void createFrameBuffers(core::Memory<VkFramebuffer> outFrameBuffers) {
     auto& logicalDevice = g_vkctx.device.logicalDevice;
     auto& swapchain = g_vkctx.swapchain;
     auto& renderPass = g_vkctx.renderPass;
+    auto& surface = g_vkctx.device.surface;
 
     Assert(outFrameBuffers.len() == swapchain.imageViews.len(), "Sanity check failed");
 
@@ -601,8 +434,8 @@ void createFrameBuffers(core::Memory<VkFramebuffer> outFrameBuffers) {
         framebufferInfo.renderPass = renderPass;
         framebufferInfo.attachmentCount = 1;
         framebufferInfo.pAttachments = attachments;
-        framebufferInfo.width = swapchain.extent.width;
-        framebufferInfo.height = swapchain.extent.height;
+        framebufferInfo.width = surface.capabilities.extent.width;
+        framebufferInfo.height = surface.capabilities.extent.height;
         framebufferInfo.layers = 1;
 
         VK_MUST(vkCreateFramebuffer(logicalDevice, &framebufferInfo, nullptr, &outFrameBuffers[i]));
@@ -635,6 +468,7 @@ void recordCommandBuffer(u32 imageIdx) {
     auto& swapchain = g_vkctx.swapchain;
     auto& cmdBuffer = g_vkctx.cmdBuffers[imageIdx];
     auto& graphicsPipeline = g_vkctx.pipeline;
+    auto& surface = g_vkctx.device.surface;
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -648,7 +482,7 @@ void recordCommandBuffer(u32 imageIdx) {
     renderPassInfo.renderPass = renderPass;
     renderPassInfo.framebuffer = frameBuffer;
     renderPassInfo.renderArea.offset = {0, 0};
-    renderPassInfo.renderArea.extent = swapchain.extent;
+    renderPassInfo.renderArea.extent = surface.capabilities.extent;
 
     VkClearValue clearValue{};
     clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
@@ -666,15 +500,15 @@ void recordCommandBuffer(u32 imageIdx) {
         VkViewport viewport{};
         viewport.x = 0.0f;
         viewport.y = 0.0f;
-        viewport.width = f32(swapchain.extent.width);
-        viewport.height = f32(swapchain.extent.height);
+        viewport.width = f32(surface.capabilities.extent.width);
+        viewport.height = f32(surface.capabilities.extent.height);
         viewport.minDepth = 0.0f;
         viewport.maxDepth = 1.0f;
         vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
         VkRect2D scissor{};
         scissor.offset = {0, 0};
-        scissor.extent = swapchain.extent;
+        scissor.extent = surface.capabilities.extent;
         vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
         vkCmdDraw(cmdBuffer, 6, 1, 0, 0);
@@ -701,6 +535,36 @@ void createFences(core::Memory<VkFence> outFences) {
     fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     for (addr_size i = 0; i < outFences.len(); i++) {
         VK_MUST(vkCreateFence(device.logicalDevice, &fenceCreateInfo, nullptr, &outFences[i]));
+    }
+}
+
+void recreateSwapchain() {
+    auto& device = g_vkctx.device;
+    auto& swapchain = g_vkctx.swapchain;
+    auto& surface = g_vkctx.device.surface;
+
+    VK_MUST(vkDeviceWaitIdle(device.logicalDevice));
+
+    // Destroy
+    {
+        for (addr_size i = 0; i < g_vkctx.frameBuffers.len(); i++) {
+            vkDestroyFramebuffer(g_vkctx.device.logicalDevice, g_vkctx.frameBuffers[i], nullptr);
+        }
+        g_vkctx.frameBuffers.replaceWith(VkFramebuffer{}, g_vkctx.frameBuffers.len());
+        VulkanSwapchain::destroy(swapchain, device);
+    }
+
+    // Query Surface Capabilities
+    {
+        VulkanSurface::Capabilities capabilities = VulkanSurface::queryCapabilities(surface, device.physicalDevice);
+        surface.capabilities = core::Unpack(VulkanSurface::pickCapabilities(capabilities),
+                                            "Failed to query for new surface capabilities");
+    }
+
+    // Create
+    {
+        swapchain = core::Unpack(VulkanSwapchain::create(g_vkctx));
+        createFrameBuffers(g_vkctx.frameBuffers.mem());
     }
 }
 

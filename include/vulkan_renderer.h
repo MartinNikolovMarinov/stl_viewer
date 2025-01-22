@@ -84,8 +84,6 @@ struct VulkanSwapchain {
     VkSwapchainKHR handle = VK_NULL_HANDLE;
     core::ArrList<VkImage> images;
     core::ArrList<VkImageView> imageViews;
-    VkFormat imageFormat;
-    VkExtent2D extent;
 
     [[nodiscard]] static core::expected<VulkanSwapchain, AppError> create(const VulkanContext& vkctx,
                                                                           const VulkanSwapchain* old = nullptr);
@@ -146,4 +144,5 @@ struct VulkanContext {
     VkCommandPool cmdBuffersPool;
     u32 currentFrame = 0;
     u32 maxFramesInFlight = 0;
+    bool frameBufferResized = false;
 };

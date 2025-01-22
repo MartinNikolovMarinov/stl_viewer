@@ -101,9 +101,6 @@ core::expected<VulkanSwapchain, AppError> VulkanSwapchain::create(const VulkanCo
                 return core::unexpected(createRendErr(RendererError::FAILED_TO_CREATE_SWAPCHAIN_IMAGE_VIEW));
             }
         }
-
-        swapchain.extent = imageExtent;
-        swapchain.imageFormat = surfaceFormat.format;
     }
 
     logInfoTagged(RENDERER_TAG, "Swapchain created");
