@@ -38,7 +38,7 @@ struct VulkanSurface {
 
     [[nodiscard]] static VulkanSurface::Capabilities queryCapabilities(const VulkanSurface& surface,
                                                                        VkPhysicalDevice physicalDevice);
-    [[nodiscard]] static core::expected<CachedCapabilities, AppError> pickCapabilities(const Capabilities& capabilities);
+    [[nodiscard]] static core::expected<CachedCapabilities, AppError> pickCapabilities(const Capabilities& capabilities, bool vSyncOn);
 };
 
 struct VulkanDevice {
@@ -65,11 +65,12 @@ struct VulkanDevice {
     VkInstance instance = VK_NULL_HANDLE;
     VkDevice logicalDevice = VK_NULL_HANDLE;
     VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-    Extensions deviceExtensions;
+    Extensions deviceExtensions = {};
     VkPhysicalDeviceProperties physicalDeviceProps;
     VkPhysicalDeviceFeatures physicalDeviceFeatures;
     VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
-    VulkanSurface surface;
+    VulkanSurface surface = {};
+    bool vSyncOn = false;
 
     VulkanQueue graphicsQueue = {};
     VulkanQueue presentQueue = {};

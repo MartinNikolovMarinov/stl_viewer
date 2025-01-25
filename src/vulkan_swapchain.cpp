@@ -9,8 +9,8 @@ core::expected<VulkanSwapchain, AppError> VulkanSwapchain::create(const VulkanCo
     u32 imageCount = surface.capabilities.imageCount;
     auto& surfaceFormat = surface.capabilities.format;
     auto& imageExtent = surface.capabilities.extent;
-    u32 graphicsQueueIdx = device.graphicsQueue.idx;
-    u32 presentQueueIdx = device.presentQueue.idx;
+    u32 graphicsQueueIdx = u32(device.graphicsQueue.idx);
+    u32 presentQueueIdx = u32(device.presentQueue.idx);
     auto& currentTransform = surface.capabilities.currentTransform;
     auto& presentMode = surface.capabilities.presentMode;
 

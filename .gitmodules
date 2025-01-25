@@ -1,3 +1,6 @@
 [submodule "lib/core"]
 	path = lib/core
 	url = https://github.com/MartinNikolovMarinov/core.git
+[submodule "cmake"]
+	path = cmake
+	url = https://github.com/martinnikolovmarinov/cmake-scripts.git

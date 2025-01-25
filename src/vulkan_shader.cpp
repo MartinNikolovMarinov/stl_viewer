@@ -98,7 +98,6 @@ VulkanShader VulkanShader::createGraphicsShaderFromFile(const CreateFromFileInfo
     logInfoTagged(RENDERER_TAG, "Creating a Graphics Shader:");
 
     auto& device = vkctx.device;
-    auto& swapchain = vkctx.swapchain;
 
     VulkanShader ret;
 

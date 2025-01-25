@@ -1,7 +1,7 @@
 #include <renderer.h>
 #include <vulkan_renderer.h>
 
-RendererInitInfo RendererInitInfo::create(const char* appName) {
+RendererInitInfo RendererInitInfo::create(const char* appName, bool vSyncOn) {
 #if defined(STLV_DEBUG) && STLV_DEBUG == 1
     constexpr bool VALIDATION_LAYERS_ENABLED = true;
 #else
@@ -11,6 +11,7 @@ RendererInitInfo RendererInitInfo::create(const char* appName) {
     RendererInitInfo info = {};
     info.appName = appName;
     info.backendType = RendererBackendType::VULKAN;
+    info.vSyncOn = vSyncOn;
 
     // Instance Extensions
     {

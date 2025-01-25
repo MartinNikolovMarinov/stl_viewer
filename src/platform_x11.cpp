@@ -64,7 +64,7 @@ AppError Platform::init(const char* windowTitle, i32 windowWidth, i32 windowHeig
     g_window = XCreateSimpleWindow(g_display,
                                     root, // Parent window is the root
                                     10, 10, // The x and y coordinates of the window’s position on the screen.
-                                    windowWidth, windowHeight, // Initial width and height
+                                    u32(windowWidth), u32(windowHeight), // Initial width and height
                                     1, // Border width in pixels.
                                     BlackPixel(g_display, screen), // Border color.
                                     WhitePixel(g_display, screen)); // Background color.
@@ -125,32 +125,32 @@ AppError Platform::pollEvents(bool block) {
     XEvent xevent;
     XNextEvent(g_display, &xevent);
 
-    auto handleMouseClickEvent = [&getModifiers](XEvent& xevent, bool isPress) -> void {
-        KeyboardModifiers mods = getModifiers(xevent.xbutton.state);
-        i32 x = i32(xevent.xbutton.x);
-        i32 y = i32(xevent.xbutton.y);
+    auto handleMouseClickEvent = [&getModifiers](XEvent& ev, bool isPress) -> void {
+        KeyboardModifiers mods = getModifiers(ev.xbutton.state);
+        i32 x = i32(ev.xbutton.x);
+        i32 y = i32(ev.xbutton.y);
 
         if (mouseScrollCallbackX11) {
-            if (xevent.xbutton.button == Button4) {
+            if (ev.xbutton.button == Button4) {
                 mouseScrollCallbackX11(MouseScrollDirection::UP, x, y);
                 return;
             }
-            else if (xevent.xbutton.button == Button5) {
+            else if (ev.xbutton.button == Button5) {
                 mouseScrollCallbackX11(MouseScrollDirection::DOWN, x, y);
                 return;
             }
         }
 
         if (mouseClickCallbackX11) {
-            if (xevent.xbutton.button == Button1) {
+            if (ev.xbutton.button == Button1) {
                 mouseClickCallbackX11(isPress, MouseButton::LEFT, x, y, mods);
                 return;
             }
-            else if (xevent.xbutton.button == Button2) {
+            else if (ev.xbutton.button == Button2) {
                 mouseClickCallbackX11(isPress, MouseButton::MIDDLE, x, y, mods);
                 return;
             }
-            else if (xevent.xbutton.button == Button3) {
+            else if (ev.xbutton.button == Button3) {
                 mouseClickCallbackX11(isPress, MouseButton::RIGHT, x, y, mods);
                 return;
             }
@@ -162,11 +162,11 @@ AppError Platform::pollEvents(bool block) {
         }
     };
 
-    auto handleKeyEvent = [&getModifiers](XEvent& xevent, bool isPress) -> void {
+    auto handleKeyEvent = [&getModifiers](XEvent& ev, bool isPress) -> void {
         if (keyCallbackX11) {
-            u32 vkcode = XLookupKeysym(&xevent.xkey, 0);
-            u32 scancode = xevent.xkey.keycode;
-            KeyboardModifiers mods = getModifiers(xevent.xkey.state);
+            u32 vkcode = u32(XLookupKeysym(&ev.xkey, 0));
+            u32 scancode = ev.xkey.keycode;
+            KeyboardModifiers mods = getModifiers(ev.xkey.state);
             keyCallbackX11(isPress, vkcode, scancode, mods);
         }
     };

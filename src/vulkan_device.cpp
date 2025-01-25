@@ -46,7 +46,7 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
                                             VkDebugUtilsMessengerEXT debugMessenger,
                                             const VkAllocationCallbacks* pAllocator);
 
-VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, VulkanDevice& device);
+VkDevice vulkanCreateLogicalDevice(VulkanDevice& device);
 
 } // namespace
 
@@ -81,11 +81,12 @@ core::expected<VulkanDevice, AppError> VulkanDevice::create(const RendererInitIn
     // Pick a suitable GPU
     device.deviceExtensions.required = rendererInitInfo.backend.vk.requiredDeviceExtensions;
     device.deviceExtensions.optional = rendererInitInfo.backend.vk.optionalDeviceExtensions;
+    device.vSyncOn = rendererInitInfo.vSyncOn;
     GPUDeviceList* all = getAllSupportedPhysicalDevices(device.instance);
     core::Expect(pickDevice(all->memView(), device), "Failed to pick a physical device");
 
     // Create a logical device
-    device.logicalDevice = vulkanCreateLogicalDevice(rendererInitInfo, device);
+    device.logicalDevice = vulkanCreateLogicalDevice(device);
     logInfoTagged(RENDERER_TAG, "Logical Device created");
 
     // Retrive queues
@@ -148,7 +149,7 @@ VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo) {
     // Retrieve required extensions by the platform layer
     i32 requiredPlatformExtCount = 0;
     Platform::requiredVulkanExtsCount(requiredPlatformExtCount);
-    const addr_size requiredExtCount = requiredPlatformExtCount + rendererInitInfo.backend.vk.requiredInstanceExtensions.len();
+    const addr_size requiredExtCount = addr_size(requiredPlatformExtCount) + rendererInitInfo.backend.vk.requiredInstanceExtensions.len();
     core::ArrList<const char*> extensions (requiredExtCount, nullptr);
     Platform::requiredVulkanExts(extensions.data());
 
@@ -158,7 +159,7 @@ VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo) {
         for (addr_size i = 0; i < rendererInitInfo.backend.vk.requiredInstanceExtensions.len(); i++) {
             const char* ex = rendererInitInfo.backend.vk.requiredInstanceExtensions[i];
             if (checkSupportForInstExtension(ex)) {
-                extensions[requiredPlatformExtCount + i] = rendererInitInfo.backend.vk.requiredInstanceExtensions[i];
+                extensions[addr_size(requiredPlatformExtCount) + i] = rendererInitInfo.backend.vk.requiredInstanceExtensions[i];
             }
             else {
                 logFatalTagged(RENDERER_TAG, "Missing required extension: %s", ex);
@@ -428,7 +429,7 @@ VkResult wrap_vkCreateDebugUtilsMessengerEXT(VkInstance instance,
     static PFN_vkCreateDebugUtilsMessengerEXT func = nullptr;
 
     if (func == nullptr) {
-        func = (PFN_vkCreateDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+        func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
         if (func == nullptr) {
             return VK_ERROR_EXTENSION_NOT_PRESENT;
         }
@@ -443,7 +444,7 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
     static PFN_vkDestroyDebugUtilsMessengerEXT func = nullptr;
 
     if (func == nullptr) {
-        func = (PFN_vkDestroyDebugUtilsMessengerEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
         if (func == nullptr) {
             return;
         }
@@ -452,7 +453,7 @@ void wrap_vkDestroyDebugUtilsMessengerEXT(VkInstance instance,
     func(instance, debugMessenger, pAllocator);
 }
 
-VkDevice vulkanCreateLogicalDevice(const RendererInitInfo& rendererInitInfo, VulkanDevice& device) {
+VkDevice vulkanCreateLogicalDevice(VulkanDevice& device) {
     constexpr float queuePriority = 1.0f;
     constexpr addr_size MAX_QUEUES = 5;
 

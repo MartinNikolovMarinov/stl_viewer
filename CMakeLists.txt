@@ -16,7 +16,7 @@ add_subdirectory(lib/core)
 
 # Include cmake modules from:
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/lib/core/cmake") # TODO2: Is this how I want it to work?
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/lib/core/cmake")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake_local")
 
 include(DetectOS)
@@ -106,6 +106,8 @@ target_compile_definitions(${target_main} PUBLIC
     "STLV_DEBUG=$<BOOL:${STLV_DEBUG}>"
     STLV_ASSETS="${CMAKE_BINARY_DIR}/assets"
 )
+
+stlv_target_set_default_flags(${target_main} ${STLV_DEBUG} false)
 
 if(OS STREQUAL "linux")
     if(!USE_EXTERNAL_VULKAN_SDK)

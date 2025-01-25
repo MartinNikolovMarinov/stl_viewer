@@ -46,7 +46,8 @@ core::expected<AppError> Application::init(const ApplicationInfo& appInfo) {
     registerEventHandlers();
 
     logSectionTitleInfoTagged(APP_TAG, "BEGIN Renderer Initialization");
-    RendererInitInfo rendererInfo = RendererInitInfo::create(appInfo.appName);
+    bool vSyncOn = false;
+    RendererInitInfo rendererInfo = RendererInitInfo::create(appInfo.appName, vSyncOn);
     if (auto res = Renderer::init(rendererInfo); res.hasErr()) {
         return res;
     }

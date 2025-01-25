@@ -27,16 +27,16 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
 
     // Create example shader
     {
-        VulkanShader::CreateFromFileInfo info = {
+        VulkanShader::CreateFromFileInfo shaderCreateInfo = {
             core::sv(STLV_ASSETS "/shaders/shader.vert.spirv"),
             core::sv(STLV_ASSETS "/shaders/shader.frag.spirv")
         };
-        g_vkctx.shader = VulkanShader::createGraphicsShaderFromFile(info, g_vkctx);
+        g_vkctx.shader = VulkanShader::createGraphicsShaderFromFile(shaderCreateInfo, g_vkctx);
     }
 
     // EXPERIMENTAL SECTION BEGIN
     {
-        const addr_size imageCount = g_vkctx.swapchain.imageViews.len();
+        u32 imageCount = u32(g_vkctx.swapchain.imageViews.len());
         g_vkctx.maxFramesInFlight = imageCount;
 
         createRenderPipeline();
@@ -151,8 +151,8 @@ void Renderer::drawFrame() {
     currentFrame = (currentFrame + 1) % maxFramesInFlight;
 }
 
-void Renderer::resizeTarget(u32 width, u32 height) {
-    logInfoTagged(RENDERER_TAG, "Window Resized to (w=%u, h=%u)", width, height);
+void Renderer::resizeTarget(i32 width, i32 height) {
+    logInfoTagged(RENDERER_TAG, "Win/dow Resized to (w=%d, h=%d)", width, height);
     // TODO: Verify this does not break:
     // g_vkctx.frameBufferResized = true;
 }
@@ -205,7 +205,6 @@ namespace {
 void createRenderPipeline() {
     auto& device = g_vkctx.device;
     auto& surface = g_vkctx.device.surface;
-    auto& swapchain = g_vkctx.swapchain;
     VkShaderModule vertexShaderModule = g_vkctx.shader.stages[0].shaderModule;
     VkShaderModule fragmentShaderModule = g_vkctx.shader.stages[1].shaderModule;
     auto& pipelineLayout = g_vkctx.pipelineLayout;
@@ -448,7 +447,7 @@ void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers) {
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = device.graphicsQueue.idx;
+    poolInfo.queueFamilyIndex = u32(device.graphicsQueue.idx);
 
     auto& cmdBuffersPool = g_vkctx.cmdBuffersPool;
     VK_MUST(vkCreateCommandPool(device.logicalDevice, &poolInfo, nullptr, &cmdBuffersPool));
@@ -465,7 +464,6 @@ void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers) {
 void recordCommandBuffer(u32 imageIdx) {
     auto& renderPass = g_vkctx.renderPass;
     auto& frameBuffer = g_vkctx.frameBuffers[imageIdx];
-    auto& swapchain = g_vkctx.swapchain;
     auto& cmdBuffer = g_vkctx.cmdBuffers[imageIdx];
     auto& graphicsPipeline = g_vkctx.pipeline;
     auto& surface = g_vkctx.device.surface;
@@ -485,7 +483,7 @@ void recordCommandBuffer(u32 imageIdx) {
     renderPassInfo.renderArea.extent = surface.capabilities.extent;
 
     VkClearValue clearValue{};
-    clearValue.color = { 0.3f, 0.6f, 0.9f, 1.0f };
+    clearValue.color = { { 0.3f, 0.6f, 0.9f, 1.0f } };
 
     renderPassInfo.clearValueCount = 1;
     renderPassInfo.pClearValues = &clearValue;
@@ -542,6 +540,7 @@ void recreateSwapchain() {
     auto& device = g_vkctx.device;
     auto& swapchain = g_vkctx.swapchain;
     auto& surface = g_vkctx.device.surface;
+    bool vSyncOn = device.vSyncOn;
 
     VK_MUST(vkDeviceWaitIdle(device.logicalDevice));
 
@@ -557,7 +556,7 @@ void recreateSwapchain() {
     // Query Surface Capabilities
     {
         VulkanSurface::Capabilities capabilities = VulkanSurface::queryCapabilities(surface, device.physicalDevice);
-        surface.capabilities = core::Unpack(VulkanSurface::pickCapabilities(capabilities),
+        surface.capabilities = core::Unpack(VulkanSurface::pickCapabilities(capabilities, vSyncOn),
                                             "Failed to query for new surface capabilities");
     }
 

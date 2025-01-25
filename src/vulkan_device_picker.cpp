@@ -45,7 +45,7 @@ bool                                                           checkRequiredDevi
 void                                                           logSurfaceCapabilities(const VulkanSurface& surface);
 bool                                                           pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats,
                                                                                  VkSurfaceFormatKHR& out);
-VkPresentModeKHR                                               pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes);
+VkPresentModeKHR                                               pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes, bool vSyncOn);
 VkExtent2D                                                     pickSurfaceExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 } // namespace
@@ -130,7 +130,8 @@ VulkanSurface::Capabilities VulkanSurface::queryCapabilities(const VulkanSurface
 }
 
 core::expected<VulkanSurface::CachedCapabilities, AppError> VulkanSurface::pickCapabilities(
-    const VulkanSurface::Capabilities& surfaceCapabilities
+    const VulkanSurface::Capabilities& surfaceCapabilities,
+    bool vSyncOn
 ) {
     const auto& formats = surfaceCapabilities.formats;
     const auto& presentModes = surfaceCapabilities.presentModes;
@@ -147,7 +148,7 @@ core::expected<VulkanSurface::CachedCapabilities, AppError> VulkanSurface::pickC
 
     VulkanSurface::CachedCapabilities ret;
 
-    ret.presentMode = pickSurfacePresentMode(presentModes);
+    ret.presentMode = pickSurfacePresentMode(presentModes, vSyncOn);
     ret.extent = pickSurfaceExtent(capabilities);
 
     ret.imageCount = capabilities.minImageCount + 1;
@@ -257,7 +258,7 @@ u32 getDeviceSutabilityScore(
     // Give a score for the supported Surface features.
     {
         VulkanSurface::Capabilities surfaceCapabilities = VulkanSurface::queryCapabilities(infoDevice.surface, gpu.handle);
-        auto res = VulkanSurface::pickCapabilities(surfaceCapabilities);
+        auto res = VulkanSurface::pickCapabilities(surfaceCapabilities, infoDevice.vSyncOn);
         if (res.hasErr()) {
             // This should be rare.
             logWarnTagged(RENDERER_TAG, "Device surface does not support the required capabilities.");
@@ -437,8 +438,8 @@ bool pickSurfaceFormat(const core::ArrList<VkSurfaceFormatKHR>& formats, VkSurfa
     return false;
 }
 
-VkPresentModeKHR pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes) {
-    // NOTE: From the Vulkan Tutoria
+VkPresentModeKHR pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& presentModes, bool vSyncOn) {
+    // NOTE: From the Vulkan Tutorial
     //
     // The presentation mode is arguably the most important setting for the swap chain, because it represents the actual
     // conditions for showing images to the screen. There are 4 commonly used modes in Vulkan:
@@ -457,18 +458,24 @@ VkPresentModeKHR pickSurfacePresentMode(const core::ArrList<VkPresentModeKHR>& p
     //   issues than standard vertical sync. This is commonly known as "triple buffering", although the existence of
     //   three buffers alone does not necessarily mean that the framerate is unlocked.
 
-    // TODO2: Do I actually need trieple buffering?
-    for (addr_size i = 0; i < presentModes.len(); i++) {
-        if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
-            return VK_PRESENT_MODE_MAILBOX_KHR;
+    if (!vSyncOn) {
+        for (addr_size i = 0; i < presentModes.len(); i++) {
+           if (presentModes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+                return VK_PRESENT_MODE_IMMEDIATE_KHR;
+            }
+        }
+
+        logWarnTagged(RENDERER_TAG, "Can't turn off VSync - VK_PRESENT_MODE_IMMEDIATE_KHR is not supported.");
+    }
+    else {
+        for (addr_size i = 0; i < presentModes.len(); i++) {
+            if (presentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
+                return VK_PRESENT_MODE_MAILBOX_KHR;
+            }
         }
     }
 
-    // FIXME: move this !
-    // // Decreasing the score because VK_PRESENT_MODE_FIFO_KHR is suboptimal, but it is the only Vulkan standard required
-    // // present mode.
-    // score--;
-
+    logInfoTagged(RENDERER_TAG, "Defaulting to VK_PRESENT_MODE_FIFO_KHR");
     return VK_PRESENT_MODE_FIFO_KHR;
 }
 
@@ -496,7 +503,9 @@ void logSurfaceCapabilities(const VulkanSurface& surface) {
     logInfoTagged(RENDERER_TAG, "Surface Capabilities:");
     logInfoTagged(RENDERER_TAG, "\tformat: %u", surface.capabilities.format.format);
     logInfoTagged(RENDERER_TAG, "\tcolorSpace: %u", surface.capabilities.format.colorSpace);
-    logInfoTagged(RENDERER_TAG, "\tpresent_mode: %u", surface.capabilities.presentMode);
+    logInfoTagged(RENDERER_TAG, "\tpresent_mode: %u (vSync=%s)",
+        surface.capabilities.presentMode,
+        surface.capabilities.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR ? "on": "off");
     logInfoTagged(RENDERER_TAG, "\textent: w=%u, h=%u",
         surface.capabilities.extent.width, surface.capabilities.extent.height);
     logInfoTagged(RENDERER_TAG, "\tcurrent_transform: %u", surface.capabilities.currentTransform);

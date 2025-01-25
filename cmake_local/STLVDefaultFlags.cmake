@@ -1,1 +1,9 @@
-# FIXME: Create current project specific configurations!
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+    include(STLVClangFlags)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    include(STLVGCCFlags)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    include(STLVMSVCFlags)
+else()
+    message(FATAL_ERROR "Unsupported compiler: ${CMAKE_CXX_COMPILER_ID}")
+endif()

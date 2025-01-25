@@ -18,17 +18,18 @@ struct RendererInitInfo {
     };
 
     const char* appName = nullptr;
+    bool vSyncOn = false;
     RendererBackendType backendType = RendererBackendType::NONE;
     union {
         VulkanInfo vk;
     } backend;
 
-    static RendererInitInfo create(const char* appName);
+    static RendererInitInfo create(const char* appName, bool vSyncOn);
 };
 
 struct Renderer {
     [[nodiscard]] static core::expected<AppError> init(const RendererInitInfo& info);
     static void drawFrame();
-    static void resizeTarget(u32 width, u32 height);
+    static void resizeTarget(i32 width, i32 height);
     static void shutdown();
 };
