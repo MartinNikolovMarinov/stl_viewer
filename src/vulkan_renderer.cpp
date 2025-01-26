@@ -11,10 +11,12 @@ VulkanContext g_vkctx;
 void createRenderPipeline();
 void createFrameBuffers(core::Memory<VkFramebuffer> outFrameBuffers);
 void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers);
-void recordCommandBuffer(u32 imageIdx);
+void recordCommandBuffer(VkCommandBuffer cmdBuffer, VkFramebuffer frameBuffer);
 void createSemaphores(core::Memory<VkSemaphore> outSemaphores);
 void createFences(core::Memory<VkFence> outFences);
 void recreateSwapchain();
+
+void createExampleScene();
 // EXPERIMENTAL SECTION END
 
 }
@@ -28,8 +30,8 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
     // Create example shader
     {
         VulkanShader::CreateFromFileInfo shaderCreateInfo = {
-            core::sv(STLV_ASSETS "/shaders/shader.vert.spirv"),
-            core::sv(STLV_ASSETS "/shaders/shader.frag.spirv")
+            core::sv(STLV_ASSETS "/shaders/mesh_shader.vert.spirv"),
+            core::sv(STLV_ASSETS "/shaders/mesh_shader.frag.spirv")
         };
         g_vkctx.shader = VulkanShader::createGraphicsShaderFromFile(shaderCreateInfo, g_vkctx);
     }
@@ -51,6 +53,12 @@ core::expected<AppError> Renderer::init(const RendererInitInfo& info) {
         g_vkctx.renderFinishedSemaphores.replaceWith(VkSemaphore{}, g_vkctx.maxFramesInFlight);
         createSemaphores(g_vkctx.renderFinishedSemaphores.mem());
     }
+
+    // Prepare scene
+    {
+        createExampleScene();
+    }
+
     // EXPERIMENTAL SECTION END
 
     return {};
@@ -99,9 +107,10 @@ void Renderer::drawFrame() {
 
     // Record Commands
     {
-        auto& cmdBuffer = g_vkctx.cmdBuffers[imageIdx];
+        auto& cmdBuffer = g_vkctx.cmdBuffers[currentFrame];
+        auto& frameBuffer = g_vkctx.frameBuffers[imageIdx];
         VK_MUST(vkResetCommandBuffer(cmdBuffer, 0));
-        recordCommandBuffer(imageIdx);
+        recordCommandBuffer(cmdBuffer, frameBuffer);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -143,9 +152,10 @@ void Renderer::drawFrame() {
         if (vkres == VK_ERROR_OUT_OF_DATE_KHR || vkres == VK_SUBOPTIMAL_KHR || g_vkctx.frameBufferResized) {
             g_vkctx.frameBufferResized = false;
             recreateSwapchain();
-            return;
         }
-        Panic(vkres == VK_SUCCESS, "Failed present image.");
+        else {
+            Panic(vkres == VK_SUCCESS, "Failed present image.");
+        }
     }
 
     currentFrame = (currentFrame + 1) % maxFramesInFlight;
@@ -153,7 +163,7 @@ void Renderer::drawFrame() {
 
 void Renderer::resizeTarget(i32 width, i32 height) {
     logInfoTagged(RENDERER_TAG, "Win/dow Resized to (w=%d, h=%d)", width, height);
-    // TODO: Verify this does not break:
+    // TODO: I probably need to set this for Windows.
     // g_vkctx.frameBufferResized = true;
 }
 
@@ -162,6 +172,10 @@ void Renderer::shutdown() {
 
     // EXPERIMENTAL SECTION:
     {
+        for (addr_size i =0; i < g_vkctx.meshes.len(); i++) {
+            Mesh2D::destroy(g_vkctx.device, g_vkctx.meshes[i]);
+        }
+
         for (addr_size i = 0; i < g_vkctx.inFlightFences.len(); i++)
             vkDestroyFence(g_vkctx.device.logicalDevice, g_vkctx.inFlightFences[i], nullptr);
         for (addr_size i = 0; i < g_vkctx.imageAvailableSemaphores.len(); i++)
@@ -230,15 +244,17 @@ void createRenderPipeline() {
             fragShaderStageCreateInfo
         );
 
-        // Create Vertex Input
+        // Create Pipeline Layout
+        auto bindingDescription = Mesh2D::getBindingDescription();
+        auto attributeDescrption = Mesh2D::getAttributeDescriptions();
+
         VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo{};
         vertexInputCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInputCreateInfo.vertexBindingDescriptionCount = 0;
-        vertexInputCreateInfo.pVertexBindingDescriptions = nullptr;
-        vertexInputCreateInfo.vertexAttributeDescriptionCount = 0;
-        vertexInputCreateInfo.pVertexAttributeDescriptions = nullptr;
+        vertexInputCreateInfo.vertexBindingDescriptionCount = 1;
+        vertexInputCreateInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputCreateInfo.vertexAttributeDescriptionCount = u32(attributeDescrption.len());
+        vertexInputCreateInfo.pVertexAttributeDescriptions = attributeDescrption.data();
 
-        // Create Pipeline Layout
         VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
         pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutCreateInfo.setLayoutCount = 0;
@@ -247,9 +263,9 @@ void createRenderPipeline() {
         pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
         VK_MUST(vkCreatePipelineLayout(device.logicalDevice,
-                                       &pipelineLayoutCreateInfo,
-                                       nullptr,
-                                       &pipelineLayout));
+                                    &pipelineLayoutCreateInfo,
+                                    nullptr,
+                                    &pipelineLayout));
         logInfoTagged(RENDERER_TAG, "Pipeline Layout created");
 
         // Create Dynamic state
@@ -461,12 +477,11 @@ void createCommandBuffers(core::Memory<VkCommandBuffer> cmdBuffers) {
     VK_MUST(vkAllocateCommandBuffers(device.logicalDevice, &allocInfo, cmdBuffers.data()));
 }
 
-void recordCommandBuffer(u32 imageIdx) {
+void recordCommandBuffer(VkCommandBuffer cmdBuffer, VkFramebuffer frameBuffer) {
     auto& renderPass = g_vkctx.renderPass;
-    auto& frameBuffer = g_vkctx.frameBuffers[imageIdx];
-    auto& cmdBuffer = g_vkctx.cmdBuffers[imageIdx];
     auto& graphicsPipeline = g_vkctx.pipeline;
     auto& surface = g_vkctx.device.surface;
+    auto& meshes = g_vkctx.meshes;
 
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -509,7 +524,14 @@ void recordCommandBuffer(u32 imageIdx) {
         scissor.extent = surface.capabilities.extent;
         vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
-        vkCmdDraw(cmdBuffer, 6, 1, 0, 0);
+        // TODO: record all vertices with one command in bulk.
+        for (addr_size i = 0; i < meshes.len(); i++) {
+            VkBuffer vertexBuffers[] = { meshes[i].vertexBuffer };
+            VkDeviceSize offsets[] = {0};
+
+            vkCmdBindVertexBuffers(cmdBuffer, 0, 1, vertexBuffers, offsets);
+            vkCmdDraw(cmdBuffer, u32(meshes[i].vertexByteSize()), 1, 0, 0);
+        }
     }
 
     VK_MUST(vkEndCommandBuffer(cmdBuffer));
@@ -564,6 +586,71 @@ void recreateSwapchain() {
     {
         swapchain = core::Unpack(VulkanSwapchain::create(g_vkctx));
         createFrameBuffers(g_vkctx.frameBuffers.mem());
+    }
+}
+
+void createExampleScene() {
+    auto& meshes = g_vkctx.meshes;
+    auto& device = g_vkctx.device;
+
+    // Prepare Meshes
+    {
+        Mesh2D quadMesh;
+
+        // Left triangle:
+        quadMesh.bindingData.push({ core::v(0.98f, 0.98f), core::v(1.0f, 0.0f, 0.0f, 1.0f) });
+        quadMesh.bindingData.push({ core::v(-0.98f, 0.98f), core::v(0.0f, 1.0f, 0.0f, 1.0f) });
+        quadMesh.bindingData.push({ core::v(-0.98f, -0.98f), core::v(0.0f, 0.0f, 1.0f, 1.0f) });
+
+        // Right triangle:
+        quadMesh.bindingData.push({ core::v(0.98f, 0.98f), core::v(1.0f, 0.0f, 0.0f, 1.0f) });
+        quadMesh.bindingData.push({ core::v(-0.98f, -0.98f), core::v(0.0f, 0.0f, 1.0f, 1.0f) });
+        quadMesh.bindingData.push({ core::v(0.98f, -0.98f), core::v(0.0f, 1.0f, 0.0f, 1.0f) });
+
+        // Create Vertex Buffer
+        VkBufferCreateInfo vertexBufferInfo{};
+        vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        vertexBufferInfo.size = quadMesh.vertexByteSize();
+        vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+        vertexBufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        VK_MUST(vkCreateBuffer(device.logicalDevice, &vertexBufferInfo, nullptr, &quadMesh.vertexBuffer));
+
+        VkMemoryRequirements memRequirements;
+        vkGetBufferMemoryRequirements(device.logicalDevice, quadMesh.vertexBuffer, &memRequirements);
+
+        auto findMemoryType = [](u32 typeFilter, VkMemoryPropertyFlags properties) -> u32 {
+            VkPhysicalDeviceMemoryProperties memProperties;
+            vkGetPhysicalDeviceMemoryProperties(g_vkctx.device.physicalDevice, &memProperties);
+            for (u32 i = 0; i < memProperties.memoryTypeCount; i++) {
+                bool isSupported = (memProperties.memoryTypes[i].propertyFlags & properties) == properties;
+                if ((typeFilter & (1 << i)) && isSupported) {
+                    return i;
+                }
+            }
+
+            Assert(false, "Failed to find memory type");
+            return 0;
+        };
+
+        VkMemoryAllocateInfo vertexAllocInfo{};
+        vertexAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        vertexAllocInfo.allocationSize = memRequirements.size;
+        vertexAllocInfo.memoryTypeIndex = findMemoryType(
+            memRequirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        );
+
+        VK_MUST(vkAllocateMemory(device.logicalDevice, &vertexAllocInfo, nullptr, &quadMesh.vertexBufferMemory));
+
+        vkBindBufferMemory(device.logicalDevice, quadMesh.vertexBuffer, quadMesh.vertexBufferMemory, 0);
+
+        void* data;
+        vkMapMemory(device.logicalDevice, quadMesh.vertexBufferMemory, 0, vertexBufferInfo.size, 0, &data);
+        core::memcopy(data, reinterpret_cast<void*>(quadMesh.bindingData.data()), addr_size(vertexBufferInfo.size));
+        vkUnmapMemory(device.logicalDevice, quadMesh.vertexBufferMemory);
+
+        meshes.push(std::move(quadMesh));
     }
 }
 

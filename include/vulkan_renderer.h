@@ -128,9 +128,70 @@ struct VulkanShader {
     static void destroy(VulkanShader& shader, VkDevice logicalDevice);
 };
 
+struct Mesh2D {
+    template <typename T>
+    using container_type = core::ArrList<T>;
+
+    struct MeshBindData {
+        core::vec2f positions;
+        core::vec4f colors;
+        // container_type<core::vec2f> normals;
+        // container_type<core::vec2f> uv0;
+    };
+
+    container_type<MeshBindData> bindingData;
+    VkBuffer vertexBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
+
+    inline addr_size vertexCount() {
+        return bindingData.len();
+    }
+
+    inline addr_size vertexByteSize() {
+        return sizeof(MeshBindData) * vertexCount();
+    }
+
+    static VkVertexInputBindingDescription getBindingDescription() {
+        VkVertexInputBindingDescription bindingDescription{};
+        bindingDescription.binding = 0;
+        bindingDescription.stride = sizeof(MeshBindData);
+        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        return bindingDescription;
+    }
+
+    static core::ArrStatic<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+        core::ArrStatic<VkVertexInputAttributeDescription, 2> attributeDescriptions (2, {});
+
+        // positions parameter attributes:
+        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; // ain't this stupid
+        attributeDescriptions[0].offset = offsetof(MeshBindData, positions);
+
+        // color parameter attributes:
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(MeshBindData, colors);
+
+        return attributeDescriptions;
+    }
+
+    static void destroy(VulkanDevice& device, Mesh2D& mesh) {
+        if (mesh.vertexBuffer != VK_NULL_HANDLE) {
+            vkDestroyBuffer(device.logicalDevice, mesh.vertexBuffer, nullptr);
+        }
+        if (mesh.vertexBufferMemory != VK_NULL_HANDLE) {
+            vkFreeMemory(device.logicalDevice, mesh.vertexBufferMemory, nullptr);
+        }
+    }
+};
+
 struct VulkanContext {
     VulkanDevice device;
     VulkanSwapchain swapchain;
+
+    core::ArrList<Mesh2D> meshes;
 
     // EXPERIMENTAL SECTION:
     VulkanShader shader;
