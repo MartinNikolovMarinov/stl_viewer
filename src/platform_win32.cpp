@@ -262,7 +262,7 @@ AppError Platform::createVulkanSurface(VkInstance instance, VkSurfaceKHR& outSur
     createInfo.hwnd = g_hwnd;
 
     if (VkResult vres = vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &outSurface); vres != VK_SUCCESS) {
-        logFatal("Failed to create Instance. Error Code: %d", vres);
+        logFatal("Failed to create Instance. Error Code: {}", vres);
         return createPltErr(FAILED_TO_CREATE_WIN32_KHR_SURFACE, "Failed to create Win32 Vulkan surface");
     }
 

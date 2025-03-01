@@ -162,7 +162,7 @@ void Renderer::drawFrame() {
 }
 
 void Renderer::resizeTarget(i32 width, i32 height) {
-    logInfoTagged(RENDERER_TAG, "Win/dow Resized to (w=%d, h=%d)", width, height);
+    logInfoTagged(RENDERER_TAG, "Window Resized to (w={}, h={})", width, height);
     // TODO: I probably need to set this for Windows.
     // g_vkctx.frameBufferResized = true;
 }
@@ -647,7 +647,9 @@ void createExampleScene() {
 
         void* data;
         vkMapMemory(device.logicalDevice, quadMesh.vertexBufferMemory, 0, vertexBufferInfo.size, 0, &data);
-        core::memcopy(data, reinterpret_cast<void*>(quadMesh.bindingData.data()), addr_size(vertexBufferInfo.size));
+        core::memcopy(reinterpret_cast<char*>(data),
+                      reinterpret_cast<const char*>(quadMesh.bindingData.data()),
+                      addr_size(vertexBufferInfo.size) * sizeof(quadMesh.bindingData));
         vkUnmapMemory(device.logicalDevice, quadMesh.vertexBufferMemory);
 
         meshes.push(std::move(quadMesh));

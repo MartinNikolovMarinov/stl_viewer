@@ -162,7 +162,7 @@ VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo) {
                 extensions[addr_size(requiredPlatformExtCount) + i] = rendererInitInfo.backend.vk.requiredInstanceExtensions[i];
             }
             else {
-                logFatalTagged(RENDERER_TAG, "Missing required extension: %s", ex);
+                logFatalTagged(RENDERER_TAG, "Missing required extension: {}", ex);
                 Panic(false, "Missing required extension");
             }
         }
@@ -174,14 +174,14 @@ VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo) {
                 extensions.push(ex);
             }
             else {
-                logWarnTagged(RENDERER_TAG, "Missing optional extension: %s", ex);
+                logWarnTagged(RENDERER_TAG, "Missing optional extension: {}", ex);
             }
         }
 
         logInfoTagged(RENDERER_TAG, "Enabled extensions:");
         for (addr_size i = 0; i < extensions.len(); i++) {
             const char* ex = extensions[i];
-            logInfoTagged(RENDERER_TAG, "\t%s", ex);
+            logInfoTagged(RENDERER_TAG, "\t{}", ex);
         }
     }
 
@@ -205,10 +205,10 @@ VkInstance vulkanCreateInstance(const RendererInitInfo& rendererInitInfo) {
         for (addr_size i = 0; i < layers.len(); i++) {
             const char* layer = layers[i];
             if (checkSupportForInstLayer(layer)) {
-                logInfoTagged(RENDERER_TAG, "\t%s", layer);
+                logInfoTagged(RENDERER_TAG, "\t{}", layer);
             }
             else {
-                logErrTagged(RENDERER_TAG, "%s layer is not supported", layer);
+                logErrTagged(RENDERER_TAG, "{} layer is not supported", layer);
                 Panic(false, "Missing Vulkan Instance Layer"); // this should not happen
             }
         }
@@ -252,17 +252,17 @@ VkDebugUtilsMessengerCreateInfoEXT defaultDebugMessengerInfo() {
 
         // Write message type to the buffer
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
-            ptr = core::memcopy(ptr, "[GENERAL] ", core::cstrLen("[GENERAL] "));
+            ptr += core::memcopy(ptr, "[GENERAL] ", core::cstrLen("[GENERAL] "));
         }
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
-            ptr = core::memcopy(ptr, "[VALIDATION] ", core::cstrLen("[VALIDATION] "));
+            ptr += core::memcopy(ptr, "[VALIDATION] ", core::cstrLen("[VALIDATION] "));
         }
         if (messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
-            ptr = core::memcopy(ptr, "[PERFORMANCE] ", core::cstrLen("[PERFORMANCE] "));
+            ptr += core::memcopy(ptr, "[PERFORMANCE] ", core::cstrLen("[PERFORMANCE] "));
         }
 
         // Write callback message to the buffer
-        ptr = core::memcopy(ptr, pCallbackData->pMessage, core::cstrLen(pCallbackData->pMessage));
+        ptr += core::memcopy(ptr, pCallbackData->pMessage, core::cstrLen(pCallbackData->pMessage));
 
         // Null-terminate the buffer
         *ptr = '\0';
@@ -344,9 +344,9 @@ ExtPropsList* getAllSupportedInstExtensions(bool useCache) {
 }
 
 void logInstExtPropsList(const ExtPropsList& list) {
-    logInfoTagged(RENDERER_TAG, "Extensions (%llu)", list.len());
+    logInfoTagged(RENDERER_TAG, "Extensions ({})", list.len());
     for (addr_size i = 0; i < list.len(); i++) {
-        logInfoTagged(RENDERER_TAG, "\t%s v%u", list[i].extensionName, list[i].specVersion);
+        logInfoTagged(RENDERER_TAG, "\t{} v{}", list[i].extensionName, list[i].specVersion);
     }
 }
 
@@ -377,9 +377,9 @@ LayerPropsList* getAllSupportedInstLayers(bool useCache) {
 }
 
 void logInstLayersList(const LayerPropsList& list) {
-    logInfoTagged(RENDERER_TAG, "Layers (%llu)", list.len());
+    logInfoTagged(RENDERER_TAG, "Layers ({})", list.len());
     for (addr_size i = 0; i < list.len(); i++) {
-        logInfoTagged(RENDERER_TAG, "\tname: %s, description: %s, spec version: %u, impl version: %u",
+        logInfoTagged(RENDERER_TAG, "\tname: {}, description: {}, spec version: {}, impl version: {}",
                       list[i].layerName, list[i].description, list[i].specVersion, list[i].implementationVersion);
     }
 }
@@ -408,7 +408,7 @@ void getVulkanVersion(char out[VERSION_BUFFER_SIZE]) {
 
     u32 n;
 
-    out = core::memcopy(out, "Vulkan v", core::cstrLen("Vulkan v"));
+    out += core::memcopy(out, "Vulkan v", core::cstrLen("Vulkan v"));
     n = core::Unpack(core::intToCstr(VK_VERSION_MAJOR(version), out, VERSION_BUFFER_SIZE));
     out[n] = '.';
     out += n + 1;
