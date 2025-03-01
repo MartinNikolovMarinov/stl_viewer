@@ -85,7 +85,6 @@ namespace {
 
 core::expected<AppError> initCoreContext() {
     static auto globalDebugAllocator = core::StdStatsAllocator{};
-    core::initProgramCtx(assertHandler, core::createAllocatorCtx(&globalDebugAllocator));
 
     // Logger setup
     i32* tagIndicesToIgnore = nullptr;
@@ -98,18 +97,24 @@ core::expected<AppError> initCoreContext() {
     //     X11_PLATFORM_TAG,
     // };
     // addr_size tagsToIgnoreSize = sizeof(tagIndicesToIgnore) / sizeof(tagIndicesToIgnore[0]);
-    core::LoggerCreateInfo loggerCreateInfo = {};
+    core::LoggerCreateInfo loggerCreateInfo = core::LoggerCreateInfo::createDefault();
     loggerCreateInfo.tagIndicesToIgnore = { tagIndicesToIgnore, tagsToIgnoreSize };
     if (!core::initLogger(loggerCreateInfo)) {
         return core::unexpected(createPltErr(FAILED_TO_INITIALIZE_CORE_LOGGER,
                                 "Failed to initialize core logger"));
     }
-    core::setLoggerLevel(core::LogLevel::L_INFO);
-    core::useAnsiInLogger(USE_ANSI_LOGGING);
+
+    core::setLogLevel(core::LogLevel::L_INFO);
+    core::useLoggerANSI(USE_ANSI_LOGGING);
+
     // Set logger tags
     core::setLoggerTag(APP_TAG, appLogTagsToCStr(APP_TAG));
     core::setLoggerTag(INPUT_EVENTS_TAG, appLogTagsToCStr(INPUT_EVENTS_TAG));
     core::setLoggerTag(RENDERER_TAG, appLogTagsToCStr(RENDERER_TAG));
+
+    core::initProgramCtx(assertHandler,
+                         &loggerCreateInfo,
+                         core::createAllocatorCtx(&globalDebugAllocator));
 
     return {};
 }
@@ -120,7 +125,7 @@ void registerEventHandlers() {
         g_appIsRunning = false;
     });
     Platform::registerWindowResizeCallback([](i32 w, i32 h) {
-        logInfoTagged(INPUT_EVENTS_TAG, "EVENT: WINDOW_RESIZE (w=%d, h=%d)", w, h);
+        logInfoTagged(INPUT_EVENTS_TAG, "EVENT: WINDOW_RESIZE (w={}, h={})", w, h);
         Renderer::resizeTarget(w, h);
     });
     Platform::registerWindowFocusCallback([](bool focus) {
@@ -128,19 +133,19 @@ void registerEventHandlers() {
         else       logInfoTagged(INPUT_EVENTS_TAG, "EVENT: WINDOW_FOCUS_LOST");
     });
     Platform::registerKeyCallback([](bool isPress, u32 vkcode, u32 scancode, KeyboardModifiers mods) {
-        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: KEY_%s (vkcode=%u, scancode=%u, mods=%s)",
+        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: KEY_{} (vkcode={}, scancode={}, mods={})",
                        isPress ? "PRESS" : "RELEASE", vkcode, scancode, keyModifiersToCptr(mods));
     });
     Platform::registerMouseClickCallback([](bool isPress, MouseButton button, i32 x, i32 y, KeyboardModifiers mods) {
-        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_%s (button=%d, x=%d, y=%d, mods=%s)",
+        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_{} (button={}, x={}, y={}, mods={})",
                        isPress ? "PRESS" : "RELEASE", button, x, y, keyModifiersToCptr(mods));
     });
     Platform::registerMouseMoveCallback([](i32 x, i32 y) {
         // NOTE: Very noisy.
-        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_MOVE (x=%d, y=%d)", x, y);
+        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_MOVE (x={}, y={})", x, y);
     });
     Platform::registerMouseScrollCallback([](MouseScrollDirection direction, i32 x, i32 y) {
-        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_SCROLL (direction=%d, x=%d, y=%d)", direction, x, y);
+        logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_SCROLL (direction={}, x={}, y={})", direction, x, y);
     });
     Platform::registerMouseEnterOrLeaveCallback([](bool enter) {
         if (enter) logTraceTagged(INPUT_EVENTS_TAG, "EVENT: MOUSE_ENTER");
@@ -190,7 +195,7 @@ void __debugPrintMemoryUsage() {
     addr_size inUseMemory = gactx.inUseMemory();
     addr_size totalMemoryAllocated = gactx.totalMemoryAllocated();
     char buff[128];
-    logInfo(ANSI_BOLD("Memory in_use: %s, total_allocated: %s"),
+    logInfo(ANSI_BOLD("Memory in_use: {}, total_allocated: {}"),
             core::testing::memoryUsedToStr(buff, inUseMemory),
             core::testing::memoryUsedToStr(buff, totalMemoryAllocated));
 }

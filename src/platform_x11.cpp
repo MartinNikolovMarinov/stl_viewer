@@ -339,7 +339,7 @@ i32 handleXError(Display* display, XErrorEvent* errorEvent) {
     XGetErrorText(display, errorEvent->error_code, errorText, sizeof(errorText));
 
     logErrTagged(X11_PLATFORM_TAG,
-                "Xlib Error: \n\tRequest Code: %d\n\tMinor Code: %d\n\tResource ID: %llu",
+                "Xlib Error: \n\tRequest Code: {}\n\tMinor Code: {}\n\tResource ID: {}",
                 i32(errorEvent->request_code), i32(errorEvent->minor_code), errorEvent->resourceid);
 
     // Return 0 to continue execution; return non-zero to terminate

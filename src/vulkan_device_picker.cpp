@@ -54,7 +54,7 @@ core::expected<AppError> VulkanDevice::pickDevice(core::Memory<const PhysicalDev
     i32 prefferedIdx = -1;
     u32 maxScore = 0;
 
-    logInfoTagged(RENDERER_TAG, "Physical Devices (%llu) to pick from:", gpus.len());
+    logInfoTagged(RENDERER_TAG, "Physical Devices ({}) to pick from:", gpus.len());
 
     for (addr_size i = 0; i < gpus.len(); i++) {
         QueueFamilyIndices queueFamilies{};
@@ -86,7 +86,7 @@ core::expected<AppError> VulkanDevice::pickDevice(core::Memory<const PhysicalDev
         return core::unexpected(createRendErr(RendererError::FAILED_TO_FIND_GPU_WITH_REQUIRED_FEATURES));
     }
 
-    logInfoTagged(RENDERER_TAG, ANSI_BOLD("Selected GPU: %s"), out.physicalDeviceProps.deviceName);
+    logInfoTagged(RENDERER_TAG, ANSI_BOLD("Selected GPU: {}"), out.physicalDeviceProps.deviceName);
     logAllDeviceEnabledExtensions(out.deviceExtensions);
     logSurfaceCapabilities(out.surface);
 
@@ -197,7 +197,7 @@ u32 getDeviceSutabilityScore(
     {
         auto res = findQueueIndices(gpu.handle, infoDevice);
         if (res.hasErr()) {
-            logWarnTagged(RENDERER_TAG, "Failed to find queue indices for device: %s, reason: %s",
+            logWarnTagged(RENDERER_TAG, "Failed to find queue indices for device: {}, reason: {}",
                          gpu.props.deviceName, res.err().toCStr());
             return 0;
         }
@@ -217,7 +217,7 @@ u32 getDeviceSutabilityScore(
     {
         auto res = getAllSupportedExtensionsForDevice(device);
         if (res.hasErr()) {
-            logWarnTagged(RENDERER_TAG, "Failed to get all supported extensions for device: %s, reason: %s",
+            logWarnTagged(RENDERER_TAG, "Failed to get all supported extensions for device: {}, reason: {}",
                          gpu.props.deviceName, res.err().toCStr());
             return 0;
         }
@@ -250,7 +250,7 @@ u32 getDeviceSutabilityScore(
                 outOptionalExtsActiveList[i] = true;
             }
             else {
-                logWarnTagged(RENDERER_TAG, "Device does not support optional extension: %s", ext);
+                logWarnTagged(RENDERER_TAG, "Device does not support optional extension: {}", ext);
             }
         }
     }
@@ -280,16 +280,16 @@ void logPhysicalDevice(const VulkanDevice::PhysicalDevice& device) {
     auto& props = gpu.props;
 
     logInfoTagged(RENDERER_TAG, "");
-    logInfoTagged(RENDERER_TAG, "Device Name: %s", props.deviceName);
-    logInfoTagged(RENDERER_TAG, "API Version: %u.%u.%u",
+    logInfoTagged(RENDERER_TAG, "Device Name: {}", props.deviceName);
+    logInfoTagged(RENDERER_TAG, "API Version: {}.{}.{}",
                     VK_VERSION_MAJOR(props.apiVersion),
                     VK_VERSION_MINOR(props.apiVersion),
                     VK_VERSION_PATCH(props.apiVersion));
-    logInfoTagged(RENDERER_TAG, "Driver Version: %u",
+    logInfoTagged(RENDERER_TAG, "Driver Version: {}",
                     props.driverVersion);
-    logInfoTagged(RENDERER_TAG, "Vendor ID: %u, Device ID: %u",
+    logInfoTagged(RENDERER_TAG, "Vendor ID: {}, Device ID: {}",
                     props.vendorID, props.deviceID);
-    logInfoTagged(RENDERER_TAG, "Device Type: %s",
+    logInfoTagged(RENDERER_TAG, "Device Type: {}",
                     props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "Integrated GPU" :
                     props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "Discrete GPU" :
                     props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "Virtual GPU" :
@@ -367,22 +367,22 @@ core::expected<core::ArrList<VkExtensionProperties>, AppError> getAllSupportedEx
 }
 
 void logAllSupportedExtensionsForDevice(core::Memory<const VkExtensionProperties> exts) {
-    logDebugTagged(RENDERER_TAG, "Device Supported Extensions (%llu):", exts.len());
+    logDebugTagged(RENDERER_TAG, "Device Supported Extensions ({}):", exts.len());
     for (addr_size i = 0; i < exts.len(); i++) {
-        logDebugTagged(RENDERER_TAG, "\t%s (v%u)", exts[i].extensionName, exts[i].specVersion);
+        logDebugTagged(RENDERER_TAG, "\t{} (v{})", exts[i].extensionName, exts[i].specVersion);
     }
 }
 
 void logAllDeviceEnabledExtensions(const DeviceExtensions& exts) {
-    logInfoTagged(RENDERER_TAG, "Device Enabled Extensions (%llu):", exts.enabledExtensionsCount());
+    logInfoTagged(RENDERER_TAG, "Device Enabled Extensions ({}):", exts.enabledExtensionsCount());
     for (addr_size i = 0; i < exts.required.len(); i++) {
         const char* ext = exts.required[i];
-        logInfoTagged(RENDERER_TAG, "\t%s (required)", ext);
+        logInfoTagged(RENDERER_TAG, "\t{} (required)", ext);
     }
     for (addr_size i = 0; i < exts.optional.len(); i++) {
         if (exts.optionalIsActive[i]) {
             const char* ext = exts.optional[i];
-            logInfoTagged(RENDERER_TAG, "\t%s (optional)", ext);
+            logInfoTagged(RENDERER_TAG, "\t{} (optional)", ext);
         }
     }
 }
@@ -407,7 +407,7 @@ bool checkRequiredDeviceExtsSupport(core::Memory<const char*> exts, const core::
     for (addr_size i = 0; i < exts.len(); i++) {
         const char* currExtName = exts[i];
         if (!checkDeviceExtSupport(currExtName, supportedExts)) {
-            logInfoTagged(RENDERER_TAG, "Device does not support required extension: %s", currExtName);
+            logInfoTagged(RENDERER_TAG, "Device does not support required extension: {}", currExtName);
             return false;
         }
     }
@@ -501,15 +501,15 @@ VkExtent2D pickSurfaceExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
 
 void logSurfaceCapabilities(const VulkanSurface& surface) {
     logInfoTagged(RENDERER_TAG, "Surface Capabilities:");
-    logInfoTagged(RENDERER_TAG, "\tformat: %u", surface.capabilities.format.format);
-    logInfoTagged(RENDERER_TAG, "\tcolorSpace: %u", surface.capabilities.format.colorSpace);
-    logInfoTagged(RENDERER_TAG, "\tpresent_mode: %u (vSync=%s)",
+    logInfoTagged(RENDERER_TAG, "\tformat: {}", surface.capabilities.format.format);
+    logInfoTagged(RENDERER_TAG, "\tcolorSpace: {}", surface.capabilities.format.colorSpace);
+    logInfoTagged(RENDERER_TAG, "\tpresent_mode: {} (vSync={})",
         surface.capabilities.presentMode,
         surface.capabilities.presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR ? "on": "off");
-    logInfoTagged(RENDERER_TAG, "\textent: w=%u, h=%u",
+    logInfoTagged(RENDERER_TAG, "\textent: w={}, h={}",
         surface.capabilities.extent.width, surface.capabilities.extent.height);
-    logInfoTagged(RENDERER_TAG, "\tcurrent_transform: %u", surface.capabilities.currentTransform);
-    logInfoTagged(RENDERER_TAG, "\timage_count: %u", surface.capabilities.imageCount);
+    logInfoTagged(RENDERER_TAG, "\tcurrent_transform: {}", surface.capabilities.currentTransform);
+    logInfoTagged(RENDERER_TAG, "\timage_count: {}", surface.capabilities.imageCount);
 }
 
 } // namespace

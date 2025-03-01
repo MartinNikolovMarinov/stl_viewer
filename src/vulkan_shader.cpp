@@ -14,7 +14,7 @@ core::expected<VulkanShaderStage, AppError> VulkanShaderStage::createFromFile(Vk
     if (auto res = core::fileReadEntire(path.data(), bytes); res.hasErr()) {
         char errBuf[core::MAX_SYSTEM_ERR_MSG_SIZE];
         Assert(core::pltErrorDescribe(res.err(), errBuf), "Failed to describe platform error");
-        logErrTagged(RENDERER_TAG, "Failed to load shader file, path: %s, reason: %s", path.data(), errBuf);
+        logErrTagged(RENDERER_TAG, "Failed to load shader file, path: {}, reason: {}", path.data(), errBuf);
         return core::unexpected(createPltErr(PlatformError::Type::FAILED_TO_LOAD_SHADER,
                                              "Failed to load shader file"));
     }
@@ -46,7 +46,7 @@ core::expected<VulkanShaderStage, AppError> VulkanShaderStage::createFromFile(Vk
         }
     }
 
-    logInfoTagged(RENDERER_TAG, "Created Shader Stage: id=%u, type=%u", ret.id, ret.stageType);
+    logInfoTagged(RENDERER_TAG, "Created Shader Stage: id={}, type={}", ret.id, ret.stageType);
 
     // Debug trace log the source code of the loaded shader file.
 #if STLV_DEBUG
@@ -58,11 +58,11 @@ core::expected<VulkanShaderStage, AppError> VulkanShaderStage::createFromFile(Vk
         if (auto res = core::fileReadEntire(modifiedPath.view().data(), shaderSrc); res.hasErr()) {
             char errBuf[core::MAX_SYSTEM_ERR_MSG_SIZE];
             Assert(core::pltErrorDescribe(res.err(), errBuf), "Failed to describe platform error");
-            logErrTagged(RENDERER_TAG, "Failed to load shader debug source, path: %s, reason: %s", path.data(), errBuf);
+            logErrTagged(RENDERER_TAG, "Failed to load shader debug source, path: {}, reason: {}", path.data(), errBuf);
             // Don't crash because of this
         }
         else {
-            logDebugTagged(RENDERER_TAG, "Contents of '%s':\n%s", modifiedPath.view().data(), shaderSrc.data());
+            logDebugTagged(RENDERER_TAG, "Contents of '{}':\n{}", modifiedPath.view().data(), shaderSrc.data());
         }
     }
 #endif
@@ -71,7 +71,7 @@ core::expected<VulkanShaderStage, AppError> VulkanShaderStage::createFromFile(Vk
 }
 
 void VulkanShaderStage::destroy(VulkanShaderStage& stage, VkDevice logicalDevice) {
-    logInfoTagged(RENDERER_TAG, "Destroying Shader Stage (id=%u, type=%u)", stage.id, stage.stageType);
+    logInfoTagged(RENDERER_TAG, "Destroying Shader Stage (id={}, type={})", stage.id, stage.stageType);
 
     if (stage.shaderBytes != nullptr) {
         core::getAllocator(core::DEFAULT_ALLOCATOR_ID).free(stage.shaderBytes, stage.shaderBytesSize, stage.shaderBytesSize);
